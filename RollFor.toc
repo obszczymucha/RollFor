@@ -1,0 +1,10 @@
+## Interface: 11306
+## Title: Roll For
+## Author: Obszczymucha
+## Version: 1.0
+## Notes: An automated item roller that includes softres.it support.
+## OptionalDeps: ModUi
+## SavedVariables: ModUiDb
+
+Libs\Libs.xml
+RollFor.lua
