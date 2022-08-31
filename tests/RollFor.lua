@@ -180,7 +180,7 @@ function AssignPredictions( predictions )
 
         local override = { [ "override" ] = topCandidate[ "candidate" ], [ "similarity" ] = formatPercent( similarity ), [ "levenshtein" ] = levenshtein }
 
-        if similarity >= 0.57 then
+        if similarity >= 0.65 or levenshtein == 1 then
             results[ player ] = override
         else
             belowThresholdResults[ player ] = override
@@ -1096,7 +1096,7 @@ local function CheckSoftRes( silent )
             local overriddenName = override[ "override" ]
             --local levenshtein = format( "L%s", override[ "levenshtein" ] )
             local similarity = override[ "similarity"]
-            M:PrettyPrint( format( "Auto-matched %s to %s (%s similarity).", highlight( player ), highlight( overriddenName ), similarity) )
+            M:PrettyPrint( format( "Auto-matched %s to %s (%s similarity).", highlight( player ), highlight( overriddenName ), similarity ) )
             softResPlayerNameOverrides[ overriddenName ] = { [ "override" ] = player, [ "similarity" ] = similarity, [ "levenshtein" ] = levenshtein }
         end
 

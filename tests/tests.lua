@@ -80,43 +80,47 @@ local function Levenshtein( s1, s2 )
     return matrix[ len1 ][ len2 ]
 end
 
-local function Levenshtein2(str1, str2)
-    local len1 = #str1
-    local len2 = #str2
-    local matrix = {}
-    local cost = 1
-    local min = math.min;
-  
-    -- quick cut-offs to save time
-    if (len1 == 0) then
-      return len2
-    elseif (len2 == 0) then
-      return len1
-    elseif (str1 == str2) then
-      return 0
-    end
-  
-    -- initialise the base matrix values
-    for i = 0, len1, 1 do
-      matrix[i] = {}
-      matrix[i][0] = i
-    end
-    for j = 0, len2, 1 do
-      matrix[0][j] = j
-    end
-  
-    -- actual Levenshtein algorithm
-    for i = 1, len1, 1 do
-      for j = 1, len2, 1 do
-        if (str1:byte(i) == str2:byte(j)) then
-          cost = 0
-        end
-        matrix[i][j] = min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + cost)
+local function min(a, b, c)
+	return math.min(math.min(a, b), c)
+end
+
+-- Creates a 2D matrix
+local function matrix(row,col)
+  local m = {}
+  for i = 1,row do m[i] = {}
+    for j = 1,col do m[i][j] = 0 end
+  end
+  return m
+end
+
+-- Calculates the Levenshtein distance between two strings
+local function lev_iter_based(strA,strB)
+  local M = matrix(#strA+1,#strB+1)
+  local i,j,cost
+  local row,col = #M,#M[1]
+  for i = 1,row do M[i][1] = i-1 end
+  for j = 1,col do M[1][j] = j-1 end
+  for i = 2,row do
+    for j = 2,col do
+      if (strA:sub(i-1,i-1) == strB:sub(j-1,j-1)) then cost = 0
+      else cost = 1
       end
+    M[i][j] = min(M[i-1][j]+1,M[i][j-1]+1,M[i-1][j-1]+cost)
     end
-  
-    -- return the last value - this is the Levenshtein distance
-    return matrix[len1][len2]
+  end
+  return M[row][col]
+end
+
+local function lev_recursive_based(strA, strB, s, t)
+    s, t = s or #strA, t or #strB
+    if s == 0 then return t end
+    if t == 0 then return s end
+    local cost = strA:sub(s,s) == strB:sub(t,t) and 0 or 1
+    return min(
+      lev_recursive_based(strA, strB, s - 1, t) + 1,
+      lev_recursive_based(strA, strB, s, t - 1) + 1,
+      lev_recursive_based(strA, strB, s - 1, t - 1) + cost
+    )
   end
 
 local function GetSimilarityPredictions( playersInGroupWhoDidNotSoftRes, playersNotInGroupWhoSoftRessed, sort )
@@ -126,7 +130,7 @@ local function GetSimilarityPredictions( playersInGroupWhoDidNotSoftRes, players
         local predictions = {}
 
         for _, candidate in pairs( playersNotInGroupWhoSoftRessed ) do
-            local prediction = { [ "candidate" ] = candidate, [ "similarity" ] = StringSimilarity( player, candidate ), [ "levenshtein" ] = Levenshtein( player, candidate ) } 
+            local prediction = { [ "candidate" ] = candidate, [ "similarity" ] = StringSimilarity( player, candidate ), [ "levenshtein" ] = lev_iter_based( player, candidate ) } 
             table.insert( predictions, prediction )
         end
 
@@ -366,4 +370,46 @@ test( "Should test Levenshtein implementation", function()
     return
         eq( f( "Cykablyat", "Cyakblayt" ), 0 ) and
         eq( f( "Cabcdefgh", "dijklmnop" ), 4 )
+end )
+
+test( "Should show similarity between Hørde and Horde", function()
+    local a = { "Horde" }
+    local b = { "Hørde", "Horde" }
+    
+    local results = GetSimilarityPredictions( a, b, improvedDescending )
+    local result = results[ "Horde" ]
+    local p1 = result[ 1 ]
+    local p2 = result[ 2 ]
+
+    return
+        eq( p1[ "candidate" ], "Horde" ) and eq( p1[ "similarity" ], 1.0 ) and eq( p1[ "levenshtein" ], 0 ) and
+        eq( p2[ "candidate" ], "Hørde" ) and eq( p2[ "similarity" ], 0.57495957457607 ) and eq( p2[ "levenshtein" ], 1 )
+end )
+
+test( "Should show similarity between Gød and God", function()
+    local a = { "God" }
+    local b = { "Gød", "God" }
+    
+    local results = GetSimilarityPredictions( a, b, improvedDescending )
+    local result = results[ "God" ]
+    local p1 = result[ 1 ]
+    local p2 = result[ 2 ]
+
+    return
+        eq( p1[ "candidate" ], "God" ) and eq( p1[ "similarity" ], 1.0 ) and eq( p1[ "levenshtein" ], 0 ) and
+        eq( p2[ "candidate" ], "Gød" ) and eq( p2[ "similarity" ], 0.28571428571429 ) and eq( p2[ "levenshtein" ], 1 )
+end )
+
+test( "Should show similarity between Vtank and Vivo", function()
+    local a = { "Vtank" }
+    local b = { "Vtank", "Vivo" }
+    
+    local results = GetSimilarityPredictions( a, b, improvedDescending )
+    local result = results[ "Vtank" ]
+    local p1 = result[ 1 ]
+    local p2 = result[ 2 ]
+
+    return
+        eq( p1[ "candidate" ], "Vtank" ) and eq( p1[ "similarity" ], 1.0 ) and eq( p1[ "levenshtein" ], 0 ) and
+        eq( p2[ "candidate" ], "Vivo" ) and eq( p2[ "similarity" ], 0.22222222222222 ) and eq( p2[ "levenshtein" ], 1 )
 end )
