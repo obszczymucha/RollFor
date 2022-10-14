@@ -1,8 +1,8 @@
-local ModUi = LibStub:GetLibrary( "ModUi-1.0", 2 )
+local ModUi = LibStub:GetLibrary( "ModUi-1.0", 3 )
 
 local M = ModUi:NewModule( "RollFor" )
 
-local version = "0.1"
+local version = "3"
 
 local timer = nil
 local secondsLeft = nil

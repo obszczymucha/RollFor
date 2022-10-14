@@ -1,0 +1,16 @@
+{
+  "languageserver": {
+   "lua": {
+      "command": "lua-language-server",
+      "filetypes": [ "lua" ],
+      "settings": {
+        "Lua": {
+          "diagnostics": {
+            "globals": [ "LibStub", "ChatFrame1" ]
+          }
+        }
+      }
+    }
+  }
+}
+

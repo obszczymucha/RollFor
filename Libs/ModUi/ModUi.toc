@@ -1,0 +1,11 @@
+## Interface: 30400
+## Title: ModUi
+## Author: Obszczymucha (Psikutas @ Arugal AU)
+## Version: 1.0.3
+## Notes: A framework for customizing user interface in a modular fashion.
+## X-Category: Library
+## OptionalDeps: Ace3
+## SavedVariables: ModUiDb
+
+Libs\Libs.xml
+ModUi.xml
