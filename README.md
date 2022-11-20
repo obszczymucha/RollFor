@@ -86,10 +86,10 @@ Example:
 ---
 
 ### Ignore SR and allow everyone to roll
-If for some reason the item is SRed, the addon will only watch rolls for
-players who SRed.  
+If the item is SRed, the addon will only watch rolls for players who SRed.
 However, if you want everyone to roll, even if the item is SRed, use `/arf`
-instead of `/rf`.  
+instead of `/rf`. This is useful if you already gave the item to the player who
+soft-ressed it and the item dropped again.
 
 "arf" stands for "All Roll For".
 
