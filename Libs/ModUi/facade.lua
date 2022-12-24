@@ -9,14 +9,33 @@ M.api = {
   DeleteMacro = DeleteMacro,
   InCombatLockdown = InCombatLockdown,
   GetZoneText = GetZoneText,
+  GetSubZoneText = GetSubZoneText,
+  GetRealZoneText = GetRealZoneText,
   UnitName = UnitName,
   ChatFrame1 = ChatFrame1,
   ChatFrame4 = ChatFrame4,
   GetSpellLink = GetSpellLink,
-  SlashCmdList = SlashCmdList
+  SlashCmdList = SlashCmdList,
+  GetTalentInfo = GetTalentInfo,
+  UnitIsDead = UnitIsDead,
+  UnitIsPlayer = UnitIsPlayer,
+  UnitIsFriend = UnitIsFriend,
+  UnitLevel = UnitLevel,
+  StopMusic = StopMusic,
+  PlayMusic = PlayMusic,
+  IsInGroup = IsInGroup,
+  IsInRaid = IsInRaid,
+  IsInGuild = IsInGuild,
+  SendChatMessage = SendChatMessage,
+  GetNumLootItems = GetNumLootItems,
+  GetLootSlotInfo = GetLootSlotInfo,
+  GetLootSlotLink = GetLootSlotLink,
+  GetLootSlotType = GetLootSlotType,
+  GetLootSourceInfo = GetLootSourceInfo
 }
 
 M.lua = {
-  format = format
+  format = format,
+  time = time,
+  strmatch = strmatch
 }
-

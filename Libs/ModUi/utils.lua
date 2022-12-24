@@ -31,11 +31,24 @@ M.MyRaidRank = function()
   return 0
 end
 
-M.TableContainsValue = function( t, value )
+M.IsPlayerMasterLooter = function()
+  for i = 1, 40 do
+    local name, _, _, _, _, _, _, _, _, _, isMasterLooter = GetRaidRosterInfo( i )
+
+    if name and name == M.MyName() then
+      return isMasterLooter
+    end
+  end
+
+  return false
+end
+
+M.TableContainsValue = function( t, value, f )
   if not t then return false end
 
   for _, v in pairs( t ) do
-    if v == value then return true end
+    local val = type( f ) == "function" and f( v ) or v
+    if val == value then return true end
   end
 
   return false
@@ -466,7 +479,7 @@ end
 
 M.filter = function( t, f )
   if not t then return nil end
-  if not f then return t end
+  if type( f ) ~= "function" then return t end
 
   local result = {}
 
@@ -564,6 +577,10 @@ M.CountItemsByLink = function( itemLink )
   return total
 end
 
+M.IsPrimarySpec = function()
+  return GetActiveTalentGroup() == 1
+end
+
 function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   local function decorateWithEnabledCheck( func )
     return function( component, ... )
@@ -642,6 +659,8 @@ function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   mod.HasProfession = wrap( M.HasProfession )
   mod.CountItemsById = wrap( M.CountItemsById )
   mod.CountItemsByLink = wrap( M.CountItemsByLink )
+  mod.IsPrimarySpec = wrap( M.IsPrimarySpec )
+  mod.IsPlayerMasterLooter = wrap( M.IsPlayerMasterLooter )
 
   -- Component specific
   mod.GetDb = wrapWithComponent( GetDb )

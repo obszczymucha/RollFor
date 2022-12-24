@@ -143,6 +143,8 @@ local function AddBlizzEventCallbackFunctionsToComponent( component )
 	component.OnAreaPoisUpdated = RegisterCallback( "areaPoisUpdated" )
 	component.OnGossipShow = RegisterCallback( "gossipShow" )
 	component.OnMerchantShow = RegisterCallback( "merchantShow" )
+  component.OnSpecChanged = RegisterCallback( "specChanged" )
+  component.OnLootReady = RegisterCallback( "lootReady" )
 end
 
 local function DebugMsg( message )
@@ -367,6 +369,10 @@ local function eventHandler( frame, event, ... )
 		OnEvent( callbacks[ "gossipShow" ], false, nil, ... )
 	elseif event == "MERCHANT_SHOW" then
 		OnEvent( callbacks[ "merchantShow" ], false, nil, ... )
+  elseif event == "ACTIVE_TALENT_GROUP_CHANGED" then
+    OnEvent( callbacks[ "specChanged" ], false, nil, ... )
+  elseif event == "LOOT_READY" then
+    OnEvent( callbacks[ "lootReady" ], false, nil, ... )
 	end
 end
 
@@ -405,6 +411,8 @@ frame:RegisterEvent( "UNIT_SPELLCAST_START" )
 frame:RegisterEvent( "AREA_POIS_UPDATED" )
 frame:RegisterEvent( "GOSSIP_SHOW" )
 frame:RegisterEvent( "MERCHANT_SHOW" )
+frame:RegisterEvent( "ACTIVE_TALENT_GROUP_CHANGED" )
+frame:RegisterEvent( "LOOT_READY" )
 frame:SetScript( "OnEvent", eventHandler )
 
 function ModUi.SimulateEvent( _, eventName )
