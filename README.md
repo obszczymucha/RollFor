@@ -126,6 +126,20 @@ Example:
 
 ---
 
+### Finish rolls early
+```
+/fr
+```
+
+---
+
+### Cancel rolls
+```
+/cr
+```
+
+---
+
 ### Showing SRed items
 ```
 /srs
