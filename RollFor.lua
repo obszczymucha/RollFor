@@ -1,7 +1,7 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 3 )
 local M = ModUi:NewModule( "RollFor" )
-local version = "5.10"
+local version = "1.10"
 
 ---@diagnostic disable-next-line: undefined-global
 local chatFrame = ChatFrame1
