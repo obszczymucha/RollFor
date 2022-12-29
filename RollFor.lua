@@ -1,7 +1,7 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 3 )
 local M = ModUi:NewModule( "RollFor" )
-local version = "1.11"
+local version = "1.12"
 
 ---@diagnostic disable-next-line: undefined-global
 local chatFrame = ChatFrame1
@@ -968,7 +968,7 @@ local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_o
       end
 
       return
-    elseif m_rolled_item_count < #players and (rolls_exhausted or is_offspec) then
+    elseif m_rolled_item_count < #players and (rolls_exhausted or is_offspec or m_seconds_left <= 0) then
       ThereWasATie( roll, players )
       return
     else
