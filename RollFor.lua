@@ -1,7 +1,7 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 3 )
 local M = ModUi:NewModule( "RollFor" )
-local version = "1.10"
+local version = "1.11"
 
 ---@diagnostic disable-next-line: undefined-global
 local chatFrame = ChatFrame1
@@ -968,7 +968,7 @@ local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_o
       end
 
       return
-    elseif m_rolled_item_count < #players and rolls_exhausted then
+    elseif m_rolled_item_count < #players and (rolls_exhausted or is_offspec) then
       ThereWasATie( roll, players )
       return
     else
@@ -1525,16 +1525,6 @@ local function Init()
   M.PrettyPrint = function( _, message ) chatFrame:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
 end
 
----@diagnostic disable-next-line: unused-local, unused-function
-local function OnPartyMessage( message, player )
-  for roll in (message):gmatch( "roll (%d+)" ) do
-    for name in (player):gmatch( "(%a+)%-Arugal" ) do
-      M:Print( string.format( "Party: %s %s", name, message ) )
-      OnRoll( name, tonumber( roll ), 1, 100 )
-    end
-  end
-end
-
 local function format_item_announcement( item_id, item_link )
   if m_hardres_items[ item_id ] then
     return string.format( "%s (HR)", item_link )
@@ -1611,6 +1601,18 @@ local function OnLootReady()
 
     m_announced_items[ m_loot_source_guid ] = m_announced_items[ m_loot_source_guid ] or {}
     m_announced_items[ m_loot_source_guid ][ item.id ] = 1
+  end
+end
+
+---@diagnostic disable-next-line: unused-local, unused-function
+local function OnPartyMessage( message, player )
+  for name, roll in (message):gmatch( "(%a+) rolls (%d+)" ) do
+    --M:Print( string.format( "Party: %s %s", name, message ) )
+    OnRoll( name, tonumber( roll ), 1, 100 )
+  end
+  for name, roll in (message):gmatch( "(%a+) rolls os (%d+)" ) do
+    --M:Print( string.format( "Party: %s %s", name, message ) )
+    OnRoll( name, tonumber( roll ), 1, 99 )
   end
 end
 
