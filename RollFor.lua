@@ -1,5 +1,5 @@
 ---@diagnostic disable: redefined-local
-local ModUi = LibStub:GetLibrary( "ModUi-1.0", 3 )
+local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
 local version = "1.12"
 
@@ -1628,3 +1628,5 @@ function M.Initialize()
   --M:OnPartyMessage( OnPartyMessage )
   --M:OnPartyLeaderMessage( OnPartyMessage )
 end
+
+return M

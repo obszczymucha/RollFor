@@ -1,7 +1,7 @@
-ModUi.facade = ModUi.facade or {}
-local M = ModUi.facade
-local api = M.api
-local lua = M.lua
+---@diagnostic disable-next-line: undefined-global
+local facade = LibStub( "ModUiFacade-1.0" )
+local api = facade.api
+local lua = facade.lua
 
 local get_index = api.GetMacroIndexByName
 
@@ -145,7 +145,7 @@ local builder = function( macro )
   }
 end
 
-M.macro = {
+facade.macro = {
   create = create,
   edit = function( name, body, global, icon )
     create( name, nil, global, icon )
@@ -160,4 +160,4 @@ M.macro = {
   tooltip = function( self, modifiers ) return builder( self ):tooltip( modifiers ) end
 }
 
-return M.macro
+return facade.macro

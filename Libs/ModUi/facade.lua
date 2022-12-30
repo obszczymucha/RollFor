@@ -1,8 +1,10 @@
 ---@diagnostic disable: undefined-global
-ModUi.facade = ModUi.facade or {}
-local M = ModUi.facade
+local M = LibStub:NewLibrary( "ModUiFacade-1.0", 1 )
+if not M then return end
 
 M.api = {
+  CreateFrame = CreateFrame,
+  CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo,
   GetMacroIndexByName = GetMacroIndexByName,
   CreateMacro = CreateMacro,
   EditMacro = EditMacro,
