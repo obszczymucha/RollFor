@@ -30,6 +30,7 @@ local debugFrame = ChatFrame3
 local debug = false
 local suspended = false
 local m_firstEnterWorld = false
+local m_initialized = false
 
 local combatParams = {
   combat = false,
@@ -297,6 +298,8 @@ end
 --eventHandler( frame, event, ... )
 local function eventHandler( _, event, ... )
   if event == "PLAYER_LOGIN" then
+    m_firstEnterWorld = false
+    if m_initialized then return end
     ModUi:OnInitialize()
     ExtendExtensions()
     InitializeComponents( extensions )
@@ -474,5 +477,6 @@ function ModUi:OnInitialize()
 
   self.db = libStub( "AceDB-3.0" ):New( "ModUiDb" )
   aceEvent:RegisterMessage( "HERB_COUNT_HERBS_AVAILABLE", function() OnEvent( m_callbacks.herbsAvailable, true ) end )
+  m_initialized = true
 end
 

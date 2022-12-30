@@ -3,9 +3,6 @@ local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
 local version = "1.12"
 
----@diagnostic disable-next-line: undefined-global
-local chatFrame = ChatFrame1
-
 local m_timer = nil
 local m_seconds_left = nil
 local m_rolled_item = nil
@@ -40,6 +37,25 @@ local wasInGroup = false
 
 local api = ModUi.facade.api
 local lua = ModUi.facade.lua
+
+local chatFrame = api.ChatFrame1
+
+local function reset()
+  m_timer = nil
+  m_seconds_left = nil
+  m_rolled_item = nil
+  m_rolled_item_count = 0
+  m_rolled_item_reserved = false
+  m_rolling = false
+  m_rerolling = false
+  m_rolls = {}
+  m_offspec_rolls = {}
+  m_rollers = {}
+  m_offspec_rollers = {}
+  m_winner_count = 0
+  m_loot_source_guid = nil
+  m_announced_items = {}
+end
 
 local function UpdateGroupStatus()
   wasInGroup = api.IsInGroup() or api.IsInRaid()
@@ -803,6 +819,7 @@ local function SoftResUnpass( args )
 end
 
 local function ThereWasATie( topRoll, topRollers )
+  table.sort(topRollers)
   local topRollersStr = M:TableToCommifiedPrettyString( topRollers )
   local topRollersStrColored = M:TableToCommifiedPrettyString( topRollers, highlight )
 
@@ -823,6 +840,7 @@ end
 
 local function CancelRollingTimer()
   ModUi:CancelTimer( m_timer )
+  m_timer = nil
 end
 
 local function PrintRollingComplete()
@@ -1017,6 +1035,8 @@ local function FinalizeRolling( forced )
 end
 
 local function OnTimer()
+  if not m_timer then return end
+
   m_seconds_left = m_seconds_left - 1
 
   if m_seconds_left <= 0 then
@@ -1463,6 +1483,8 @@ local function BroadcastVersionToTheGroup()
 end
 
 local function OnFirstEnterWorld()
+  reset()
+
   -- Roll For commands
   SLASH_RF1 = "/rf"
   api.SlashCmdList[ "RF" ] = function( args ) ProcessRollForSlashCommand( args, "/rf", IncludeReservedRolls ) end

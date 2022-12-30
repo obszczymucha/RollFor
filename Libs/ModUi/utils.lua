@@ -2,17 +2,18 @@ ModUi = LibStub:GetLibrary( "ModUi-1.0", true )
 
 ModUi.utils = ModUi.utils or {}
 local M = ModUi.utils
+local api = ModUi.facade.api
 
 M.highlight = function( word )
-  return format( "|cffff9f69%s|r", word )
+  return string.format( "|cffff9f69%s|r", word )
 end
 
 M.systemColor = function( word )
-  return format( "|cffffff08%s|r", word )
+  return string.format( "|cffffff08%s|r", word )
 end
 
 M.MyName = function()
-  return UnitName( "player" )
+  return api.UnitName( "player" )
 end
 
 M.MySex = function()
@@ -21,7 +22,7 @@ end
 
 M.MyRaidRank = function()
   for i = 1, 40 do
-    local name, rank = GetRaidRosterInfo( i )
+    local name, rank = api.GetRaidRosterInfo( i )
 
     if name and name == M.MyName() then
       return rank
@@ -33,7 +34,7 @@ end
 
 M.IsPlayerMasterLooter = function()
   for i = 1, 40 do
-    local name, _, _, _, _, _, _, _, _, _, isMasterLooter = GetRaidRosterInfo( i )
+    local name, _, _, _, _, _, _, _, _, _, isMasterLooter = api.GetRaidRosterInfo( i )
 
     if name and name == M.MyName() then
       return isMasterLooter
@@ -119,7 +120,7 @@ M.GetKeyByValue = function( t, f )
 end
 
 M.IsInParty = function()
-  return IsInGroup() and not IsInRaid()
+  return api.IsInGroup() and not api.IsInRaid()
 end
 
 M.IsInCombat = function( combatParams )
@@ -131,11 +132,11 @@ M.IsRegenEnabled = function( combatParams )
 end
 
 M.IsTargetting = function()
-  return UnitName( "target" )
+  return api.UnitName( "target" )
 end
 
 M.IsTargetOfTarget = function()
-  return UnitName( "targettarget" )
+  return api.UnitName( "targettarget" )
 end
 
 M.ClearAllPoints = function( frame )
@@ -156,7 +157,7 @@ end
 
 M.MoveFrameByPoint = function( frame, pointTable )
   if not frame or not pointTable then return end
-  if InCombatLockdown() then return end
+  if api.InCombatLockdown() then return end
 
   local point, relativeTo, relativePoint, x, y = unpack( pointTable )
 
@@ -166,8 +167,9 @@ end
 
 M.MoveFrameHorizontally = function( frame, x )
   if not frame then return end
-  if InCombatLockdown() then return end
+  if api.InCombatLockdown() then return end
 
+  ---@diagnostic disable-next-line: unused-local
   local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint()
 
   M.ClearAllPoints( frame )
@@ -175,7 +177,7 @@ M.MoveFrameHorizontally = function( frame, x )
 end
 
 M.MoveFrameVertically = function( frame, y )
-  if not frame or InCombatLockdown() then return end
+  if not frame or api.InCombatLockdown() then return end
 
   local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint()
 
@@ -184,7 +186,7 @@ M.MoveFrameVertically = function( frame, y )
 end
 
 M.SetWidth = function( frame, width )
-  if not frame or InCombatLockdown() then return end
+  if not frame or api.InCombatLockdown() then return end
 
   if frame.HiddenSetWidth then
     frame:HiddenSetWidth( width )
@@ -194,7 +196,7 @@ M.SetWidth = function( frame, width )
 end
 
 M.SetHeight = function( frame, height )
-  if not frame or InCombatLockdown() then return end
+  if not frame or api.InCombatLockdown() then return end
 
   if frame.HiddenSetHeight then
     frame:HiddenSetHeight( height )
@@ -204,14 +206,14 @@ M.SetHeight = function( frame, height )
 end
 
 M.SetSize = function( frame, width, height )
-  if not frame or InCombatLockdown() then return end
+  if not frame or api.InCombatLockdown() then return end
 
   frame:SetWidth( width )
   frame:SetHeight( height )
 end
 
 M.SetScale = function( frame, scale )
-  if not frame or InCombatLockdown() then return end
+  if not frame or api.InCombatLockdown() then return end
 
   frame:SetScale( scale )
 end
@@ -284,7 +286,7 @@ M.EmitExternalEvent = function( eventName )
 end
 
 M.IsMyName = function( name )
-  if string.lower( UnitName( "player" ) ) == string.lower( name ) then
+  if string.lower( api.UnitName( "player" ) ) == string.lower( name ) then
     return true
   end
 
@@ -369,7 +371,7 @@ M.GetGroupMemberNames = function()
   local result = {}
 
   for i = 1, GetNumGroupMembers() do
-    local name = GetRaidRosterInfo( i )
+    local name = api.GetRaidRosterInfo( i )
     table.insert( result, name )
   end
 
@@ -382,7 +384,7 @@ M.GetGroupMemberNames = function()
 end
 
 M.OnlineClassCountInGroup = function( className )
-  if not IsInGroup() then
+  if not api.IsInGroup() then
     return UnitClass( "player" ) == className and 1 or 0
   end
 
@@ -391,7 +393,7 @@ M.OnlineClassCountInGroup = function( className )
   local myName = M.MyName()
 
   for i = 1, 40 do
-    local name, _, subGroup, _, class, _, _, online = GetRaidRosterInfo( i )
+    local name, _, subGroup, _, class, _, _, online = api.GetRaidRosterInfo( i )
 
     if name == myName then
       mySubGroup = subGroup
@@ -410,14 +412,14 @@ M.OnlineClassCountInGroup = function( className )
 end
 
 M.OnlineClassCountInRaid = function( className )
-  if not IsInGroup() then
+  if not api.IsInGroup() then
     return UnitClass( "player" ) == className and 1 or 0
   end
 
   local warriorCount = 0
 
   for i = 1, 40 do
-    local name, _, _, _, class, _, _, online = GetRaidRosterInfo( i )
+    local name, _, _, _, class, _, _, online = api.GetRaidRosterInfo( i )
 
     if name and class == className and online then
       warriorCount = warriorCount + 1
@@ -466,7 +468,7 @@ M.ValueIsTrue = function( _, v )
 end
 
 M.GetGroupChatType = function()
-  return IsInRaid() and "RAID" or "PARTY"
+  return api.IsInRaid() and "RAID" or "PARTY"
 end
 
 M.GetItemId = function( item )
@@ -523,14 +525,14 @@ end
 M.GetAllPlayersInMyGroup = function()
   local result = {}
 
-  if not (IsInGroup() or IsInRaid()) then
+  if not (api.IsInGroup() or api.IsInRaid()) then
     local myName = M.MyName()
     table.insert( result, myName )
     return result
   end
 
   for i = 1, 40 do
-    local name = GetRaidRosterInfo( i )
+    local name = api.GetRaidRosterInfo( i )
     if name then table.insert( result, name ) end
   end
 
@@ -579,6 +581,26 @@ end
 
 M.IsPrimarySpec = function()
   return GetActiveTalentGroup() == 1
+end
+
+function M.dump_table( o )
+  local entries = 0
+
+  if type( o ) == 'table' then
+    local s = '{'
+    for k, v in pairs( o ) do
+      if (entries == 0) then s = s .. " " end
+      if type( k ) ~= 'number' then k = '"' .. k .. '"' end
+      if (entries > 0) then s = s .. ", " end
+      s = s .. '[' .. k .. '] = ' .. M.dump_table( v )
+      entries = entries + 1
+    end
+
+    if (entries > 0) then s = s .. " " end
+    return s .. '}'
+  else
+    return tostring( o )
+  end
 end
 
 function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
@@ -661,6 +683,7 @@ function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   mod.CountItemsByLink = wrap( M.CountItemsByLink )
   mod.IsPrimarySpec = wrap( M.IsPrimarySpec )
   mod.IsPlayerMasterLooter = wrap( M.IsPlayerMasterLooter )
+  mod.dump_table = wrap( M.dump_table )
 
   -- Component specific
   mod.GetDb = wrapWithComponent( GetDb )
