@@ -1144,13 +1144,13 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
   end
 
   if m_rolled_item_reserved and softResCount <= count then
-    M:PrettyPrint( string.format( "%s soft-ressed by %s.%s",
+    M:PrettyPrint( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item, count ) or item,
-      M:TableToCommifiedPrettyString( reservedBy, compose( name_with_rolls, highlight ) ), softResCount == count and " No need to roll." or "" ) )
+      M:TableToCommifiedPrettyString( reservedBy, compose( name_with_rolls, highlight ) ) ) )
 
-    api.SendChatMessage( string.format( "%s soft-ressed by %s.%s",
+    api.SendChatMessage( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item, count ) or item,
-      M:TableToCommifiedPrettyString( reservedBy, name_with_rolls ), softResCount == count and " No need to roll." or "" ), GetRollAnnouncementChatType() )
+      M:TableToCommifiedPrettyString( reservedBy, name_with_rolls ) ), GetRollAnnouncementChatType() )
 
     m_rolled_item_count = count - softResCount
     info = string.format( "(everyone except %s can roll). /roll (MS) or /roll 99 (OS)",
@@ -1189,6 +1189,14 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
   m_timer = ModUi:ScheduleRepeatingTimer( OnTimer, 1.7 )
 end
 
+local function is_item_hard_ressed( item_id )
+  return m_hardres_items[ item_id ]
+end
+
+local function announce_hr( item )
+  api.SendChatMessage( string.format( "%s is hard-ressed.", item ), GetRollAnnouncementChatType() )
+end
+
 local function ProcessRollForSlashCommand( args, slashCommand, whoRolls )
   if not api.IsInGroup() then
     M:PrettyPrint( "Not in a group." )
@@ -1202,10 +1210,13 @@ local function ProcessRollForSlashCommand( args, slashCommand, whoRolls )
     end
 
     local count = (not itemCount or itemCount == "") and 1 or tonumber( itemCount )
-    local itemId = M:GetItemId( item )
-    local rollers, reservedByPlayers = whoRolls( itemId )
+    local item_id = M:GetItemId( item )
+    local rollers, reservedByPlayers = whoRolls( item_id )
 
-    if seconds and seconds ~= "" and seconds ~= " " then
+    if is_item_hard_ressed( item_id ) then
+      announce_hr( item )
+      return
+    elseif seconds and seconds ~= "" and seconds ~= " " then
       local secs = tonumber( seconds )
       RollFor( rollers, count, item, secs <= 3 and 4 or secs, info, reservedByPlayers )
     else
@@ -1447,12 +1458,38 @@ local function record_roll( player_name, roll, offspec )
   end
 end
 
+local function is_item_soft_ressed()
+  local item_id = M:GetItemId( m_rolled_item )
+
+  return m_softres_items[ item_id ]
+end
+
+local function has_player_soft_ressed( player )
+  local item = is_item_soft_ressed()
+
+  if not item then return false end
+
+  for _, value in pairs( item ) do
+    if value.name == player then return true end
+  end
+
+  return false
+end
+
 local function OnRoll( player, roll, min, max )
   if not m_rolling or min ~= 1 or (max ~= 99 and max ~= 100) then return end
 
   local offspec_roll = max == 99
+  local soft_ressed = is_item_soft_ressed()
+  local soft_ressed_by_player = has_player_soft_ressed( player )
 
-  if not has_rolls_left( player, offspec_roll ) then
+  if soft_ressed and not soft_ressed_by_player then
+    M:PrettyPrint( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item, roll ) )
+    return
+  elseif soft_ressed and soft_ressed_by_player and offspec_roll then
+    M:PrettyPrint( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item, roll ) )
+    return
+  elseif not has_rolls_left( player, offspec_roll ) then
     M:PrettyPrint( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player, roll ) )
     return
   end

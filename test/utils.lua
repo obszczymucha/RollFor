@@ -143,8 +143,8 @@ function M.run_command( command, args )
   end
 end
 
-function M.roll_for( item_name, count )
-  M.run_command( "RF", string.format( "%s%s", count or "", M.item_link( item_name ) ) )
+function M.roll_for( item_name, count, item_id )
+  M.run_command( "RF", string.format( "%s%s", count or "", M.item_link( item_name, item_id ) ) )
   m_rolling_item_name = item_name
 end
 
@@ -304,6 +304,14 @@ end
 function M.console_and_raid_message( message )
   return function()
     return M.console_message( string.format( "RollFor: %s", message ) ), M.raid_message( message )
+  end
+end
+
+-- Return console message first then its equivalent raid warning message.
+-- This returns a function, we check for that later to do the magic.
+function M.console_and_raid_warning( message )
+  return function()
+    return M.console_message( string.format( "RollFor: %s", message ) ), M.raid_warning( message )
   end
 end
 
