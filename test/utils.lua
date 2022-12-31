@@ -7,6 +7,9 @@ local m_messages = {}
 local m_event_callback = nil
 local m_tick_fn = nil
 local m_rolling_item_name = nil
+local m_is_master_looter = false
+local m_player_name = nil
+local m_target = nil
 
 function M.princess()
   return "kenny"
@@ -94,6 +97,7 @@ function M.mock_facade()
   M.mock( "IsInGuild", false )
   M.mock( "IsInGroup", false )
   M.mock( "IsInRaid", false )
+  M.mock( "UnitIsFriend", false )
   M.mock_messages()
 end
 
@@ -177,6 +181,7 @@ function M.init()
   M.mock_facade()
   M.fire_login_events()
   M.mock_messages()
+  m_is_master_looter = false
 end
 
 function M.fire_login_events()
@@ -185,7 +190,7 @@ function M.fire_login_events()
 end
 
 function M.raid_leader( name )
-  return function() return name, 1 end
+  return function() return name, 1, nil, nil, nil, nil, nil, nil, nil, nil, m_is_master_looter end
 end
 
 function M.raid_member( name )
@@ -203,8 +208,8 @@ function M.mock_table_function( name, values )
   end
 end
 
-function M.item_link( name )
-  return string.format( "|cff9d9d9d|Hitem:3299::::::::20:257::::::|h[%s]|h|r", name )
+function M.item_link( name, id )
+  return string.format( "|cff9d9d9d|Hitem:%s::::::::20:257::::::|h[%s]|h|r", id or "3299", name )
 end
 
 function M.dump( o )
@@ -272,10 +277,21 @@ function M.is_in_raid( ... )
   M.mock_table_function( "GetRaidRosterInfo", players )
 end
 
+function M.mock_unit_name()
+  M.mock_table_function( "UnitName", { [ "player" ] = m_player_name, [ "target" ] = m_target } )
+end
+
 function M.player( name )
   M.init()
-  M.mock_table_function( "UnitName", { [ "player" ] = name } )
+  m_player_name = name
+  m_target = nil
+  M.mock_unit_name()
   M.mock( "IsInGroup", false )
+end
+
+function M.master_looter( name )
+  M.player( name )
+  m_is_master_looter = true
 end
 
 function M.rolling_not_in_progress()
@@ -341,6 +357,50 @@ end
 
 function M.rolling_finished()
   return M.console_message( string.format( "RollFor: Rolling for [%s] has finished.", m_rolling_item_name ) )
+end
+
+local function make_loot_slot_links( items )
+  local result = {}
+
+  for i = 1, #items do
+    local item = items[ i ]
+    table.insert( result, M.item_link( item.name, item.id ) )
+  end
+
+  return result
+end
+
+local function make_loot_slot_info( items )
+  local result = {}
+
+  for _ = 1, #items do
+    table.insert( result, function() return nil, nil, nil, nil, 4 end )
+  end
+
+  return result
+end
+
+function M.loot( items )
+  local count = items and #items or 0
+  M.mock( "GetNumLootItems", count )
+
+  if count > 0 then
+    M.mock( "GetLootSourceInfo", items[ 1 ].source_id )
+    M.mock_table_function( "GetLootSlotLink", make_loot_slot_links( items ) )
+    M.mock_table_function( "GetLootSlotInfo", make_loot_slot_info( items ) )
+  end
+
+  M.fire_event( "LOOT_READY" )
+end
+
+function M.item( name, id )
+  return { name = name, id = id, source_id = 123 }
+end
+
+function M.targetting_enemy( name )
+  m_target = name
+  M.mock_unit_name()
+  M.mock( "UnitIsFriend", false )
 end
 
 return M

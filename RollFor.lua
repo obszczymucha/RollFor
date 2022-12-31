@@ -1645,7 +1645,7 @@ local function OnLootReady()
   if count == 0 then return end
 
   local target = api.UnitName( "target" )
-  local target_msg = target and api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
+  local target_msg = target and not api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
 
   --M:Print( string.format( "source_guid: %s", m_loot_source_guid ) )
 
