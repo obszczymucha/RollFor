@@ -66,14 +66,15 @@ function should_only_show_loot_once()
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
 
   -- When
-  loot( { item( "Hearthstone", 123 ), item( "Some item", 400 ) } )
-  loot( { item( "Hearthstone", 123 ), item( "Some item", 400 ) } )
+  loot( { item( "Hearthstone", 123 ), item( "Hearthstone", 123 ), item( "Some item", 400 ) } )
+  loot( { item( "Hearthstone", 123 ), item( "Hearthstone", 123 ), item( "Some item", 400 ) } )
 
   -- Then
   assert_messages(
-    r( "2 items dropped:" ),
+    r( "3 items dropped:" ),
     r( "1. [Hearthstone]" ),
-    r( "2. [Some item]" )
+    r( "2. [Hearthstone]" ),
+    r( "3. [Some item]" )
   )
 end
 

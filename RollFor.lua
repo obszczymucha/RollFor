@@ -16,7 +16,8 @@ local m_rollers = {}
 local m_offspec_rollers = {}
 local m_winner_count = 0
 local m_loot_source_guid = nil
-local m_announced_items = {}
+local m_announced_source_ids = {}
+local m_announcing = false
 local m_cancelled = false
 
 local AceGUI = LibStub( "AceGUI-3.0" )
@@ -55,7 +56,8 @@ local function reset()
   m_offspec_rollers = {}
   m_winner_count = 0
   m_loot_source_guid = nil
-  m_announced_items = {}
+  m_announced_source_ids = {}
+  m_announcing = false
   m_cancelled = false
 end
 
@@ -1633,16 +1635,14 @@ local function process_dropped_items()
 end
 
 local function OnLootReady()
-  if not M:IsPlayerMasterLooter() then return end
+  if not M:IsPlayerMasterLooter() or m_announcing then return end
 
-  local was_announced = function( item_id )
-    return m_announced_items[ m_loot_source_guid ] and m_announced_items[ m_loot_source_guid ][ item_id ]
-  end
+  local was_announced = m_announced_source_ids[ m_loot_source_guid ]
+  if was_announced then return end
 
+  m_announcing = true
   local items = process_dropped_items()
-  local items_to_announce = M:filter( items, function( _, v ) return not was_announced( v.id ) end )
-  local count = M:CountElements( items_to_announce )
-  if count == 0 then return end
+  local count = M:CountElements( items )
 
   local target = api.UnitName( "target" )
   local target_msg = target and not api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
@@ -1652,14 +1652,12 @@ local function OnLootReady()
   api.SendChatMessage( string.format( "%s item%s dropped%s:", count, count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
 
   for i = 1, count do
-    local item = items_to_announce[ i ]
-    if not was_announced( item.id ) then
-      api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
-    end
-
-    m_announced_items[ m_loot_source_guid ] = m_announced_items[ m_loot_source_guid ] or {}
-    m_announced_items[ m_loot_source_guid ][ item.id ] = 1
+    local item = items[ i ]
+    api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
   end
+
+  m_announced_source_ids[ m_loot_source_guid ] = true
+  m_announcing = false
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function
