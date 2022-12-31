@@ -390,7 +390,7 @@ local function process_hardres_items( entries )
   end
 end
 
-local function ProcessData( data )
+function M.ImportSoftResData( data )
   ModUi.dupa = data
   m_softres_items = {}
   m_hardres_items = {}
@@ -468,14 +468,14 @@ local function UpdateData( silent )
   end
 
   if data then
-    ProcessData( data )
+    M.ImportSoftResData( data )
     if not silent then
       M:PrettyPrint( string.format( "Data loaded successfully. Use %s command to list.", highlight( "/srs" ) ) )
     else
       M:PrettyPrint( "Soft-res data active." )
     end
   else
-    ProcessData( nil )
+    M.ImportSoftResData( nil )
     if not silent then M:PrettyPrint( "Could not load soft-res data." ) end
   end
 

@@ -181,6 +181,7 @@ function M.init()
   M.mock_facade()
   M.fire_login_events()
   M.mock_messages()
+  M.import_soft_res( nil )
   m_is_master_looter = false
 end
 
@@ -380,7 +381,8 @@ local function make_loot_slot_info( items )
   return result
 end
 
-function M.loot( items )
+function M.loot( ... )
+  local items = { ... }
   local count = items and #items or 0
   M.mock( "GetNumLootItems", count )
 
@@ -401,6 +403,63 @@ function M.targetting_enemy( name )
   m_target = name
   M.mock_unit_name()
   M.mock( "UnitIsFriend", false )
+end
+
+function M.import_soft_res( data )
+  local rf = ModUi:GetModule( "RollFor" )
+  rf.ImportSoftResData( data )
+end
+
+local function find_soft_res_entry( softreserves, player )
+  for i = 1, #softreserves do
+    if softreserves[ i ].name == player then
+      return softreserves[ i ]
+    end
+  end
+
+  return nil
+end
+
+function M.soft_res( ... )
+  local items = { ... }
+  local hardreserves = {}
+  local softreserves = {}
+
+  for i = 1, #items do
+    local item = items[ i ]
+
+    if item.soft_res then
+      local entry = find_soft_res_entry( softreserves, item.player ) or {}
+
+      if not entry.name then
+        table.insert( softreserves, entry )
+      end
+
+      entry.name = item.player
+      entry.items = entry.items or {}
+      table.insert( entry.items, { id = item.item_id } )
+    else
+      table.insert( hardreserves, { id = item.item_id } )
+    end
+  end
+
+  local data = {
+    metadata = {
+      id = 123
+    },
+    hardreserves = hardreserves,
+    softreserves = softreserves
+  }
+
+  M.import_soft_res( data )
+end
+
+function M.soft_res_item( player, item_id )
+  return { soft_res = true, player = player, item_id = item_id }
+end
+
+function M.hard_res_item( item_id )
+  return { soft_res = false, item_id = item_id }
 end
 
 return M
