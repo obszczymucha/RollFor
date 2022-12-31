@@ -61,7 +61,7 @@ function should_finish_rolling_after_the_timer_if_not_all_players_rolled()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_recognize_mainspec_tie_rolls_when_all_players_tie()
+function should_recognize_tie_rolls_when_all_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -72,7 +72,6 @@ function should_recognize_mainspec_tie_rolls_when_all_players_tie()
   roll( "Psikutas", 69 )
   roll( "Psikutas", 100 )
   roll( "Obszczymucha", 99 )
-  finish_rolling()
 
   -- Then
   assert_messages(
@@ -80,13 +79,12 @@ function should_recognize_mainspec_tie_rolls_when_all_players_tie()
     cr( "The highest roll was 69 by Obszczymucha and Psikutas." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
     cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
-    rolling_finished(),
-    rolling_not_in_progress()
+    rolling_finished()
   )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_recognize_mainspec_tie_rolls_when_some_players_tie()
+function should_recognize_tie_rolls_when_some_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -134,7 +132,7 @@ function should_detect_and_ignore_double_rolls()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_mainspec_rollers_for_multiple_items_when_all_players_rolled()
+function should_recognize_multiple_rollers_for_multiple_items_when_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -154,7 +152,7 @@ function should_recognize_multiple_mainspec_rollers_for_multiple_items_when_all_
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_mainspec_rollers_for_multiple_items_when_not_all_players_rolled()
+function should_recognize_multiple_rollers_for_multiple_items_when_not_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -165,7 +163,6 @@ function should_recognize_multiple_mainspec_rollers_for_multiple_items_when_not_
   tick( 6 )
   roll( "Obszczymucha", 100 )
   tick( 2 )
-  finish_rolling()
 
   -- Then
   assert_messages(
@@ -173,8 +170,7 @@ function should_recognize_multiple_mainspec_rollers_for_multiple_items_when_not_
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone]." ),
-    rolling_finished(),
-    rolling_not_in_progress()
+    rolling_finished()
   )
 end
 

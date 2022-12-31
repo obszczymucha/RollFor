@@ -5,17 +5,17 @@ local utils = require( "test/utils" )
 local player = utils.player
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
+local c = utils.console_message
 local r = utils.raid_message
 local cr = utils.console_and_raid_message
 local rw = utils.raid_warning
 local rolling_finished = utils.rolling_finished
-local rolling_not_in_progress = utils.rolling_not_in_progress
 local roll_for = utils.roll_for
-local finish_rolling = utils.finish_rolling
 local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
 local tick = utils.tick
 
+-- This gives players a chance to still roll MS if they rolled OS by mistake.
 ---@diagnostic disable-next-line: lowercase-global
 function should_not_finish_rolling_automatically_if_all_players_rolled()
   -- Given
@@ -24,8 +24,8 @@ function should_not_finish_rolling_automatically_if_all_players_rolled()
 
   -- When
   roll_for( "Hearthstone" )
-  roll_os( "Psikutas", 69 )
   roll_os( "Obszczymucha", 42 )
+  roll_os( "Psikutas", 69 )
   tick( 8 )
 
   -- Then
@@ -38,30 +38,7 @@ function should_not_finish_rolling_automatically_if_all_players_rolled()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_process_offspec_rolls_if_there_are_no_mainspec_rolls()
-  -- Given
-  player( "Psikutas" )
-  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
-
-  -- When
-  roll_for( "Hearthstone" )
-  roll_os( "Obszczymucha", 99 )
-  roll_os( "Psikutas", 69 )
-  tick( 8 )
-  finish_rolling()
-
-  -- Then
-  assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3", "2", "1" ),
-    cr( "Obszczymucha rolled the highest (99) for [Hearthstone] (OS)." ),
-    rolling_finished(),
-    rolling_not_in_progress()
-  )
-end
-
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_offspec_rollers_if_item_count_is_equal_to_group_size()
+function should_finish_rolling_automatically_if_number_of_items_is_equal_to_the_size_of_the_group()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -81,7 +58,7 @@ function should_recognize_multiple_offspec_rollers_if_item_count_is_equal_to_gro
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_offspec_rollers_if_item_count_is_less_than_group_size()
+function should_not_finish_rolling_automatically_if_number_of_items_is_less_than_the_size_of_the_group()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -100,6 +77,31 @@ function should_recognize_multiple_offspec_rollers_if_item_count_is_less_than_gr
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone] (OS)." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
+    rolling_finished()
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_detect_and_ignore_double_rolls()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+
+  -- When
+  roll_for( "Hearthstone" )
+  roll_os( "Obszczymucha", 13 )
+  tick( 6 )
+  roll_os( "Obszczymucha", 100 )
+  roll_os( "Psikutas", 69 )
+  tick( 2 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    r( "Stopping rolls in 3", "2" ),
+    c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
+    r( "1" ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone] (OS)." ),
     rolling_finished()
   )
 end

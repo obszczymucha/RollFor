@@ -951,7 +951,12 @@ local function have_all_players_rolled_offspec()
 end
 
 local function have_all_rolls_been_exhausted()
-  if m_rolled_item_count == #m_offspec_rollers and have_all_players_rolled_offspec() then
+  local mainspec_roll_count = M:CountElements( m_rolls )
+  local offspec_roll_count = M:CountElements( m_offspec_rolls )
+  local total_roll_count = mainspec_roll_count + offspec_roll_count
+
+  if m_rolled_item_count == #m_offspec_rollers and have_all_players_rolled_offspec() or
+      #m_rollers == m_rolled_item_count and total_roll_count == #m_rollers then
     return true
   end
 
@@ -1409,8 +1414,10 @@ local function ProcessSoftResSlashCommand( args )
   ShowGui()
 end
 
-local function has_rolls_left( player_name )
-  for _, v in pairs( m_rollers ) do
+local function has_rolls_left( player_name, offspec_roll )
+  local rollers = offspec_roll and m_offspec_rollers or m_rollers
+
+  for _, v in pairs( rollers ) do
     if v.name == player_name then
       return v.rolls > 0
     end
@@ -1441,12 +1448,13 @@ end
 local function OnRoll( player, roll, min, max )
   if not m_rolling or min ~= 1 or (max ~= 99 and max ~= 100) then return end
 
-  if not has_rolls_left( player ) then
+  local offspec_roll = max == 99
+
+  if not has_rolls_left( player, offspec_roll ) then
     M:PrettyPrint( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player, roll ) )
     return
   end
 
-  local offspec_roll = max == 99
   subtract_roll( player, offspec_roll )
   record_roll( player, roll, offspec_roll )
 
