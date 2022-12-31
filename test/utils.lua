@@ -6,6 +6,7 @@ local m_slashcmdlist = {}
 local m_messages = {}
 local m_event_callback = nil
 local m_tick_fn = nil
+local m_rolling_item_name = nil
 
 function M.princess()
   return "kenny"
@@ -140,6 +141,7 @@ end
 
 function M.roll_for( item_name, count )
   M.run_command( "RF", string.format( "%s%s", count or "", M.item_link( item_name ) ) )
+  m_rolling_item_name = item_name
 end
 
 function M.roll_for_raw( raw_text )
@@ -335,6 +337,10 @@ function M.load_real_stuff()
   require( "ModUi" )
   require( "ModUi/utils" )
   require( "RollFor" )
+end
+
+function M.rolling_finished()
+  return M.console_message( string.format( "RollFor: Rolling for [%s] has finished.", m_rolling_item_name ) )
 end
 
 return M
