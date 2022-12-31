@@ -1,4 +1,4 @@
-package.path = package.path .. ";../?.lua;../Libs/?.lua;../Libs/ModUi/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/ModUi/?.lua;../Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local test_utils = require( "test_utils" )
@@ -48,6 +48,18 @@ local function rolling_not_in_progress()
   return c( "RollFor: Rolling not in progress." )
 end
 
+-- Asserts console message first then raid message.
+local function cr( message )
+  return function() return c( string.format( "RollFor: %s", message ) ), r( message ) end
+end
+
+local function equals( given, ... )
+  local args = { ... }
+  local expected = {}
+  test_utils.flatten( expected, args )
+  lu.assertEquals( given, expected )
+end
+
 local function tick( times )
   if not tick_fn then
     test_utils.debug( "Tick function not set." )
@@ -87,7 +99,7 @@ require( "ModUi/utils" )
 require( "RollFor" )
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_load_test_utils()
+function should_load_test_utils()
   lu.assertEquals( test_utils.princess(), "kenny" )
 end
 
@@ -97,12 +109,12 @@ local function RollFor()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_load_roll_for()
+function should_load_roll_for()
   lu.assertNotNil( RollFor() )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_replace_colors()
+function should_replace_colors()
   -- Given
   local input = "|cff209ff9RollFor|r: Loaded (|cffff9f69v1.12|r)."
 
@@ -114,7 +126,7 @@ function test_should_replace_colors()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_parse_item_link()
+function should_parse_item_link()
   -- Given
   local input = item_link( "Hearthstone" )
 
@@ -126,7 +138,7 @@ function test_should_parse_item_link()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_not_roll_if_not_in_group()
+function should_not_roll_if_not_in_group()
   -- Given
   player( "Psikutas" )
   is_not_in_group()
@@ -136,11 +148,13 @@ function test_should_not_roll_if_not_in_group()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { c( "RollFor: Not in a group." ) } )
+  equals( result,
+    c( "RollFor: Not in a group." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_print_usage_if_in_party_and_no_item_provided()
+function should_print_usage_if_in_party_and_no_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_party( { "Psikutas", "Obszczymucha" } )
@@ -150,11 +164,13 @@ function test_should_print_usage_if_in_party_and_no_item_provided()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { c( "RollFor: Usage: /rf <item> [seconds]" ) } )
+  equals( result,
+    c( "RollFor: Usage: /rf <item> [seconds]" )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_print_usage_if_in_raid_and_no_item_provided()
+function should_print_usage_if_in_raid_and_no_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -164,11 +180,13 @@ function test_should_print_usage_if_in_raid_and_no_item_provided()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { c( "RollFor: Usage: /rf <item> [seconds]" ) } )
+  equals( result,
+    c( "RollFor: Usage: /rf <item> [seconds]" )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_print_usage_if_in_party_and_invalid_item_is_provided()
+function should_print_usage_if_in_party_and_invalid_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_party( { "Psikutas", "Obszczymucha" } )
@@ -178,11 +196,11 @@ function test_should_print_usage_if_in_party_and_invalid_item_is_provided()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { c( "RollFor: Usage: /rf <item> [seconds]" ) } )
+  equals( result, c( "RollFor: Usage: /rf <item> [seconds]" ) )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_print_usage_if_in_raid_and_invalid_item_is_provided()
+function should_print_usage_if_in_raid_and_invalid_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -192,11 +210,13 @@ function test_should_print_usage_if_in_raid_and_invalid_item_is_provided()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { c( "RollFor: Usage: /rf <item> [seconds]" ) } )
+  equals( result,
+    c( "RollFor: Usage: /rf <item> [seconds]" )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_roll_the_item_in_party_chat()
+function should_roll_the_item_in_party_chat()
   -- Given
   player( "Psikutas" )
   is_in_party( { "Psikutas", "Obszczymucha" } )
@@ -206,11 +226,13 @@ function test_should_roll_the_item_in_party_chat()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ) } )
+  equals( result,
+    p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_not_roll_again_if_rolling_is_in_progress()
+function should_not_roll_again_if_rolling_is_in_progress()
   -- Given
   player( "Psikutas" )
   is_in_party( { "Psikutas", "Obszczymucha" } )
@@ -221,14 +243,14 @@ function test_should_not_roll_again_if_rolling_is_in_progress()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
     c( "RollFor: Rolling already in progress." )
-  } )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_roll_the_item_in_raid_chat()
+function should_roll_the_item_in_raid_chat()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rm( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -238,11 +260,13 @@ function test_should_roll_the_item_in_raid_chat()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { r( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ) } )
+  equals( result,
+    r( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_roll_the_item_in_raid_warning()
+function should_roll_the_item_in_raid_warning()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -252,11 +276,13 @@ function test_should_roll_the_item_in_raid_warning()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ) } )
+  equals( result,
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_not_cancel_rolling_if_rolling_is_not_in_progress()
+function should_not_cancel_rolling_if_rolling_is_not_in_progress()
   -- Given
   player( "Psikutas" )
   cancel_rolling()
@@ -265,11 +291,11 @@ function test_should_not_cancel_rolling_if_rolling_is_not_in_progress()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { rolling_not_in_progress() } )
+  equals( result, rolling_not_in_progress() )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_cancel_rolling()
+function should_cancel_rolling()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -280,15 +306,14 @@ function test_should_cancel_rolling()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    c( "RollFor: Rolling for [Hearthstone] has finished (1 item left)." ),
-    r( "Rolling for [Hearthstone] cancelled." ),
-  } )
+    c( "RollFor: Rolling for [Hearthstone] has been cancelled." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_not_finish_rolling_if_rolling_is_not_in_progress()
+function should_not_finish_rolling_if_rolling_is_not_in_progress()
   -- Given
   player( "Psikutas" )
   finish_rolling()
@@ -297,11 +322,11 @@ function test_should_not_finish_rolling_if_rolling_is_not_in_progress()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, { rolling_not_in_progress() } )
+  equals( result, rolling_not_in_progress() )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_finish_rolling()
+function should_finish_rolling()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -312,16 +337,15 @@ function test_should_finish_rolling()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    c( "RollFor: Rolling for [Hearthstone] has finished (1 item left)." ),
-    c( "RollFor: Nobody rolled for [Hearthstone]." ),
-    r( "Nobody rolled for [Hearthstone]." ),
-  } )
+    cr( "Nobody rolled for [Hearthstone]." ),
+    c( "RollFor: Rolling for [Hearthstone] has finished." )
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_finish_rolling_automatically_if_all_players_rolled()
+function should_finish_rolling_automatically_if_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -334,17 +358,16 @@ function test_should_finish_rolling_automatically_if_all_players_rolled()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas rolled the highest (69) for [Hearthstone]." ),
-    r( "Psikutas rolled the highest (69) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_finish_rolling_after_the_timer()
+function should_finish_rolling_after_the_timer()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -357,20 +380,17 @@ function test_should_finish_rolling_after_the_timer()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
-    r( "1" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas rolled the highest (69) for [Hearthstone]." ),
-    r( "Psikutas rolled the highest (69) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_ignore_offspec_rolls_if_mainspec_was_rolled()
+function should_ignore_offspec_rolls_if_mainspec_was_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -384,20 +404,17 @@ function test_should_ignore_offspec_rolls_if_mainspec_was_rolled()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
-    r( "1" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas rolled the highest (69) for [Hearthstone]." ),
-    r( "Psikutas rolled the highest (69) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_process_offspec_rolls_if_there_are_no_mainspec_rolls()
+function should_process_offspec_rolls_if_there_are_no_mainspec_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -411,20 +428,17 @@ function test_should_process_offspec_rolls_if_there_are_no_mainspec_rolls()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
-    r( "1" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Obszczymucha rolled the highest (99) for [Hearthstone] (OS)." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Obszczymucha rolled the highest (99) for [Hearthstone] (OS)." ),
-    r( "Obszczymucha rolled the highest (99) for [Hearthstone] (OS)." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_recognize_mainspec_tie_rolls_when_all_players_tie()
+function should_recognize_mainspec_tie_rolls_when_all_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -439,20 +453,18 @@ function test_should_recognize_mainspec_tie_rolls_when_all_players_tie()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    c( "RollFor: The highest roll was 69 by Obszczymucha and Psikutas." ),
-    r( "The highest roll was 69 by Obszczymucha and Psikutas." ),
+    cr( "The highest roll was 69 by Obszczymucha and Psikutas." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
+    cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas re-rolled the highest (100) for [Hearthstone]." ),
-    r( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_recognize_mainspec_tie_rolls_when_some_players_tie()
+function should_recognize_mainspec_tie_rolls_when_some_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ), rm( "Ponpon" ) } )
@@ -469,23 +481,19 @@ function test_should_recognize_mainspec_tie_rolls_when_some_players_tie()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
-    r( "1" ),
-    c( "RollFor: The highest roll was 69 by Obszczymucha and Psikutas." ),
-    r( "The highest roll was 69 by Obszczymucha and Psikutas." ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "The highest roll was 69 by Obszczymucha and Psikutas." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
+    cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas re-rolled the highest (100) for [Hearthstone]." ),
-    r( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_override_offspec_roll_with_mainspec()
+function should_override_offspec_roll_with_mainspec()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
@@ -500,25 +508,23 @@ function test_should_override_offspec_roll_with_mainspec()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
+    r( "Stopping rolls in 3", "2" ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas rolled the highest (69) for [Hearthstone]." ),
-    r( "Psikutas rolled the highest (69) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
 
 ---@diagnostic disable-next-line: lowercase-global
-function test_should_detect_and_ignore_double_rolls()
+function should_detect_and_ignore_double_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
   roll_for( "Hearthstone" )
   roll( "Obszczymucha", 13 )
-  tick(6)
+  tick( 6 )
   roll( "Obszczymucha", 100 )
   roll( "Psikutas", 69 )
   finish_rolling()
@@ -527,18 +533,150 @@ function test_should_detect_and_ignore_double_rolls()
   local result = get_messages()
 
   -- Then
-  lu.assertEquals( result, {
+  equals( result,
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
-    r( "Stopping rolls in 3" ),
-    r( "2" ),
+    r( "Stopping rolls in 3", "2" ),
     c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." ),
-    c( "RollFor: Psikutas rolled the highest (69) for [Hearthstone]." ),
-    r( "Psikutas rolled the highest (69) for [Hearthstone]." ),
-    rolling_not_in_progress(),
-  } )
+    rolling_not_in_progress()
+  )
 end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_recognize_multiple_mainspec_winners()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
+  roll_for( "Hearthstone", 2 )
+  roll( "Psikutas", 69 )
+  roll( "Obszczymucha", 100 )
+  finish_rolling()
+
+  -- When
+  local result = get_messages()
+
+  -- Then
+  equals( result,
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
+    cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
+    cr( "Psikutas rolled the next highest (69) for [Hearthstone]." ),
+    c( "RollFor: Rolling for [Hearthstone] has finished." ),
+    rolling_not_in_progress()
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_recognize_multiple_offspec_winners_if_item_count_is_equal_to_group_size()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ) } )
+  roll_for( "Hearthstone", 2 )
+  roll_os( "Psikutas", 69 )
+  roll_os( "Obszczymucha", 100 )
+
+  -- When
+  local result = get_messages()
+
+  -- Then
+  equals( result,
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
+    cr( "Obszczymucha rolled the highest (100) for [Hearthstone] (OS)." ),
+    cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
+    c( "RollFor: Rolling for [Hearthstone] has finished." )
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_test_flatten()
+  -- Given
+  local function f( a, b ) return function() return a, b end end
+
+  local input = { "a", { "b", "d" }, f( { "e" }, "f" ), "c" }
+  local result = {}
+
+  -- When
+  test_utils.flatten( result, input )
+
+  -- Then
+  equals( result, "a", { "b", "d" }, { "e" }, "f", "c" )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_recognize_multiple_offspec_winners_if_item_count_is_less_than_group_size()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ), rm( "Chuj" ) } )
+  roll_for( "Hearthstone", 2 )
+  roll_os( "Psikutas", 69 )
+  roll_os( "Obszczymucha", 100 )
+  tick( 6 )
+  roll_os( "Chuj", 42 )
+  tick( 2 )
+
+  -- When
+  local result = get_messages()
+
+  -- Then
+  equals( result,
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Obszczymucha rolled the highest (100) for [Hearthstone] (OS)." ),
+    cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
+    c( "RollFor: Rolling for [Hearthstone] has finished." )
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_recognize_mainspec_winner_and_top_offspec_winner_if_item_count_is_less_than_group_size()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ), rm( "Chuj" ) } )
+  roll_for( "Hearthstone", 2 )
+  roll_os( "Chuj", 42 )
+  roll( "Obszczymucha", 1 )
+  tick( 6 )
+  roll_os( "Psikutas", 69 )
+  tick( 2 )
+
+  -- When
+  local result = get_messages()
+
+  -- Then
+  equals( result,
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Obszczymucha rolled the highest (1) for [Hearthstone]." ),
+    cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
+    c( "RollFor: Rolling for [Hearthstone] has finished." )
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+--function should_recognize_mainspec_winners_if_item_count_is_less_than_group_size()
+--  -- Given
+--  player( "Psikutas" )
+--  is_in_raid( { rl( "Psikutas" ), rm( "Obszczymucha" ), rm( "Chuj" ) } )
+--  roll_for( "Hearthstone", 2 )
+--  roll_os( "Chuj", 42 )
+--  roll( "Obszczymucha", 1 )
+--  tick( 6 )
+--  roll( "Psikutas", 69 )
+--  tick( 2 )
+
+--  -- When
+--  local result = get_messages()
+
+--  -- Then
+--  equals( result,
+--    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
+--    r( "Stopping rolls in 3", "2", "1" ),
+--    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
+--    c( "RollFor: Rolling for [Hearthstone] has finished." ),
+--    cr( "Obszczymucha rolled the next highest (1) for [Hearthstone]." )
+--  )
+--end
 
 local runner = lu.LuaUnit.new()
 runner:setOutputType( "text" )
-os.exit( runner:runSuite() )
+os.exit( runner:runSuite( "-t", "should", "-v" ) )

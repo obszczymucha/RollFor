@@ -21,8 +21,17 @@ function M.party_message( message )
   return { message = message, chat = "PARTY" }
 end
 
-function M.raid_message( message )
-  return { message = message, chat = "RAID" }
+function M.raid_message( ... )
+  local args = { ... }
+
+  local result = {}
+
+  for i = 1, #args do
+    table.insert( result, { message = args[ i ], chat = "RAID" } )
+  end
+
+  ---@diagnostic disable-next-line: deprecated
+  return function() return table.unpack( result ) end
 end
 
 function M.raid_warning( message )
@@ -126,8 +135,8 @@ function M.run_command( command, args )
   end
 end
 
-function M.roll_for( item_name )
-  M.run_command( "RF", M.item_link( item_name ) )
+function M.roll_for( item_name, count )
+  M.run_command( "RF", string.format( "%s%s", count or "", M.item_link( item_name ) ) )
 end
 
 function M.roll_for_raw( raw_text )
@@ -191,6 +200,41 @@ end
 
 function M.item_link( name )
   return string.format( "|cff9d9d9d|Hitem:3299::::::::20:257::::::|h[%s]|h|r", name )
+end
+
+function M.dump( o )
+  local entries = 0
+
+  if type( o ) == 'table' then
+    local s = '{'
+    for k, v in pairs( o ) do
+      if (entries == 0) then s = s .. " " end
+      if type( k ) ~= 'number' then k = '"' .. k .. '"' end
+      if (entries > 0) then s = s .. ", " end
+      s = s .. '[' .. k .. '] = ' .. M.dump( v )
+      entries = entries + 1
+    end
+
+    if (entries > 0) then s = s .. " " end
+    return s .. '}'
+  else
+    return tostring( o )
+  end
+end
+
+function M.flatten( target, source )
+  if type( target ) ~= "table" then return end
+
+  for i = 1, #source do
+    local value = source[ i ]
+
+    if type( value ) == "function" then
+      local args = { value() }
+      M.flatten( target, args )
+    else
+      table.insert( target, value )
+    end
+  end
 end
 
 return M

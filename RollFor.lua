@@ -17,6 +17,7 @@ local m_offspec_rollers = {}
 local m_winner_count = 0
 local m_loot_source_guid = nil
 local m_announced_items = {}
+local m_cancelled = false
 
 local AceGUI = LibStub( "AceGUI-3.0" )
 local frame = nil
@@ -55,6 +56,7 @@ local function reset()
   m_winner_count = 0
   m_loot_source_guid = nil
   m_announced_items = {}
+  m_cancelled = false
 end
 
 local function UpdateGroupStatus()
@@ -819,7 +821,7 @@ local function SoftResUnpass( args )
 end
 
 local function ThereWasATie( topRoll, topRollers )
-  table.sort(topRollers)
+  table.sort( topRollers )
   local topRollersStr = M:TableToCommifiedPrettyString( topRollers )
   local topRollersStrColored = M:TableToCommifiedPrettyString( topRollers, highlight )
 
@@ -844,14 +846,13 @@ local function CancelRollingTimer()
 end
 
 local function PrintRollingComplete()
-  local itemsLeft = m_rolled_item_count > 0 and
-      string.format( " (%d item%s left)", m_rolled_item_count, m_rolled_item_count > 1 and "s" or "" ) or ""
-  M:PrettyPrint( string.format( "Rolling for %s has finished%s.", m_rolled_item, itemsLeft ) )
+  M:PrettyPrint( string.format( "Rolling for %s has %s.", m_rolled_item, m_cancelled and "been cancelled" or "finished" ) )
 end
 
 local function StopRolling()
+  if not m_rolling then return end
+
   m_rolling = false
-  PrintRollingComplete()
 end
 
 local function SortRolls( rolls )
@@ -939,7 +940,21 @@ local function PrintWinner( roll, players, is_offspec )
     M:GetGroupChatType() )
 end
 
+local function have_all_players_rolled_offspec()
+  if #m_offspec_rollers == 0 then return false end
+
+  for _, v in pairs( m_offspec_rollers ) do
+    if v.rolls > 0 then return false end
+  end
+
+  return true
+end
+
 local function have_all_rolls_been_exhausted()
+  if m_rolled_item_count == #m_offspec_rollers and have_all_players_rolled_offspec() then
+    return true
+  end
+
   for _, v in pairs( m_rollers ) do
     if v.rolls > 0 then return false end
   end
@@ -1022,6 +1037,7 @@ local function FinalizeRolling( forced )
     StopRolling()
     M:PrettyPrint( string.format( "Nobody rolled for %s.", m_rolled_item ) )
     api.SendChatMessage( string.format( "Nobody rolled for %s.", m_rolled_item ), M:GetGroupChatType() )
+    PrintRollingComplete()
     return
   end
 
@@ -1031,6 +1047,10 @@ local function FinalizeRolling( forced )
     process_sorted_rolls( SortRolls( m_rolls ), forced, rolls_exhausted, false, offspec_rolling )
   else
     offspec_rolling()
+  end
+
+  if not m_rolling then
+    PrintRollingComplete()
   end
 end
 
@@ -1213,11 +1233,11 @@ local function DecorateWithRollingCheck( f )
   end
 end
 
-local function ProcessCancelRollSlashCommand( args )
+local function ProcessCancelRollSlashCommand()
   CancelRollingTimer()
+  m_cancelled = true
   StopRolling()
-  local reason = args and args ~= "" and args ~= " " and string.format( " (%s)", args ) or ""
-  api.SendChatMessage( string.format( "Rolling for %s cancelled%s.", m_rolled_item, reason ), M:GetGroupChatType() )
+  PrintRollingComplete()
 end
 
 local function ProcessFinishRollSlashCommand()
