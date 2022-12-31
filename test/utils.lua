@@ -1,8 +1,11 @@
 local M = {}
 
+local lu = require( "luaunit" )
+
 local m_slashcmdlist = {}
 local m_messages = {}
 local m_event_callback = nil
+local m_tick_fn = nil
 
 function M.princess()
   return "kenny"
@@ -68,7 +71,7 @@ function M.parse_item_link( item_link )
   return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+::::::::%d+:%d+::::::|h(.*)|h|r", "%1" )
 end
 
-function M.NewLibrary( name, object )
+function M.mock_library( name, object )
   require( "LibStub" )
   local result = LibStub:NewLibrary( name, 1 )
   if not result then return nil end
@@ -235,6 +238,103 @@ function M.flatten( target, source )
       table.insert( target, value )
     end
   end
+end
+
+function M.is_in_party( ... )
+  local players = { ... }
+  M.mock( "IsInGroup", true )
+  M.mock( "IsInRaid", false )
+  M.mock_table_function( "GetRaidRosterInfo", players )
+end
+
+function M.add_normal_raider_ranks( players )
+  local result = {}
+
+  for i = 1, #players do
+    local value = players[ i ]
+
+    if type( value ) == "string" then
+      table.insert( result, M.raid_member( value ) )
+    else
+      table.insert( result, value )
+    end
+  end
+
+  return result
+end
+
+function M.is_in_raid( ... )
+  local players = M.add_normal_raider_ranks( { ... } )
+  M.mock( "IsInGroup", true )
+  M.mock( "IsInRaid", true )
+  M.mock_table_function( "GetRaidRosterInfo", players )
+end
+
+function M.player( name )
+  M.init()
+  M.mock_table_function( "UnitName", { [ "player" ] = name } )
+  M.mock( "IsInGroup", false )
+end
+
+function M.rolling_not_in_progress()
+  return M.console_message( "RollFor: Rolling not in progress." )
+end
+
+-- Return console message first then its equivalent raid message.
+-- This returns a function, we check for that later to do the magic.
+function M.console_and_raid_message( message )
+  return function()
+    return M.console_message( string.format( "RollFor: %s", message ) ), M.raid_message( message )
+  end
+end
+
+-- Helper functions.
+function M.assert_messages( ... )
+  local args = { ... }
+  local expected = {}
+  M.flatten( expected, args )
+  lu.assertEquals( M.get_messages(), expected )
+end
+
+function M.tick( times )
+  if not m_tick_fn then
+    M.debug( "Tick function not set." )
+    return
+  end
+
+  local count = times or 1
+
+  for _ = 1, count do
+    m_tick_fn()
+  end
+end
+
+function M.mock_libraries()
+  m_tick_fn = nil
+  M.mock_wow_api()
+  M.mock_library( "AceConsole-3.0" )
+  M.mock_library( "AceEvent-3.0", { RegisterMessage = function() end } )
+  M.mock_library( "AceTimer-3.0", {
+    ScheduleRepeatingTimer = function( _, f )
+      m_tick_fn = f
+      return 1
+    end,
+    CancelTimer = function() m_tick_fn = nil end,
+    ScheduleTimer = function( _, f ) f() end
+  } )
+  M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
+  M.mock_library( "AceGUI-3.0" )
+  M.mock_library( "AceDB-3.0", { New = function( _, name ) _G[ name ] = {} end } )
+end
+
+function M.load_real_stuff()
+  require( "LibStub" )
+  require( "ModUi/facade" )
+  M.mock_facade()
+  M.mock_slashcmdlist()
+  require( "ModUi" )
+  require( "ModUi/utils" )
+  require( "RollFor" )
 end
 
 return M

@@ -985,23 +985,30 @@ local function announce_extra_rolls_left()
   api.SendChatMessage( string.format( "SR rolls remaining: %s", message ), M:GetGroupChatType() )
 end
 
+local function was_there_a_tie( sorted_rolls )
+  if #sorted_rolls == 0 then return false end
+
+  return #sorted_rolls[ 1 ].players > 1
+end
+
 local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_offspec, fallback_fn )
   for _, v in ipairs( sorted_rolls ) do
     local roll = v[ "roll" ]
     local players = v[ "players" ]
+    local candidate_count = m_winner_count + #players
 
-    if m_rolled_item_count == #players then
+    if m_rolled_item_count == candidate_count then
       if m_rolled_item_reserved and not forced and not rolls_exhausted then
         PrintWinner( roll, players, is_offspec )
         announce_extra_rolls_left()
       else
-        m_rolled_item_count = m_rolled_item_count - #players
         StopRolling()
         PrintWinner( roll, players, is_offspec )
+        m_winner_count = m_winner_count + 1
       end
 
       return
-    elseif m_rolled_item_count < #players and (rolls_exhausted or is_offspec or m_seconds_left <= 0) then
+    elseif was_there_a_tie( sorted_rolls ) and (rolls_exhausted or is_offspec or m_seconds_left <= 0) then
       ThereWasATie( roll, players )
       return
     else
@@ -1009,20 +1016,21 @@ local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_o
 
       if forced then
         StopRolling()
+        m_winner_count = m_winner_count + 1
+        return
       elseif m_rolled_item_reserved and not rolls_exhausted then
         announce_extra_rolls_left()
         return
       end
 
-      m_rolled_item_count = m_rolled_item_count - #players
       m_winner_count = m_winner_count + 1
-
-      if fallback_fn then
-        fallback_fn()
-      else
-        StopRolling()
-      end
     end
+  end
+
+  if fallback_fn and m_winner_count < m_rolled_item_count then
+    fallback_fn()
+  else
+    StopRolling()
   end
 end
 
