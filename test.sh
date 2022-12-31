@@ -66,6 +66,9 @@ on_change() {
   echo "File: $file"
   echo
 
+  run_all_tests
+  exit $?
+
   if echo "$file" | grep -E "^.+_test\.lua$" > /dev/null; then
     echo "Changed: $file. Running it."
     run_test "$file"
