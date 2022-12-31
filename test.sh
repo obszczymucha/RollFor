@@ -105,6 +105,7 @@ run() {
   if [[ $# == 0 ]]; then
     run_all_tests
   elif [[ $1 == "listen" ]]; then
+    "$0"
     listen
   elif [[ $1 == "--help" ]]; then
     print_usage
