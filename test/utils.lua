@@ -416,7 +416,7 @@ end
 
 function M.import_soft_res( data )
   local rf = ModUi:GetModule( "RollFor" )
-  rf.ImportSoftResData( data )
+  rf.import_softres_data( data )
 end
 
 local function find_soft_res_entry( softreserves, player )

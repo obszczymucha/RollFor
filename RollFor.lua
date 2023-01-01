@@ -38,7 +38,6 @@ local softResPassOptions = nil
 local softResUnpassOptions = nil
 local softResPlayerNameOverrideOptions = nil
 local softResPlayerNameUnoverrideOptions = nil
-local softResItId = nil
 local commPrefix = "ModUi-RollFor"
 local wasInGroup = false
 
@@ -389,7 +388,8 @@ local function add_soft_ressing_player( soft_res_items, player_name )
 end
 
 local function process_softres_items( entries )
-  if not entries then return end
+  if not entries then return {} end
+  local result = {}
 
   for i = 1, #entries do
     local entry = entries[ i ]
@@ -398,49 +398,55 @@ local function process_softres_items( entries )
     for j = 1, #items do
       local id = items[ j ].id
 
-      if not m_softres_items[ id ] then
-        m_softres_items[ id ] = {}
+      if not result[ id ] then
+        result[ id ] = {}
       end
 
-      add_soft_ressing_player( m_softres_items[ id ], entry.name )
+      add_soft_ressing_player( result[ id ], entry.name )
 
       if not softResPlayerNameOverrides[ entry.name ] then
         softResPlayerNameOverrides[ entry.name ] = { [ "override" ] = entry.name, [ "similarity" ] = 0 }
       end
     end
   end
+
+  return result
 end
 
 local function process_hardres_items( entries )
-  if not entries then return end
+  if not entries then return {} end
+  local result = {}
 
   for i = 1, #entries do
     local id = entries[ i ].id
 
-    if not m_hardres_items[ id ] then
-      m_hardres_items[ id ] = 1
+    if not result[ id ] then
+      result[ id ] = 1
     end
   end
+
+  return result
 end
 
-function M.ImportSoftResData( data )
-  ModUi.dupa = data
+function M.import_softres_data( data )
   m_softres_items = {}
   m_hardres_items = {}
+  m_awarded_items = {}
+  m_dropped_items = {}
 
   if not data then
-    M.data = nil
-    ModUiDb.rollfor.softResItems = m_softres_items
+    ModUiDb.rollfor.softres_items = {}
+    ModUiDb.rollfor.hardres_items = {}
+    ModUiDb.rollfor.awarded_items = {}
+    ModUiDb.rollfor.dropped_items = {}
     return
   end
 
-  softResItId = data.metadata.id
-  ModUiDb.rollfor.softResItId = softResItId
-  process_softres_items( data.softreserves )
-  process_hardres_items( data.hardreserves )
+  m_softres_items = process_softres_items( data.softreserves )
+  m_hardres_items = process_hardres_items( data.hardreserves )
 
-  ModUiDb.rollfor.softResItems = m_softres_items
-  M.data = data
+  ModUiDb.rollfor.softres_items = m_softres_items
+  ModUiDb.rollfor.hardres_items = m_hardres_items
 end
 
 local function ShowSoftRes( args )
@@ -501,51 +507,18 @@ local function UpdateData( silent )
   end
 
   if data then
-    M.ImportSoftResData( data )
+    M.import_softres_data( data )
     if not silent then
       M:PrettyPrint( string.format( "Data loaded successfully. Use %s command to list.", highlight( "/srs" ) ) )
     else
       M:PrettyPrint( "Soft-res data active." )
     end
   else
-    M.ImportSoftResData( nil )
+    M.import_softres_data( nil )
     if not silent then M:PrettyPrint( "Could not load soft-res data." ) end
   end
 
   dataDirty = false
-end
-
-local function ReportPlayersWhoDidNotSoftRes( players )
-  if #players == 1 then
-    Report( string.format( "%s, please soft-res now or whisper me the item you want to soft-res.", players[ 1 ] ) )
-    return
-  end
-
-  local buffer = ""
-
-  for i = 1, #players do
-    local separator = ""
-    if buffer ~= "" then
-      separator = separator .. ", "
-    else
-      buffer = buffer .. "The following players did not soft-res: "
-    end
-
-    local nextPlayer = players[ i ]
-
-    if (string.len( buffer .. separator .. nextPlayer ) > 255) then
-      Report( buffer )
-      buffer = nextPlayer
-    else
-      buffer = buffer .. separator .. nextPlayer
-    end
-  end
-
-  if buffer ~= "" then
-    Report( buffer )
-  end
-
-  Report( "Please soft-res now or whisper me the item you want to soft-res." )
 end
 
 local function ShowSoftResPlayerNameOverrideOptions()
@@ -580,9 +553,7 @@ local function ShowSoftResPlayerNameOverrideOptions()
   end
 end
 
-local function ReportSoftResReady( silent )
-  local url = string.format( "https://softres.it/raid/%s", softResItId )
-  Report( string.format( "Soft-res url: %s.", silent and highlight( url ) or url ) )
+local function ReportSoftResReady()
   Report( "Soft-res setup is complete." )
 end
 
@@ -1308,7 +1279,7 @@ local function SoftResDataExists()
   return not (softResItEncryptedData == "" or M:CountElements( m_softres_items ) == 0)
 end
 
-local function CheckSoftRes( silent )
+local function CheckSoftRes()
   if not SoftResDataExists() then
     Report( "No soft-res data found." )
     return
@@ -1318,11 +1289,8 @@ local function CheckSoftRes( silent )
   local absentPlayersWhoSoftRessed = GetAbsentPlayersWhoSoftRessed()
 
   if #playersWhoDidNotSoftRes == 0 then
-    ReportSoftResReady( silent and silent ~= "" or false )
+    ReportSoftResReady()
   elseif #absentPlayersWhoSoftRessed == 0 then
-    -- These players didn't soft res.
-    if not silent then ReportPlayersWhoDidNotSoftRes( playersWhoDidNotSoftRes ) end
-
     M:ScheduleTimer( function()
       CreateSoftResPassOptions()
       ShowSoftResPassOptions()
@@ -1355,45 +1323,38 @@ local function CheckSoftRes( silent )
     local playersWhoDidNotSoftRes = GetPlayersWhoDidNotSoftRes()
 
     if #playersWhoDidNotSoftRes == 0 then
-      ReportSoftResReady( silent and silent ~= "" or false )
+      ReportSoftResReady()
     end
   end
 end
 
-local function ProcessSoftResCheckSlashCommand( args )
-  if args and args == "report" then
-    CheckSoftRes( false )
-  else
-    CheckSoftRes( true )
-  end
+local function ProcessSoftResCheckSlashCommand()
+  CheckSoftRes()
 end
 
 local function SetupStorage()
-  if not ModUiDb.rollfor then
-    ModUiDb.rollfor = {}
-  end
+  ModUiDb.rollfor = ModUiDb.rollfor or {}
 
-  if not ModUiDb.rollfor.softResItems then
-    ModUiDb.rollfor.softResItems = {}
-  end
+  ModUiDb.rollfor.softres_items = ModUiDb.rollfor.softres_items or {}
+  m_softres_items = ModUiDb.rollfor.softres_items
 
-  if not ModUiDb.rollfor.softResPlayerNameOverrides then
-    ModUiDb.rollfor.softResPlayerNameOverrides = {}
-  end
+  ModUiDb.rollfor.hardres_items = ModUiDb.rollfor.hardres_items or {}
+  m_hardres_items = ModUiDb.rollfor.hardres_items
 
-  if not ModUiDb.rollfor.softResPassing then
-    ModUiDb.rollfor.softResPassing = {}
-  end
-
-  if not ModUiDb.rollfor.softResItEncryptedData then
-    ModUiDb.rollfor.softResItEncryptedData = ""
-  end
-
-  m_softres_items = ModUiDb.rollfor.softResItems
+  ModUiDb.rollfor.softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides or {}
   softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides
+
+  ModUiDb.rollfor.softResPassing = ModUiDb.rollfor.softResPassing or {}
   softResPassing = ModUiDb.rollfor.softResPassing
+
+  ModUiDb.rollfor.softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData or {}
   softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData
-  softResItId = ModUiDb.rollfor.softResItId
+
+  ModUiDb.rollfor.awarded_items = ModUiDb.rollfor.awarded_items or {}
+  m_awarded_items = ModUiDb.rollfor.awarded_items
+
+  ModUiDb.rollfor.dropped_items = ModUiDb.rollfor.dropped_items or {}
+  m_dropped_items = ModUiDb.rollfor.dropped_items
 end
 
 local function ShowGui()
@@ -1409,11 +1370,11 @@ local function ShowGui()
         if not SoftResDataExists() then
           M:PrettyPrint( "Invalid or no soft-res data found." )
         else
-          CheckSoftRes( true )
+          CheckSoftRes()
         end
       else
         UpdateData()
-        CheckSoftRes( true )
+        CheckSoftRes()
       end
 
       AceGUI:Release( widget )
@@ -1442,19 +1403,21 @@ end
 
 local function ProcessSoftResSlashCommand( args )
   if args == "init" then
-    ModUiDb.rollfor.softResItems = {}
+    ModUiDb.rollfor.softres_items = {}
+    ModUiDb.rollfor.hardres_items = {}
     ModUiDb.rollfor.softResPlayerNameOverrides = {}
     ModUiDb.rollfor.softResPassing = {}
     ModUiDb.rollfor.softResItEncryptedData = ""
-    ModUiDb.rollfor.softResItId = nil
     ModUiDb.rollfor.awarded_items = {}
+    ModUiDb.rollfor.dropped_items = {}
 
-    m_softres_items = ModUiDb.rollfor.softResItems
+    m_softres_items = ModUiDb.rollfor.softres_items
+    m_hardres_items = ModUiDb.rollfor.hardres_items
     softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides
     softResPassing = ModUiDb.rollfor.softResPassing
     softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData
-    softResItId = ModUiDb.rollfor.softResItId
     m_awarded_items = ModUiDb.rollfor.awarded_items
+    m_dropped_items = ModUiDb.rollfor.dropped_items
 
     M:PrettyPrint( "Soft-res data cleared." )
 
@@ -1732,6 +1695,7 @@ local function OnLootReady()
       table.insert( m_dropped_items, { id = item.id, name = item.name } )
     end
 
+    ModUiDb.rollfor.dropped_items = m_dropped_items
     m_announced_source_ids[ m_loot_source_guid ] = true
   end
 
