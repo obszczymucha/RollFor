@@ -25,13 +25,14 @@ local tick = utils.tick
 function should_announce_sr_and_ignore_all_rolls_if_item_is_soft_ressed_by_one_player()
   -- Given
   player( "Psikutas" )
-  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Rikus" )
   soft_res( sr( "Psikutas", 123 ) )
 
   -- When
   roll_for( "Hearthstone", 1, 123 )
+  roll( "Rikus", 99 )
+  roll_os( "Obszczymucha", 100 )
   roll( "Psikutas", 69 )
-  roll_os( "Obszczymucha", 42 )
   finish_rolling()
 
   -- Then
@@ -157,6 +158,35 @@ function should_allow_multiple_rolls_if_a_player_soft_ressed_multiple_times()
     rw( "Roll for [Hearthstone]: (SR by Psikutas [2 rolls] and Ponpon)." ),
     c( "RollFor: Ponpon exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas rolled the highest (99) for [Hearthstone]." ),
+    rolling_finished()
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_tied_rolls()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Ponpon", "Rikus", "Pimp" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Rikus", 123 ), sr( "Pimp", 123 ) )
+
+  -- When
+  roll_for( "Hearthstone", 1, 123 )
+  roll( "Psikutas", 69 )
+  roll( "Rikus", 42 )
+  roll( "Ponpon", 69 )
+  roll( "Pimp", 69 )
+  roll( "Rikus", 100 )
+  roll( "Psikutas", 100 )
+  roll( "Ponpon", 1 )
+  roll( "Pimp", 1 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for [Hearthstone]: (SR by Psikutas, Ponpon, Rikus and Pimp)." ),
+    cr( "The highest roll was 69 by Pimp, Ponpon and Psikutas." ),
+    r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
+    c( "RollFor: Rikus exhausted their rolls. This roll (100) is ignored." ),
+    cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
     rolling_finished()
   )
 end
