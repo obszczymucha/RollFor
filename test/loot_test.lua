@@ -30,6 +30,20 @@ function should_not_show_loot_that_dropped_if_not_a_master_looter()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
+function should_not_show_loot_if_there_are_no_epic_quality_items()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+
+  -- When
+  loot( item( "Hearthstone", 123, 3 ) )
+
+  -- Then
+  assert_messages(
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
 function should_show_one_item_that_dropped_if_a_master_looter_and_not_targetting_an_enemy()
   -- Given
   master_looter( "Psikutas" )

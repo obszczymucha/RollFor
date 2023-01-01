@@ -382,8 +382,9 @@ end
 local function make_loot_slot_info( items )
   local result = {}
 
-  for _ = 1, #items do
-    table.insert( result, function() return nil, nil, nil, nil, 4 end )
+  for i = 1, #items do
+    local item = items[ i ]
+    table.insert( result, function() return nil, nil, nil, nil, item.quality or 4 end )
   end
 
   return result
@@ -403,8 +404,8 @@ function M.loot( ... )
   M.fire_event( "LOOT_READY" )
 end
 
-function M.item( name, id )
-  return { name = name, id = id, source_id = 123 }
+function M.item( name, id, quality )
+  return { name = name, id = id, source_id = 123, quality = quality }
 end
 
 function M.targetting_enemy( name )

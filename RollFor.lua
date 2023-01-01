@@ -1660,9 +1660,9 @@ local function process_dropped_items()
   local result = {}
   local item_count = api.GetNumLootItems()
 
-  for item_index = 1, item_count do
-    m_loot_source_guid = m_loot_source_guid or api.GetLootSourceInfo( item_index )
-    local item = process_dropped_item( item_index )
+  for i = 1, item_count do
+    m_loot_source_guid = m_loot_source_guid or api.GetLootSourceInfo( i )
+    local item = process_dropped_item( i )
 
     if item then table.insert( result, item ) end
   end
@@ -1686,14 +1686,17 @@ local function OnLootReady()
 
   --M:Print( string.format( "source_guid: %s", m_loot_source_guid ) )
 
-  api.SendChatMessage( string.format( "%s item%s dropped%s:", count, count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
+  if count > 0 then
+    api.SendChatMessage( string.format( "%s item%s dropped%s:", count, count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
 
-  for i = 1, count do
-    local item = items[ i ]
-    api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
+    for i = 1, count do
+      local item = items[ i ]
+      api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
+    end
+
+    m_announced_source_ids[ m_loot_source_guid ] = true
   end
 
-  m_announced_source_ids[ m_loot_source_guid ] = true
   m_announcing = false
 end
 
