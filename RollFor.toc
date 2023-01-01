@@ -6,5 +6,5 @@
 ## SavedVariables: ModUiDb
 
 Libs\Libs.xml
-TradeTracker.lua
+src\TradeTracker.lua
 RollFor.lua
