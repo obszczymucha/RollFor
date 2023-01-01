@@ -1,7 +1,7 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
-local version = "1.12"
+local version = "1.13"
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -19,6 +19,11 @@ local m_loot_source_guid = nil
 local m_announced_source_ids = {}
 local m_announcing = false
 local m_cancelled = false
+local m_item_to_be_awarded = nil
+local m_item_award_confirmed = false
+local m_awarded_items = {}
+local m_dropped_items = {}
+local m_reserved_by = {}
 
 local AceGUI = LibStub( "AceGUI-3.0" )
 local frame = nil
@@ -59,6 +64,14 @@ local function reset()
   m_announced_source_ids = {}
   m_announcing = false
   m_cancelled = false
+  m_item_to_be_awarded = nil
+  m_item_award_confirmed = false
+  m_awarded_items = {}
+  m_dropped_items = {}
+  dataDirty = false
+  m_softres_items = {}
+  m_hardres_items = {}
+  m_reserved_by = {}
 end
 
 local function UpdateGroupStatus()
@@ -284,6 +297,26 @@ local function FilterAbsentPlayers( players )
   return present, absent
 end
 
+local function has_player_already_received_item( player, item_id )
+  for _, v in pairs( m_awarded_items ) do
+    if v.player == player and v.item_id == item_id then return true end
+  end
+
+  return false
+end
+
+local function FilterPlayersWhoAlreadyReceivedTheItem( item_id, players )
+  local result = {}
+
+  for _, player in pairs( players ) do
+    if not has_player_already_received_item( player.name, item_id ) then
+      table.insert( result, player )
+    end
+  end
+
+  return result
+end
+
 local function map( t, f )
   if type( f ) ~= "function" then return t end
 
@@ -302,9 +335,9 @@ local function GetAllPlayers()
   end )
 end
 
-local function IncludeReservedRolls( itemId )
-  local reservedByPlayers = FilterAbsentPlayers( FilterSoftResPassingPlayers( OverridePlayerNames( M:CloneTable( m_softres_items
-    [ itemId ] ) ) ) ) -- If someone has been overriden
+local function IncludeReservedRolls( item_id )
+  local reservedByPlayers = FilterPlayersWhoAlreadyReceivedTheItem( item_id,
+    FilterAbsentPlayers( FilterSoftResPassingPlayers( OverridePlayerNames( M:CloneTable( m_softres_items[ item_id ] ) ) ) ) )
 
   local reserving_player_count = M:CountElements( reservedByPlayers )
   local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or GetAllPlayers()
@@ -1134,6 +1167,7 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
   m_rollers = whoCanRoll
   m_rolled_item = item
   m_rolled_item_count = count
+  m_reserved_by = reservedBy
   local softResCount = reservedBy and M:CountElements( reservedBy ) or 0
   m_rolled_item_reserved = softResCount > 0
 
@@ -1413,12 +1447,15 @@ local function ProcessSoftResSlashCommand( args )
     ModUiDb.rollfor.softResPassing = {}
     ModUiDb.rollfor.softResItEncryptedData = ""
     ModUiDb.rollfor.softResItId = nil
+    ModUiDb.rollfor.awarded_items = {}
 
     m_softres_items = ModUiDb.rollfor.softResItems
     softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides
     softResPassing = ModUiDb.rollfor.softResPassing
     softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData
     softResItId = ModUiDb.rollfor.softResItId
+    m_awarded_items = ModUiDb.rollfor.awarded_items
+
     M:PrettyPrint( "Soft-res data cleared." )
 
     return
@@ -1458,18 +1495,16 @@ local function record_roll( player_name, roll, offspec )
   end
 end
 
-local function is_item_soft_ressed()
+local function get_soft_ressing_players()
   local item_id = M:GetItemId( m_rolled_item )
-
   return m_softres_items[ item_id ]
 end
 
 local function has_player_soft_ressed( player )
-  local item = is_item_soft_ressed()
+  local soft_ressing_players = get_soft_ressing_players()
+  if not soft_ressing_players then return false end
 
-  if not item then return false end
-
-  for _, value in pairs( item ) do
+  for _, value in pairs( soft_ressing_players ) do
     if value.name == player then return true end
   end
 
@@ -1480,7 +1515,7 @@ local function OnRoll( player, roll, min, max )
   if not m_rolling or min ~= 1 or (max ~= 99 and max ~= 100) then return end
 
   local offspec_roll = max == 99
-  local soft_ressed = is_item_soft_ressed()
+  local soft_ressed = M:CountElements( m_reserved_by ) > 0
   local soft_ressed_by_player = has_player_soft_ressed( player )
 
   if soft_ressed and not soft_ressed_by_player then
@@ -1650,9 +1685,10 @@ local function process_dropped_item( item_index )
   if quality ~= 4 then return nil end
 
   local item_id = M:GetItemId( link )
+  local item_name = M:GetItemName( link )
   --M:Print( string.format( "%s %s %s", link, quality, item_id ) )
 
-  return { id = item_id, link = link, quality = quality, message = format_item_announcement( item_id, link ) }
+  return { id = item_id, name = item_name, link = link, quality = quality, message = format_item_announcement( item_id, link ) }
 end
 
 local function process_dropped_items()
@@ -1678,6 +1714,7 @@ local function OnLootReady()
   if was_announced then return end
 
   m_announcing = true
+  m_dropped_items = {}
   local items = process_dropped_items()
   local count = M:CountElements( items )
 
@@ -1692,6 +1729,7 @@ local function OnLootReady()
     for i = 1, count do
       local item = items[ i ]
       api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
+      table.insert( m_dropped_items, { id = item.id, name = item.name } )
     end
 
     m_announced_source_ids[ m_loot_source_guid ] = true
@@ -1712,6 +1750,108 @@ local function OnPartyMessage( message, player )
   end
 end
 
+local function idempotent_hookscript( frame, event, callback )
+  if not frame.RollForHookScript then
+    frame.RollForHookScript = frame.HookScript
+    frame.HookScript = function( self, event, f )
+      if event:find( "RollForIdempotent", 1, true ) == 1 then
+        if not frame[ event ] then
+          local real_event = event:gsub( "RollForIdempotent", "" )
+          frame.RollForHookScript( self, real_event, f )
+          frame[ event ] = true
+        end
+      else
+        frame.RollForHookScript( self, event, f )
+      end
+    end
+  end
+
+  frame:HookScript( "RollForIdempotent" .. event, callback )
+end
+
+local function find_loot_confirmation_details()
+  local frames = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
+
+  for i = 1, #frames do
+    local base_frame_name = frames[ i ]
+    local frame = _G[ base_frame_name .. "Text" ]
+
+    if frame and frame:IsVisible() and frame.text_arg1 and frame.text_arg2 then
+      local yes_button = _G[ base_frame_name .. "Button1" ]
+      local no_button = _G[ base_frame_name .. "Button2" ]
+
+      return base_frame_name, yes_button, no_button
+    end
+  end
+
+  return nil
+end
+
+local function hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
+  idempotent_hookscript( yes_button, "OnClick", function()
+    local text_frame = _G[ base_frame_name .. "Text" ]
+    local player = text_frame and text_frame.text_arg2
+    local colored_item_name = text_frame and text_frame.text_arg1
+
+    if player and colored_item_name then
+      m_item_to_be_awarded = { player = player, colored_item_name = colored_item_name }
+      m_item_award_confirmed = true
+      M:PrettyPrint( string.format( "Attempting to award %s with %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
+    end
+  end )
+
+  idempotent_hookscript( no_button, "OnClick", function()
+    m_item_award_confirmed = false
+    m_item_to_be_awarded = nil
+  end )
+end
+
+local function OnOpenMasterLootList()
+  -- item name: StaticPopup1Text.text_arg1
+  -- example: "|cffa334eeBlessed Tanzanite|r"
+
+  for k, frame in pairs( api.MasterLooterFrame ) do
+    if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
+      idempotent_hookscript( frame, "OnClick", function()
+        local base_frame_name, yes_button, no_button = find_loot_confirmation_details()
+        if base_frame_name and yes_button and no_button then
+          hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
+        end
+      end )
+    end
+  end
+end
+
+local function get_item_id( item_name )
+  for _, item in pairs( m_dropped_items ) do
+    if item.name == item_name then return item.id end
+  end
+
+  return nil
+end
+
+local function OnLootSlotCleared()
+  if m_item_to_be_awarded and m_item_award_confirmed then
+    local item_name = M:decolorize( m_item_to_be_awarded.colored_item_name )
+    local item_id = get_item_id( item_name )
+
+    if item_id then
+      M.award_item( m_item_to_be_awarded.player, item_id, item_name )
+      M:PrettyPrint( string.format( "%s received %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
+    else
+      M:PrettyPrint( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
+    end
+
+    m_item_to_be_awarded = nil
+    m_item_award_confirmed = false
+  end
+end
+
+function M.award_item( player, item_id, item_name )
+  table.insert( m_awarded_items, { player = player, item_id = item_id, item_name = item_name } )
+  ModUiDb.rollfor.awarded_items = m_awarded_items
+end
+
 function M.Initialize()
   Init()
   M:OnFirstEnterWorld( OnFirstEnterWorld )
@@ -1719,6 +1859,8 @@ function M.Initialize()
   M:OnJoinedGroup( OnJoinedGroup )
   M:OnLeftGroup( OnLeftGroup )
   M:OnLootReady( OnLootReady )
+  M:OnOpenMasterLootList( OnOpenMasterLootList )
+  M:OnLootSlotCleared( OnLootSlotCleared )
 
   -- For testing:
   --M:OnPartyMessage( OnPartyMessage )

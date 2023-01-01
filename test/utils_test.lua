@@ -4,15 +4,13 @@ local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 
 ---@diagnostic disable-next-line: lowercase-global
-function should_replace_colors()
+function should_decolorize_text()
   -- Given
-  local input = "|cff209ff9RollFor|r: Loaded (|cffff9f69v1.12|r)."
+  local f = utils.decolorize
 
-  -- When
-  local result = utils.replace_colors( input )
-
-  -- Then
-  lu.assertEquals( result, "RollFor: Loaded (v1.12)." )
+  -- Expect
+  lu.assertEquals( f( "|cff209ff9RollFor|r: Loaded (|cffff9f69v1.12|r)." ), "RollFor: Loaded (v1.12)." )
+  lu.assertEquals( f( "|cffa334eeBlessed Tanzanite|r" ), "Blessed Tanzanite" )
 end
 
 ---@diagnostic disable-next-line: lowercase-global

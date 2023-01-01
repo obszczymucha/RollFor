@@ -479,6 +479,10 @@ M.GetItemId = function( item )
   return nil
 end
 
+M.GetItemName = function( item_link )
+  return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+::::::::%d+:%d+::::::|h(.*)|h|r", "%1" )
+end
+
 M.filter = function( t, f )
   if not t then return nil end
   if type( f ) ~= "function" then return t end
@@ -583,7 +587,11 @@ M.IsPrimarySpec = function()
   return GetActiveTalentGroup() == 1
 end
 
-function M.dump_table( o )
+function M.decolorize( input )
+  return string.gsub( input, "|c%x%x%x%x%x%x%x%x([^|]+)|r", "%1" )
+end
+
+function M.dump( o )
   local entries = 0
 
   if type( o ) == 'table' then
@@ -592,7 +600,7 @@ function M.dump_table( o )
       if (entries == 0) then s = s .. " " end
       if type( k ) ~= 'number' then k = '"' .. k .. '"' end
       if (entries > 0) then s = s .. ", " end
-      s = s .. '[' .. k .. '] = ' .. M.dump_table( v )
+      s = s .. '[' .. k .. '] = ' .. M.dump( v )
       entries = entries + 1
     end
 
@@ -673,6 +681,7 @@ function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   mod.ValueIsTrue = M.ValueIsTrue
   mod.GetGroupChatType = wrap( M.GetGroupChatType )
   mod.GetItemId = wrap( M.GetItemId )
+  mod.GetItemName = wrap( M.GetItemName )
   mod.filter = wrap( M.filter )
   mod.keys = wrap( M.keys )
   mod.values = wrap( M.values )
@@ -683,7 +692,8 @@ function ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   mod.CountItemsByLink = wrap( M.CountItemsByLink )
   mod.IsPrimarySpec = wrap( M.IsPrimarySpec )
   mod.IsPlayerMasterLooter = wrap( M.IsPlayerMasterLooter )
-  mod.dump_table = wrap( M.dump_table )
+  mod.dump = wrap( M.dump )
+  mod.decolorize = wrap( M.decolorize )
 
   -- Component specific
   mod.GetDb = wrapWithComponent( GetDb )

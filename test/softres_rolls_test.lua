@@ -3,6 +3,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/Mo
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 local player = utils.player
+local master_looter = utils.master_looter
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
 local rw = utils.raid_warning
@@ -20,6 +21,9 @@ local assert_messages = utils.assert_messages
 local soft_res = utils.soft_res
 local sr = utils.soft_res_item
 local tick = utils.tick
+local loot = utils.loot
+local item = utils.item
+local award = utils.award
 
 ---@diagnostic disable-next-line: lowercase-global
 function should_announce_sr_and_ignore_all_rolls_if_item_is_soft_ressed_by_one_player()
@@ -187,6 +191,32 @@ function should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_tied_rolls()
     r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
     c( "RollFor: Rikus exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
+    rolling_finished()
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
+function should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Ponpon" )
+  soft_res( sr( "Psikutas", 123 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  roll_for( "Hearthstone", 1, 123 )
+  award( "Psikutas", "Hearthstone", 123 )
+  roll_for( "Hearthstone", 1, 123 )
+  roll( "Ponpon", 1 )
+  tick( 8 )
+
+  -- Then
+  assert_messages(
+    r( "2 items dropped:", "1. [Hearthstone] (SR by Psikutas)", "2. [Hearthstone] (SR by Psikutas)" ),
+    crw( "[Hearthstone] is soft-ressed by Psikutas." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
     rolling_finished()
   )
 end

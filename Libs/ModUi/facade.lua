@@ -26,6 +26,7 @@ M.api = {
   IsInGroup = IsInGroup,
   IsInGuild = IsInGuild,
   IsInRaid = IsInRaid,
+  MasterLooterFrame = MasterLooterFrame,
   PlayMusic = PlayMusic,
   SendChatMessage = SendChatMessage,
   SlashCmdList = SlashCmdList,

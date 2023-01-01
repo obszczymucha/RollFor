@@ -67,7 +67,7 @@ function M.mock_wow_api()
   end
 end
 
-function M.replace_colors( input )
+function M.decolorize( input )
   return string.gsub( input, "|c%x%x%x%x%x%x%x%x([^|]+)|r", "%1" )
 end
 
@@ -115,7 +115,7 @@ function M.mock_messages()
 
   facade().api.ChatFrame1 = {
     AddMessage = function( _, message )
-      local message_without_colors = M.parse_item_link( M.replace_colors( message ) )
+      local message_without_colors = M.parse_item_link( M.decolorize( message ) )
       table.insert( m_messages, { message = message_without_colors, chat = "CONSOLE" } )
     end
   }
@@ -469,6 +469,11 @@ end
 
 function M.hard_res_item( item_id )
   return { soft_res = false, item_id = item_id }
+end
+
+function M.award( player, item_name, item_id )
+  local rf = ModUi:GetModule( "RollFor" )
+  rf.award_item( player, item_id, item_name )
 end
 
 return M

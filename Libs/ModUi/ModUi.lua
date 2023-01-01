@@ -7,7 +7,7 @@ if not M then return end
 
 ModUi = M
 ModUi.version = version
-local facade = libStub("ModUiFacade-1.0")
+local facade = libStub( "ModUiFacade-1.0" )
 ModUi.facade = facade
 local api = facade.api
 
@@ -147,6 +147,8 @@ local function AddBlizzEventCallbackFunctionsToComponent( component )
   component.OnMerchantShow = RegisterCallback( "merchantShow" )
   component.OnSpecChanged = RegisterCallback( "specChanged" )
   component.OnLootReady = RegisterCallback( "lootReady" )
+  component.OnOpenMasterLootList = RegisterCallback( "openMasterLootList" )
+  component.OnLootSlotCleared = RegisterCallback( "lootSlotCleared" )
 end
 
 local function DebugMsg( message )
@@ -381,6 +383,10 @@ local function eventHandler( _, event, ... )
     OnEvent( m_callbacks[ "specChanged" ], false, nil, ... )
   elseif event == "LOOT_READY" then
     OnEvent( m_callbacks[ "lootReady" ], false, nil, ... )
+  elseif event == "OPEN_MASTER_LOOT_LIST" then
+    OnEvent( m_callbacks[ "openMasterLootList" ], false, nil, ... )
+  elseif event == "LOOT_SLOT_CLEARED" then
+    OnEvent( m_callbacks[ "lootSlotCleared" ], false, nil, ... )
   end
 end
 
@@ -421,6 +427,8 @@ frame:RegisterEvent( "GOSSIP_SHOW" )
 frame:RegisterEvent( "MERCHANT_SHOW" )
 frame:RegisterEvent( "ACTIVE_TALENT_GROUP_CHANGED" )
 frame:RegisterEvent( "LOOT_READY" )
+frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
+frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
 frame:SetScript( "OnEvent", eventHandler )
 
 function ModUi.SimulateEvent( _, eventName )
@@ -479,4 +487,3 @@ function ModUi:OnInitialize()
   aceEvent:RegisterMessage( "HERB_COUNT_HERBS_AVAILABLE", function() OnEvent( m_callbacks.herbsAvailable, true ) end )
   m_initialized = true
 end
-
