@@ -1677,7 +1677,6 @@ local function OnLootReady()
   if was_announced then return end
 
   m_announcing = true
-  m_dropped_items = {}
   local items = process_dropped_items()
   local count = M:CountElements( items )
 

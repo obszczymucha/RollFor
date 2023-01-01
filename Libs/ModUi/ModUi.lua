@@ -149,6 +149,12 @@ local function AddBlizzEventCallbackFunctionsToComponent( component )
   component.OnLootReady = RegisterCallback( "lootReady" )
   component.OnOpenMasterLootList = RegisterCallback( "openMasterLootList" )
   component.OnLootSlotCleared = RegisterCallback( "lootSlotCleared" )
+  component.OnTradeShow = RegisterCallback( "tradeShow" )
+  component.OnTradePlayerItemChanged = RegisterCallback( "tradePlayerItemChanged" )
+  component.OnTradeTargetItemChanged = RegisterCallback( "tradeTargetItemChanged" )
+  component.OnTradeClosed = RegisterCallback( "tradeClosed" )
+  component.OnTradeAcceptUpdate = RegisterCallback( "tradeAcceptUpdate" )
+  component.OnTradeRequestCancel = RegisterCallback( "tradeRequestCancel" )
 end
 
 local function DebugMsg( message )
@@ -387,6 +393,18 @@ local function eventHandler( _, event, ... )
     OnEvent( m_callbacks[ "openMasterLootList" ], false, nil, ... )
   elseif event == "LOOT_SLOT_CLEARED" then
     OnEvent( m_callbacks[ "lootSlotCleared" ], false, nil, ... )
+  elseif event == "TRADE_SHOW" then
+    OnEvent( m_callbacks[ "tradeShow" ], false, nil, ... )
+  elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
+    OnEvent( m_callbacks[ "tradePlayerItemChanged" ], false, nil, ... )
+  elseif event == "TRADE_TARGET_ITEM_CHANGED" then
+    OnEvent( m_callbacks[ "tradeTargetItemChanged" ], false, nil, ... )
+  elseif event == "TRADE_CLOSED" then
+    OnEvent( m_callbacks[ "tradeClosed" ], false, nil, ... )
+  elseif event == "TRADE_ACCEPT_UPDATE" then
+    OnEvent( m_callbacks[ "tradeAcceptUpdate" ], false, nil, ... )
+  elseif event == "TRADE_REQUEST_CANCEL" then
+    OnEvent( m_callbacks[ "tradeRequestCancel" ], false, nil, ... )
   end
 end
 
@@ -429,6 +447,12 @@ frame:RegisterEvent( "ACTIVE_TALENT_GROUP_CHANGED" )
 frame:RegisterEvent( "LOOT_READY" )
 frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
 frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
+frame:RegisterEvent( "TRADE_SHOW" )
+frame:RegisterEvent( "TRADE_PLAYER_ITEM_CHANGED" )
+frame:RegisterEvent( "TRADE_TARGET_ITEM_CHANGED" )
+frame:RegisterEvent( "TRADE_CLOSED" )
+frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
+frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
 frame:SetScript( "OnEvent", eventHandler )
 
 function ModUi.SimulateEvent( _, eventName )
