@@ -89,9 +89,8 @@ function should_only_show_loot_once()
   -- Then
   assert_messages(
     r( "3 items dropped:" ),
-    r( "1. [Hearthstone]" ),
-    r( "2. [Hearthstone]" ),
-    r( "3. [Some item]" )
+    r( "1. 2x[Hearthstone]" ),
+    r( "2. [Some item]" )
   )
 end
 
@@ -160,7 +159,7 @@ function should_show_soft_ressed_items_by_two_players()
   -- Then
   assert_messages(
     r( "1 item dropped:" ),
-    r( "1. [Hearthstone] (SR by Psikutas and Obszczymucha)" )
+    r( "1. [Hearthstone] (SR by Obszczymucha and Psikutas)" )
   )
 end
 
@@ -176,9 +175,9 @@ function should_show_soft_ressed_items_by_two_players_separately_for_each_item()
 
   -- Then
   assert_messages(
-    r( "2 item dropped:" ),
-    r( "1. [Hearthstone] (SR by Psikutas)" ),
-    r( "2. [Hearthstone] (SR by Obszczymucha)" )
+    r( "2 items dropped:" ),
+    r( "1. [Hearthstone] (SR by Obszczymucha)" ),
+    r( "2. [Hearthstone] (SR by Psikutas)" )
   )
 end
 
@@ -195,7 +194,7 @@ function should_show_soft_ressed_items_by_three_players()
   -- Then
   assert_messages(
     r( "1 item dropped:" ),
-    r( "1. [Hearthstone] (SR by Psikutas, Obszczymucha and Ponpon)" )
+    r( "1. [Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)" )
   )
 end
 
@@ -212,7 +211,7 @@ function should_show_soft_ressed_items_by_two_players_with_multiple_rolls()
   -- Then
   assert_messages(
     r( "1 item dropped:" ),
-    r( "1. [Hearthstone] (SR by Psikutas [2 rolls] and Obszczymucha)" )
+    r( "1. [Hearthstone] (SR by Obszczymucha and Psikutas [2 rolls])" )
   )
 end
 

@@ -62,7 +62,7 @@ function should_only_process_rolls_from_players_who_soft_ressed_and_finish_autom
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas and Ponpon)." ),
+    rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)." ),
     c( "RollFor: Rikus did not SR [Hearthstone]. This roll (100) is ignored." ),
     c( "RollFor: Obszczymucha did not SR [Hearthstone]. This roll (42) is ignored." ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -86,7 +86,7 @@ function should_ignore_offspec_rolls_by_players_who_soft_ressed_and_announce_the
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas and Ponpon)." ),
+    rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)." ),
     c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (42) for [Hearthstone]." ),
@@ -112,7 +112,7 @@ function should_announce_current_highest_roller_if_a_player_who_soft_ressed_did_
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas and Ponpon)." ),
+    rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)." ),
     c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (42) for [Hearthstone]." ),
@@ -136,10 +136,10 @@ function should_announce_all_missing_sr_rolls_if_players_didnt_roll_on_time()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas [2 rolls], Ponpon [2 rolls] and Rikus)." ),
+    rw( "Roll for [Hearthstone]: (SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus)." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (42) for [Hearthstone]." ),
-    r( "SR rolls remaining: Psikutas (2 rolls), Ponpon (1 roll) and Rikus (1 roll)" )
+    r( "SR rolls remaining: Ponpon (1 roll), Psikutas (2 rolls) and Rikus (1 roll)" )
   )
 end
 
@@ -159,7 +159,7 @@ function should_allow_multiple_rolls_if_a_player_soft_ressed_multiple_times()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas [2 rolls] and Ponpon)." ),
+    rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas [2 rolls])." ),
     c( "RollFor: Ponpon exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas rolled the highest (99) for [Hearthstone]." ),
     rolling_finished()
@@ -186,7 +186,7 @@ function should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_tied_rolls()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: (SR by Psikutas, Ponpon, Rikus and Pimp)." ),
+    rw( "Roll for [Hearthstone]: (SR by Pimp, Ponpon, Psikutas and Rikus)." ),
     cr( "The highest roll was 69 by Pimp, Ponpon and Psikutas." ),
     r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
     c( "RollFor: Rikus exhausted their rolls. This roll (100) is ignored." ),
@@ -212,7 +212,7 @@ function should_allow_others_to_roll_if_player_who_soft_ressed_already_received_
 
   -- Then
   assert_messages(
-    r( "2 items dropped:", "1. [Hearthstone] (SR by Psikutas)", "2. [Hearthstone] (SR by Psikutas)" ),
+    r( "2 items dropped:", "1. [Hearthstone] (SR by Psikutas)", "2. [Hearthstone]" ),
     crw( "[Hearthstone] is soft-ressed by Psikutas." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
     r( "Stopping rolls in 3", "2", "1" ),

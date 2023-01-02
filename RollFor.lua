@@ -2,7 +2,7 @@
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
 local dropped_loot_announce = LibStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.13"
+local version = "1.14"
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -16,7 +16,6 @@ local m_offspec_rolls = {}
 local m_rollers = {}
 local m_offspec_rollers = {}
 local m_winner_count = 0
-local m_loot_source_guid = nil
 local m_announced_source_ids = {}
 local m_announcing = false
 local m_cancelled = false
@@ -60,7 +59,6 @@ local function reset()
   m_rollers = {}
   m_offspec_rollers = {}
   m_winner_count = 0
-  m_loot_source_guid = nil
   m_announced_source_ids = {}
   m_announcing = false
   m_cancelled = false
@@ -259,9 +257,11 @@ end
 local function OverridePlayerNames( players )
   local result = {}
 
-  for k, player in pairs( players ) do
-    result[ k ] = softResPlayerNameOverrides[ player.name ] and { name = softResPlayerNameOverrides[ player.name ][ "override" ], rolls = player.rolls } or
-        player
+  for _, player in pairs( players ) do
+    table.insert( result, softResPlayerNameOverrides[ player.name ] and {
+      name = softResPlayerNameOverrides[ player.name ][ "override" ],
+      rolls = player.rolls
+    } or player )
   end
 
   return result
@@ -341,6 +341,7 @@ local function IncludeReservedRolls( item_id )
 
   local reserving_player_count = M:CountElements( reservedByPlayers )
   local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or GetAllPlayers()
+  table.sort( reservedByPlayers, function( l, r ) return l.name < r.name end )
   return rollers, reservedByPlayers, reserving_player_count
 end
 
@@ -454,8 +455,8 @@ local function ShowSoftRes( args )
   local needsRefetch = false
   local items = {}
 
-  for item, players in pairs( m_softres_items ) do
-    local itemLink = M:GetItemLink( item )
+  for item_id, players in pairs( m_softres_items ) do
+    local itemLink = M:GetItemLink( item_id )
 
     if not itemLink then
       needsRefetch = true
@@ -1621,36 +1622,50 @@ local function Init()
   M.PrettyPrint = function( _, message ) chatFrame:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
 end
 
+local function filter_softres_items()
+  local result = {}
+
+  for item_id, players in pairs( m_softres_items ) do
+    local filtered_players = FilterPlayersWhoAlreadyReceivedTheItem( item_id,
+      FilterAbsentPlayers( FilterSoftResPassingPlayers( OverridePlayerNames( players ) ) ) )
+
+    if #filtered_players > 0 then
+      result[ item_id ] = filtered_players
+    end
+  end
+
+  return result
+end
+
 local function OnLootReady()
   if not M:IsPlayerMasterLooter() or m_announcing then return end
 
-  local was_announced = m_announced_source_ids[ m_loot_source_guid ]
+  local source_guid, items, announcements = dropped_loot_announce.process_dropped_items( filter_softres_items(), m_hardres_items )
+  local was_announced = m_announced_source_ids[ source_guid ]
   if was_announced then return end
 
   m_announcing = true
-  m_loot_source_guid = nil
-  local source_guid, items = dropped_loot_announce.process_dropped_items( m_softres_items, m_hardres_items, IncludeReservedRolls, GetSoftResInfo )
-  local count = M:CountElements( items )
+  local item_count = #items
 
   local target = api.UnitName( "target" )
   local target_msg = target and not api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
 
-  --M:Print( string.format( "source_guid: %s", m_loot_source_guid ) )
+  if item_count > 0 then
+    api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
 
-  if count > 0 then
-    api.SendChatMessage( string.format( "%s item%s dropped%s:", count, count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
-
-    for i = 1, count do
+    for i = 1, item_count do
       local item = items[ i ]
-      api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
-      table.insert( m_dropped_items, { id = item.item.id, name = item.item.name } )
+      table.insert( m_dropped_items, { id = item.id, name = item.name } )
+    end
+
+    for i = 1, #announcements do
+      api.SendChatMessage( announcements[ i ], M:GetGroupChatType() )
     end
 
     ModUiDb.rollfor.dropped_items = m_dropped_items
     m_announced_source_ids[ source_guid ] = true
   end
 
-  m_loot_source_guid = source_guid
   m_announcing = false
 end
 
