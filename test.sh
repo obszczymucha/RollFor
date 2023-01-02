@@ -10,6 +10,8 @@ GREEN_COLOR="\033[0;32m"
 RED_COLOR="\033[0;31m"
 NO_COLOR="\033[0m"
 
+TEST_FAILED=0
+
 run_test() {
   local full_file="$1"
 
@@ -27,12 +29,8 @@ run_test() {
                           gsub("ERROR$", "\033[1;31m&\033[0m");
                           print }'
 
-  local result=$?
-  popd > /dev/null || exit $result
-
-  if [[ $result -ne 0 ]]; then
-    exit $result
-  fi
+  TEST_FAILED=$?
+  popd > /dev/null || return
 }
 
 run_all_tests() {
@@ -41,14 +39,25 @@ run_all_tests() {
     echo
     echo "Testing $file..."
     run_test "$file"
+
+    if [[ $TEST_FAILED -ne 0 ]]; then
+      return
+    fi
   }; done
 
-  exit $?
+  return $?
 }
 
 listen() {
   echo "Listening..."
-  when-changed -1 -r "${LISTENING_DIRS[@]}" -c "$0 %f"
+  inotifywait -mqre close_write --format "%w%f" . | while read -r FILENAME; do
+    local filename
+    filename=$(echo "$FILENAME" | sed -E 's/^(\.\/)*(.*)\/\.(.*\.lua)(\..{6})*$/\2\/\3/g')
+
+    if [[ "$filename" =~ .*lua$ ]]; then
+      on_change "$filename"
+    fi
+  done
 }
 
 print_usage() {
@@ -61,7 +70,7 @@ on_change() {
   full_file=$(echo "$1" | sed -E "s|(~)$||") # when-changed adds '~' to the filename.
 
   if ! echo "$full_file" | grep -E "$CHANGE_REGEX" > /dev/null; then
-    exit 0
+    return
   fi
 
   local pwdp
@@ -97,8 +106,6 @@ on_change() {
     #  echo "Changed: $file. No test found."
     #fi
   fi
-
-  exit 0
 }
 
 run() {
