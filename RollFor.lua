@@ -1,6 +1,7 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
+local dropped_loot_announce = LibStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
 local version = "1.13"
 
 local m_timer = nil
@@ -1620,56 +1621,6 @@ local function Init()
   M.PrettyPrint = function( _, message ) chatFrame:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
 end
 
-local function format_item_announcement( item_id, item_link )
-  if m_hardres_items[ item_id ] then
-    return string.format( "%s (HR)", item_link )
-  elseif m_softres_items[ item_id ] then
-    local _, reserving_players, reserving_players_count = IncludeReservedRolls( item_id )
-    if reserving_players_count == 0 then
-      return item_link
-    else
-      local name_with_rolls = function( player )
-        local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-        return string.format( "%s%s", player.name, rolls )
-      end
-
-      return string.format( "%s %s", item_link, GetSoftResInfo( reserving_players, name_with_rolls ) )
-    end
-  else
-    return item_link
-  end
-end
-
-local function process_dropped_item( item_index )
-  local link = api.GetLootSlotLink( item_index )
-  if not link then return nil end
-
-  local quality = select( 5, api.GetLootSlotInfo( item_index ) ) or 0
-  if quality ~= 4 then return nil end
-
-  local item_id = M:GetItemId( link )
-  local item_name = M:GetItemName( link )
-  --M:Print( string.format( "%s %s %s", link, quality, item_id ) )
-
-  return { id = item_id, name = item_name, link = link, quality = quality, message = format_item_announcement( item_id, link ) }
-end
-
-local function process_dropped_items()
-  m_loot_source_guid = nil
-  local result = {}
-  local item_count = api.GetNumLootItems()
-
-  for i = 1, item_count do
-    m_loot_source_guid = m_loot_source_guid or api.GetLootSourceInfo( i )
-    local item = process_dropped_item( i )
-
-    if item then table.insert( result, item ) end
-  end
-
-  m_loot_source_guid = m_loot_source_guid or "unknown"
-  return result
-end
-
 local function OnLootReady()
   if not M:IsPlayerMasterLooter() or m_announcing then return end
 
@@ -1677,7 +1628,8 @@ local function OnLootReady()
   if was_announced then return end
 
   m_announcing = true
-  local items = process_dropped_items()
+  m_loot_source_guid = nil
+  local source_guid, items = dropped_loot_announce.process_dropped_items( m_softres_items, m_hardres_items, IncludeReservedRolls, GetSoftResInfo )
   local count = M:CountElements( items )
 
   local target = api.UnitName( "target" )
@@ -1691,13 +1643,14 @@ local function OnLootReady()
     for i = 1, count do
       local item = items[ i ]
       api.SendChatMessage( string.format( "%s. %s", i, item.message ), M:GetGroupChatType() )
-      table.insert( m_dropped_items, { id = item.id, name = item.name } )
+      table.insert( m_dropped_items, { id = item.item.id, name = item.item.name } )
     end
 
     ModUiDb.rollfor.dropped_items = m_dropped_items
-    m_announced_source_ids[ m_loot_source_guid ] = true
+    m_announced_source_ids[ source_guid ] = true
   end
 
+  m_loot_source_guid = source_guid
   m_announcing = false
 end
 

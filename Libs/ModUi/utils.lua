@@ -476,11 +476,11 @@ M.GetItemId = function( item )
     return tonumber( itemId )
   end
 
-  return nil
+    return nil
 end
 
 M.GetItemName = function( item_link )
-  return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+::::::::%d+:%d+::::::|h(.*)|h|r", "%1" )
+  return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h%[(.*)%]|h|r", "%1" )
 end
 
 M.filter = function( t, f )

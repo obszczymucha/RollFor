@@ -165,6 +165,24 @@ function should_show_soft_ressed_items_by_two_players()
 end
 
 ---@diagnostic disable-next-line: lowercase-global
+function should_show_soft_ressed_items_by_two_players_separately_for_each_item()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+
+  -- Then
+  assert_messages(
+    r( "2 item dropped:" ),
+    r( "1. [Hearthstone] (SR by Psikutas)" ),
+    r( "2. [Hearthstone] (SR by Obszczymucha)" )
+  )
+end
+
+---@diagnostic disable-next-line: lowercase-global
 function should_show_soft_ressed_items_by_three_players()
   -- Given
   master_looter( "Psikutas" )

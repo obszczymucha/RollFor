@@ -6,5 +6,7 @@
 ## SavedVariables: ModUiDb
 
 Libs\Libs.xml
+src\ItemUtils.lua
 src\TradeTracker.lua
+src\DroppedLootAnnounce.lua
 RollFor.lua

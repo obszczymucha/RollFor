@@ -95,6 +95,7 @@ Options:
                                Make sure you escape magic chars like +? with %
   -m, --method-prefix PREFIX:  Execute methods that start with the PREFIX (default: test)
   -t, --test-prefix PREFIX:    Execute tests that start with the PREFIX (default: test)
+  -T, --test-suffix SUFFIX:    Execute tests that end with the SUFFIX
   testname1, testname2, ... :  tests to run in the form of testFunction,
                                TestClass or TestClass.testMethod
 
@@ -2537,14 +2538,15 @@ end
         -- return true is the name matches the name of a test method
         -- default rule is that is starts with 'Test' or with 'test'
         local prefix = self.methodPrefix or 'test'
-        return string.sub(s, 1, #prefix):lower() == prefix
+        return string.sub(s, 1, #prefix):lower() == prefix:lower()
     end
 
     function M.LuaUnit:isTestName( s )
         -- return true is the name matches the name of a test
-        -- default rule is that is starts with 'Test' or with 'test'
+        -- default ruleeis that is starts with 'Test' or with 'test'
         local prefix = self.testPrefix or 'test'
-        return string.sub(s, 1, #prefix):lower() == prefix
+        return string.sub(s, 1, #prefix):lower() == prefix:lower() or
+            (self.testSuffix and s:sub(-#self.testSuffix) == self.testSuffix)
     end
 
     function M.LuaUnit:collectTests()
@@ -2557,6 +2559,7 @@ end
                 table.insert( testNames , k )
             end
         end
+
         table.sort( testNames )
         return testNames
     end
@@ -2572,6 +2575,7 @@ end
         -- --exclude, -x, + pattern: run test not matching pattern, may be repeated
         -- --method-prefix, -m, + prefix: prefix of test methods (default: test)
         -- --test-prefix, -t, + prefix: prefix of tests (default: test)
+        -- --test-suffix, -T, + suffix: suffix of tests
         -- --shuffle, -s, : shuffle tests before reunning them
         -- --name, -n, + fname: name of output file for junit, default to stdout
         -- --repeat, -r, + num: number of times to execute each test
@@ -2593,6 +2597,7 @@ end
         local SET_REPEAT = 5
         local SET_METHOD_PREFIX = 6
         local SET_TEST_PREFIX = 7
+        local SET_TEST_SUFFIX = 8
 
         if cmdLine == nil then
             return result
@@ -2641,6 +2646,9 @@ end
             elseif option == '--test-prefix' or option == '-t' then
                 state = SET_TEST_PREFIX
                 return state
+            elseif option == '--test-suffix' or option == '-T' then
+                state = SET_TEST_SUFFIX
+                return state
             end
             error('Unknown option: '..option,3)
         end
@@ -2676,6 +2684,9 @@ end
                 return
             elseif state == SET_TEST_PREFIX then
                 result['testPrefix'] = cmdArg
+                return
+            elseif state == SET_TEST_SUFFIX then
+                result['testSuffix'] = cmdArg
                 return
             end
             error('Unknown parse state: '.. state)
@@ -3178,7 +3189,7 @@ end
                     end
                     table.insert( result, { name, instance } )
                 else
-                    M.LuaUnit:expandOneClass( result, name, instance )
+                    self:expandOneClass( result, name, instance )
                 end
             end
         end
@@ -3413,8 +3424,9 @@ end
         self.exeRepeat            = options.exeRepeat
         self.patternIncludeFilter = options.pattern
         self.shuffle              = options.shuffle
-        self.methodPrefix         = options.methodPrefix
-        self.testPrefix           = options.testPrefix
+        self.methodPrefix         = self.methodPrefix or options.methodPrefix
+        self.testPrefix           = self.testPrefix or options.testPrefix
+        self.testSuffix           = self.testSuffix or options.testSuffix
 
         options.output     = options.output or os.getenv('LUAUNIT_OUTPUT')
         options.fname      = options.fname  or os.getenv('LUAUNIT_JUNIT_FNAME')

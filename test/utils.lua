@@ -361,6 +361,8 @@ function M.load_real_stuff()
   M.mock_slashcmdlist()
   require( "ModUi" )
   require( "ModUi/utils" )
+  require( "src/ItemUtils" )
+  require( "src/DroppedLootAnnounce" )
   require( "RollFor" )
 end
 

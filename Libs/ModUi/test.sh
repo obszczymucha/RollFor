@@ -70,23 +70,24 @@ on_change() {
     echo "Changed: $file. Running it."
     run_test "$file"
   else
-    local base
-    base=$(echo "$file" | sed -E "s|^(.+)\.lua$|\1|g")
+    run_all_tests
+    #local base
+    #base=$(echo "$file" | sed -E "s|^(.+)\.lua$|\1|g")
 
-    local dir
-    dir=$(dirname "$file")
+    #local dir
+    #dir=$(dirname "$file")
 
-    local test_filename="${base}_test.lua"
-    local test_file="test/$test_filename"
+    #local test_filename="${base}_test.lua"
+    #local test_file="test/$test_filename"
 
-    if [[ -f "$test_file" ]]; then
-      printf "${WHITE_COLOR}Changed: ${NO_COLOR}%s.\n" "$file"
-      printf "${WHITE_COLOR}Running test: ${NO_COLOR}%s\n" "$test_file"
-      run_test "$test_file"
-    else
-      echo "Test file: $test_file"
-      echo "Changed: $file. No test found."
-    fi
+    #if [[ -f "$test_file" ]]; then
+    #  printf "${WHITE_COLOR}Changed: ${NO_COLOR}%s.\n" "$file"
+    #  printf "${WHITE_COLOR}Running test: ${NO_COLOR}%s\n" "$test_file"
+    #  run_test "$test_file"
+    #else
+    #  echo "Test file: $test_file"
+    #  echo "Changed: $file. No test found."
+    #fi
   fi
 
   exit 0
