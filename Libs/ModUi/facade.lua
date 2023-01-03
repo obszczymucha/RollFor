@@ -35,6 +35,7 @@ M.api = {
   SendChatMessage = SendChatMessage,
   SlashCmdList = SlashCmdList,
   StopMusic = StopMusic,
+  TradeFrameRecipientNameText = TradeFrameRecipientNameText,
   UnitIsDead = UnitIsDead,
   UnitIsFriend = UnitIsFriend,
   UnitIsPlayer = UnitIsPlayer,

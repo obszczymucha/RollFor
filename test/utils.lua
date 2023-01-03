@@ -131,6 +131,10 @@ function M.mock( funcName, result )
   end
 end
 
+function M.mock_object( name, result )
+  facade().api[ name ] = result
+end
+
 function M.run_command( command, args )
   local f = m_slashcmdlist[ command ]
 
@@ -199,6 +203,7 @@ end
 function M.mock_table_function( name, values )
   facade().api[ name ] = function( key )
     local value = values[ key ]
+
     if type( value ) == "function" then
       return value()
     else
@@ -492,6 +497,65 @@ function M.load_libstub()
 
   ---@diagnostic disable-next-line: lowercase-global
   return LibStub
+end
+
+function M.trade_with( recipient )
+  RollFor.settings.tradeTrackerDebug = true
+  M.mock_object( "TradeFrameRecipientNameText", { GetText = function() return recipient end } )
+  M.fire_event( "TRADE_SHOW" )
+end
+
+function M.cancel_trade()
+  RollFor.settings.tradeTrackerDebug = true
+  M.fire_event( "TRADE_ACCEPT_UPDATE", 0 )
+  M.fire_event( "TRADE_CLOSED" )
+end
+
+function M.trade_cancelled_by_recipient()
+  RollFor.settings.tradeTrackerDebug = true
+  M.fire_event( "TRADE_REQUEST_CANCEL" )
+end
+
+function M.trade_complete()
+  RollFor.settings.tradeTrackerDebug = true
+  M.fire_event( "TRADE_ACCEPT_UPDATE", 1 )
+  M.fire_event( "TRADE_CLOSED" )
+end
+
+function M.register_trade_callback( callback )
+  ModUi:GetModule( "TradeTracker" ).register_callback( callback )
+end
+
+function M.map( t, f )
+  if type( f ) ~= "function" then return t end
+  local result = {}
+
+  for _, v in pairs( t ) do
+    local value = f( v )
+    table.insert( result, value )
+  end
+
+  return result
+end
+
+function M.trade_items( ... )
+  local items = { ... }
+  M.mock_table_function( "GetTradePlayerItemInfo", M.map( items, function( v ) return function() return _, _, v.quantity end end ) )
+  M.mock_table_function( "GetTradePlayerItemLink", M.map( items, function( v ) return function() return v.item_link end end ) )
+
+  for i = 1, #items do
+    M.fire_event( "TRADE_PLAYER_ITEM_CHANGED", i )
+  end
+end
+
+function M.recipient_trades_items( ... )
+  local items = { ... }
+  M.mock_table_function( "GetTradeTargetItemInfo", M.map( items, function( v ) return function() return _, _, v.quantity end end ) )
+  M.mock_table_function( "GetTradeTargetItemLink", M.map( items, function( v ) return function() return v.item_link end end ) )
+
+  for i = 1, #items do
+    M.fire_event( "TRADE_TARGET_ITEM_CHANGED", i )
+  end
 end
 
 return M

@@ -7,10 +7,18 @@ local m_trading = false
 local m_items_giving = {}
 local m_items_receiving = {}
 local m_player_accepted = false
+local m_recipient_name = nil
+local m_callbacks = {}
+
+local function highlight( text )
+  return string.format( "|cffff9f69%s|r", text )
+end
 
 local function on_trade_show()
+  m_recipient_name = api.TradeFrameRecipientNameText:GetText() or "Unknown"
+
   if RollFor.settings.tradeTrackerDebug then
-    M:PrettyPrint( "Trade opened." )
+    M:PrettyPrint( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
   end
 
   m_trading = true
@@ -48,9 +56,11 @@ local function on_trade_closed()
   if not RollFor.settings.tradeTrackerDebug then return end
 
   if m_player_accepted then
-    M:PrettyPrint( "Trade complete." )
-    M:PrettyPrint( string.format( "Given: %s", M:dump( m_items_giving ) ) )
-    M:PrettyPrint( string.format( "Received: %s", M:dump( m_items_receiving ) ) )
+    M:PrettyPrint( string.format( "Trading with %s complete.", highlight( m_recipient_name ) ) )
+
+    for _, callback in pairs( m_callbacks ) do
+      callback( m_recipient_name, m_items_giving, m_items_receiving )
+    end
   else
     M:PrettyPrint( "Trade cancelled by you." )
   end
@@ -65,11 +75,22 @@ local function on_trade_request_cancel()
   m_trading = false
 
   if RollFor.settings.tradeTrackerDebug then
-    M:PrettyPrint( "Trade cancelled by target." )
+    M:PrettyPrint( string.format( "Trade cancelled by %s.", highlight( m_recipient_name ) ) )
   end
 end
 
+local function init()
+  M.PrettyPrint = ModUi:GetModule( "RollFor" ).PrettyPrint
+  m_callbacks = {}
+end
+
+function M.register_callback( callback )
+  if type( callback ) ~= "function" then return end
+  table.insert( m_callbacks, callback )
+end
+
 function M.Initialize()
+  M:OnFirstEnterWorld( init )
   M:OnTradeShow( on_trade_show )
   M:OnTradePlayerItemChanged( on_trade_player_item_changed )
   M:OnTradeTargetItemChanged( on_trade_target_item_changed )
