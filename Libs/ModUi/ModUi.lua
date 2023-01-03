@@ -210,6 +210,15 @@ function ModUi.GetModule( _, moduleName )
   return modules[ moduleName ]
 end
 
+local function ExtendComponent( component )
+  for _, extension in pairs( extensions ) do
+    if extension.enabled and ModUi.utils.TableContainsValue( component.requiredExtensions, extension.name ) and extension.ExtendComponent then
+      component:DebugMsg( string.format( "Extending with |cff209ff9%s|r", extension.name ) )
+      extension.ExtendComponent( component )
+    end
+  end
+end
+
 function ModUi.NewModule( _, moduleName, requiredExtensions )
   if not moduleName then
     error( "No module name provided." )
@@ -241,16 +250,11 @@ function ModUi.NewModule( _, moduleName, requiredExtensions )
   ModUi.AddUtilityFunctionsToModule( combatParams, mod )
   modules[ moduleName ] = mod
 
-  return mod
-end
-
-local function ExtendComponent( component )
-  for _, extension in pairs( extensions ) do
-    if extension.enabled and ModUi.utils.TableContainsValue( component.requiredExtensions, extension.name ) and extension.ExtendComponent then
-      component:DebugMsg( string.format( "Extending with |cff209ff9%s|r", extension.name ) )
-      extension.ExtendComponent( component )
-    end
+  if m_initialized then
+    ExtendComponent( mod )
   end
+
+  return mod
 end
 
 local function ExtendExtensions()

@@ -1,5 +1,6 @@
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
-local M = ModUi:NewModule( "TradeTracker" )
+local E = ModUi:NewExtension( "TradeTracker" )
+local OnTradeComplete, EmitTradeCompleteEvent = E:RegisterCallback( "tradeComplete" )
 
 local api = ModUi.facade.api
 
@@ -8,7 +9,6 @@ local m_items_giving = {}
 local m_items_receiving = {}
 local m_player_accepted = false
 local m_recipient_name = nil
-local m_callbacks = {}
 
 local function highlight( text )
   return string.format( "|cffff9f69%s|r", text )
@@ -18,7 +18,7 @@ local function on_trade_show()
   m_recipient_name = api.TradeFrameRecipientNameText:GetText() or "Unknown"
 
   if RollFor.settings.tradeTrackerDebug then
-    M:PrettyPrint( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
+    E:PrettyPrint( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
   end
 
   m_trading = true
@@ -32,7 +32,7 @@ local function on_trade_player_item_changed( slot )
   local item_link = api.GetTradePlayerItemLink( slot )
 
   if quantity and item_link then
-    m_items_giving[ slot ] = { quantity = quantity, item_link = item_link }
+    m_items_giving[ slot ] = { quantity = quantity, link = item_link }
   else
     m_items_giving[ slot ] = nil
   end
@@ -43,7 +43,7 @@ local function on_trade_target_item_changed( slot )
   local item_link = api.GetTradeTargetItemLink( slot )
 
   if quantity and item_link then
-    m_items_receiving[ slot ] = { quantity = quantity, item_link = item_link }
+    m_items_receiving[ slot ] = { quantity = quantity, link = item_link }
   else
     m_items_receiving[ slot ] = nil
   end
@@ -53,16 +53,16 @@ local function on_trade_closed()
   if not m_trading then return end
   m_trading = false
 
-  if not RollFor.settings.tradeTrackerDebug then return end
+  if RollFor.settings.tradeTrackerDebug then
+    if m_player_accepted then
+      E:PrettyPrint( string.format( "Trading with %s complete.", highlight( m_recipient_name ) ) )
+    else
+      E:PrettyPrint( "Trade cancelled by you." )
+    end
+  end
 
   if m_player_accepted then
-    M:PrettyPrint( string.format( "Trading with %s complete.", highlight( m_recipient_name ) ) )
-
-    for _, callback in pairs( m_callbacks ) do
-      callback( m_recipient_name, m_items_giving, m_items_receiving )
-    end
-  else
-    M:PrettyPrint( "Trade cancelled by you." )
+    EmitTradeCompleteEvent( m_recipient_name, m_items_giving, m_items_receiving )
   end
 end
 
@@ -75,28 +75,26 @@ local function on_trade_request_cancel()
   m_trading = false
 
   if RollFor.settings.tradeTrackerDebug then
-    M:PrettyPrint( string.format( "Trade cancelled by %s.", highlight( m_recipient_name ) ) )
+    E:PrettyPrint( string.format( "Trade cancelled by %s.", highlight( m_recipient_name ) ) )
   end
 end
 
 local function init()
-  M.PrettyPrint = ModUi:GetModule( "RollFor" ).PrettyPrint
-  m_callbacks = {}
+  E.PrettyPrint = ModUi:GetModule( "RollFor" ).PrettyPrint
 end
 
-function M.register_callback( callback )
-  if type( callback ) ~= "function" then return end
-  table.insert( m_callbacks, callback )
+function E.Initialize()
+  E:OnFirstEnterWorld( init )
+  E:OnTradeShow( on_trade_show )
+  E:OnTradePlayerItemChanged( on_trade_player_item_changed )
+  E:OnTradeTargetItemChanged( on_trade_target_item_changed )
+  E:OnTradeClosed( on_trade_closed )
+  E:OnTradeAcceptUpdate( on_trade_accept_update )
+  E:OnTradeRequestCancel( on_trade_request_cancel )
 end
 
-function M.Initialize()
-  M:OnFirstEnterWorld( init )
-  M:OnTradeShow( on_trade_show )
-  M:OnTradePlayerItemChanged( on_trade_player_item_changed )
-  M:OnTradeTargetItemChanged( on_trade_target_item_changed )
-  M:OnTradeClosed( on_trade_closed )
-  M:OnTradeAcceptUpdate( on_trade_accept_update )
-  M:OnTradeRequestCancel( on_trade_request_cancel )
+function E.ExtendComponent( component )
+  component.OnTradeComplete = OnTradeComplete
 end
 
-return M
+return E

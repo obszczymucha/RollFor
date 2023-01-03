@@ -7,9 +7,7 @@ local facade = libStub( "ModUiFacade-1.0" )
 local item_utils = libStub( "ItemUtils" )
 local api = facade.api
 
-M.item = function( ... )
-  local id, name, link, quality = ...
-
+M.item = function( id, name, link, quality )
   return { id = id, name = name, link = link, quality = quality }
 end
 

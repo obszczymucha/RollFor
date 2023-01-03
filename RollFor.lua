@@ -1,10 +1,11 @@
----@diagnostic disable: redefined-local
-local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
-local M = ModUi:NewModule( "RollFor" )
+---@diagnostic disable-next-line: undefined-global
+local libStub = LibStub
+local ModUi = libStub:GetLibrary( "ModUi-1.0", 4 )
+local M = ModUi:NewModule( "RollFor", { "TradeTracker" } )
 if not M then return end
 
-local dropped_loot_announce = LibStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.15"
+local dropped_loot_announce = libStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
+local version = "1.16"
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -27,8 +28,9 @@ local m_awarded_items = {}
 local m_dropped_items = {}
 local m_reserved_by = {}
 
-local AceGUI = LibStub( "AceGUI-3.0" )
-local frame = nil
+local AceGUI = libStub( "AceGUI-3.0" )
+local item_utils = libStub( "ItemUtils" )
+local m_softres_frame = nil
 --local testJson = "{\"id\":\"812469384114470972\",\"instance\":\"zg\",\"softreserves\":[{\"item\":6948,\"rollBonus\":0,\"name\":\"psikutas\",\"note\":\"\"},{\"item\":6948,\"rollBonus\":0,\"name\":\"Obszczymucha\",\"note\":\"\"},{\"item\":13446,\"rollBonus\":0,\"name\":\"Cykablyat\",\"note\":\"\"}],\"hardreserves\":[],\"note\":\"\",\"discord\":\"\"}"
 local softResItEncryptedData = nil
 local dataDirty = false
@@ -503,7 +505,7 @@ local function UpdateData( silent )
   local data = M:DecodeBase64( softResItEncryptedData )
 
   if data then
-    data = LibStub:GetLibrary( "LibDeflate" ):DecompressZlib( data )
+    data = libStub:GetLibrary( "LibDeflate" ):DecompressZlib( data )
   end
 
   if data then
@@ -1362,13 +1364,13 @@ local function SetupStorage()
 end
 
 local function ShowGui()
-  frame = AceGUI:Create( "Frame" )
-  frame.frame:SetFrameStrata( "DIALOG" )
-  frame:SetTitle( "SoftResLoot" )
-  frame:SetLayout( "Fill" )
-  frame:SetWidth( 565 )
-  frame:SetHeight( 300 )
-  frame:SetCallback( "OnClose",
+  m_softres_frame = AceGUI:Create( "Frame" )
+  m_softres_frame.frame:SetFrameStrata( "DIALOG" )
+  m_softres_frame:SetTitle( "SoftResLoot" )
+  m_softres_frame:SetLayout( "Fill" )
+  m_softres_frame:SetWidth( 565 )
+  m_softres_frame:SetHeight( 300 )
+  m_softres_frame:SetCallback( "OnClose",
     function( widget )
       if not dataDirty then
         if not SoftResDataExists() then
@@ -1385,7 +1387,7 @@ local function ShowGui()
     end
   )
 
-  frame:SetStatusText( "" )
+  m_softres_frame:SetStatusText( "" )
 
   local importEditBox = AceGUI:Create( "MultiLineEditBox" )
   importEditBox:SetFullWidth( true )
@@ -1402,7 +1404,7 @@ local function ShowGui()
     softResItEncryptedData = importEditBox:GetText()
   end )
 
-  frame:AddChild( importEditBox )
+  m_softres_frame:AddChild( importEditBox )
 end
 
 local function ProcessSoftResSlashCommand( args )
@@ -1559,6 +1561,33 @@ local function BroadcastVersionToTheGroup()
   BroadcastVersion( api.IsInRaid() and "RAID" or "PARTY" )
 end
 
+local function get_dropped_item_name( item_id )
+  for _, item in pairs( m_dropped_items ) do
+    if item.id == item_id then return item.name end
+  end
+
+  return nil
+end
+
+local function on_trade_complete( recipient, items_given, items_received )
+  for i = 1, #items_given do
+    local item = items_given[ i ]
+    local item_id = item_utils.get_item_id( item.link )
+    local item_name = get_dropped_item_name( item_id )
+
+    if item_name then
+      M.award_item( recipient, item_id, item_name, item.link )
+    end
+  end
+
+  for i = 1, #items_received do
+    local item = items_received[ i ]
+    local item_id = item_utils.get_item_id( item.link )
+
+    M.unaward_item( recipient, item_id, item.link )
+  end
+end
+
 local function OnFirstEnterWorld()
   reset()
 
@@ -1593,7 +1622,7 @@ local function OnFirstEnterWorld()
   SetupStorage()
 
   -- dataDirty = true
-  -- local data = LibStub:GetLibrary( "LibDeflate" ):CompressZlib( testJson )
+  -- local data = libStub:GetLibrary( "LibDeflate" ):CompressZlib( testJson )
   -- softResItEncryptedData = M:EncodeBase64( data )
 
   UpdateData( true )
@@ -1605,6 +1634,7 @@ local function OnFirstEnterWorld()
   BroadcastVersionToTheGroup()
   ModUi:RegisterComm( commPrefix, OnComm )
   UpdateGroupStatus()
+
   M:PrettyPrint( string.format( "Loaded (%s).", highlight( string.format( "v%s", version ) ) ) )
 end
 
@@ -1769,7 +1799,7 @@ local function OnLootSlotCleared()
     local item_id = get_item_id( item_name )
 
     if item_id then
-      M.award_item( m_item_to_be_awarded.player, item_id, item_name )
+      M.award_item( m_item_to_be_awarded.player, item_id, item_name, m_item_to_be_awarded.colored_item_name )
       M:PrettyPrint( string.format( "%s received %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
     else
       M:PrettyPrint( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
@@ -1780,9 +1810,32 @@ local function OnLootSlotCleared()
   end
 end
 
-function M.award_item( player, item_id, item_name )
+function M.award_item( player, item_id, item_name, item_link_or_colored_item_name )
   table.insert( m_awarded_items, { player = player, item_id = item_id, item_name = item_name } )
   ModUiDb.rollfor.awarded_items = m_awarded_items
+  M:PrettyPrint( string.format( "%s received %s.", highlight( player ), item_link_or_colored_item_name ) )
+end
+
+---@diagnostic disable-next-line: unused-local
+local function remove_from_awarded_items( player, item_id )
+  local result = {}
+
+  for i = 1, #m_awarded_items do
+    local item = m_awarded_items[ i ]
+    if item.player ~= player or item.item_id ~= item_id then
+      table.insert( result, item )
+    end
+  end
+
+  return result
+end
+
+---@diagnostic disable-next-line: unused-local
+function M.unaward_item( player, item_id, item_link_or_colored_item_name )
+  --TODO: Think if we want to do this.
+  --m_awarded_items = remove_from_awarded_items( player, item_id )
+  --ModUiDb.rollfor.awarded_items = m_awarded_items
+  M:PrettyPrint( string.format( "%s returned %s.", highlight( player ), item_link_or_colored_item_name ) )
 end
 
 function M.Initialize()
@@ -1794,6 +1847,7 @@ function M.Initialize()
   M:OnLootReady( OnLootReady )
   M:OnOpenMasterLootList( OnOpenMasterLootList )
   M:OnLootSlotCleared( OnLootSlotCleared )
+  M:OnTradeComplete( on_trade_complete )
 
   -- For testing:
   --M:OnPartyMessage( OnPartyMessage )

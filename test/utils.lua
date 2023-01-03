@@ -96,6 +96,7 @@ function M.mock_facade()
   M.mock( "IsInGroup", false )
   M.mock( "IsInRaid", false )
   M.mock( "UnitIsFriend", false )
+  M.mock( "InCombatLockdown", false )
   M.mock_messages()
 end
 
@@ -367,6 +368,7 @@ function M.load_real_stuff()
   require( "settings" )
   require( "src/ItemUtils" )
   require( "src/DroppedLootAnnounce" )
+  require( "src/TradeTracker" )
   require( "RollFor" )
 end
 
@@ -479,7 +481,7 @@ end
 
 function M.award( player, item_name, item_id )
   local rf = ModUi:GetModule( "RollFor" )
-  rf.award_item( player, item_id, item_name )
+  rf.award_item( player, item_id, item_name, M.item_link( item_name, item_id ) )
 end
 
 function M.epic_threshold()
@@ -520,10 +522,6 @@ function M.trade_complete()
   RollFor.settings.tradeTrackerDebug = true
   M.fire_event( "TRADE_ACCEPT_UPDATE", 1 )
   M.fire_event( "TRADE_CLOSED" )
-end
-
-function M.register_trade_callback( callback )
-  ModUi:GetModule( "TradeTracker" ).register_callback( callback )
 end
 
 function M.map( t, f )

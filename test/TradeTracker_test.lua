@@ -8,7 +8,6 @@ local trade_with = utils.trade_with
 local cancel_trade = utils.cancel_trade
 local trade_complete = utils.trade_complete
 local trade_cancelled_by_recipient = utils.trade_cancelled_by_recipient
-local register_trade_callback = utils.register_trade_callback
 local trade_items = utils.trade_items
 local recipient_trades_items = utils.recipient_trades_items
 local assert_messages = utils.assert_messages
@@ -61,12 +60,19 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_is_co
   )
 end
 
+local function create_module( name, callback )
+  local M = ModUi:NewModule( name, { "TradeTracker" } )
+  if not M then return M end
+
+  M:OnTradeComplete( callback )
+end
+
 function TradeTrackerIntegrationSpec:should_call_back_with_recipient_name()
   -- Given
   player( "Psikutas" )
   trade_with( "Obszczymucha" )
   local result
-  register_trade_callback( function( recipient ) result = recipient end )
+  create_module( "mod1", function( recipient ) result = recipient end )
 
   -- When
   trade_complete()
@@ -80,7 +86,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_given()
   player( "Psikutas" )
   trade_with( "Obszczymucha" )
   local result
-  register_trade_callback( function( _, items_given ) result = items_given end )
+  create_module( "mod2", function( _, items_given ) result = items_given end )
   trade_items( { item_link = "fake item link", quantity = 1 } )
 
   -- When
@@ -88,7 +94,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_given()
 
   -- Then
   lu.assertEquals( result, {
-    { item_link = "fake item link", quantity = 1 }
+    { link = "fake item link", quantity = 1 }
   } )
 end
 
@@ -97,7 +103,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
   player( "Psikutas" )
   trade_with( "Obszczymucha" )
   local result
-  register_trade_callback( function( _, _, items_received ) result = items_received end )
+  create_module( "mod3", function( _, _, items_received ) result = items_received end )
   recipient_trades_items( { item_link = "fake item link", quantity = 1 } )
 
   -- When
@@ -105,7 +111,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
 
   -- Then
   lu.assertEquals( result, {
-    { item_link = "fake item link", quantity = 1 }
+    { link = "fake item link", quantity = 1 }
   } )
 end
 
@@ -114,6 +120,5 @@ runner:setOutputType( "text" )
 
 utils.mock_libraries()
 utils.load_real_stuff()
-require( "src/TradeTracker" )
 
 os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
