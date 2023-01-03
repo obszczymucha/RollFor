@@ -2,7 +2,7 @@
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
 local dropped_loot_announce = LibStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.14"
+local version = "1.15"
 
 local m_timer = nil
 local m_seconds_left = nil

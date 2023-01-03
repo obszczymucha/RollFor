@@ -3,7 +3,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../src/?.lua;../Libs/?.l
 local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
-require( "LibStub" )
+test_utils.load_libstub()
 local utils = require( "src/ItemUtils" )
 
 ItemUtilsSpec = {}

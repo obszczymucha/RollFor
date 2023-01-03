@@ -109,6 +109,7 @@ end
 local runner = lu.LuaUnit.new()
 runner:setOutputType( "text" )
 
+utils.load_libstub()
 utils.mock_libraries()
 utils.load_real_stuff()
 

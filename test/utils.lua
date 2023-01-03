@@ -2,6 +2,17 @@ local M = {}
 
 local lu = require( "luaunit" )
 
+function M.load_libstub()
+  ---@diagnostic disable-next-line: lowercase-global
+  strmatch = string.match
+  require( "LibStub" )
+
+  ---@diagnostic disable-next-line: lowercase-global
+  return LibStub
+end
+
+local libStub = M.load_libstub()
+
 local m_slashcmdlist = {}
 local m_messages = {}
 local m_event_callback = nil
@@ -50,8 +61,6 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
-  ---@diagnostic disable-next-line: lowercase-global
-  strmatch = string.match
   CreateFrame = function( _, frameName )
     print( string.format( "[ CreateFrame ]: %s", frameName ) )
 
@@ -72,11 +81,11 @@ function M.decolorize( input )
 end
 
 function M.parse_item_link( item_link )
-  return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+::::::::%d+:%d+::::::|h(.*)|h|r", "%1" )
+  return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h(.*)|h|r", "%1" )
 end
 
 function M.mock_library( name, object )
-  require( "LibStub" )
+  M.load_libstub()
   local result = LibStub:NewLibrary( name, 1 )
   if not result then return nil end
   if not object then return result end
@@ -89,7 +98,7 @@ function M.mock_library( name, object )
 end
 
 local function facade()
-  require( "LibStub" )
+  M.load_libstub()
   return LibStub( "ModUiFacade-1.0" )
 end
 
@@ -355,12 +364,13 @@ function M.mock_libraries()
 end
 
 function M.load_real_stuff()
-  require( "LibStub" )
+  M.load_libstub()
   require( "ModUi/facade" )
   M.mock_facade()
   M.mock_slashcmdlist()
   require( "ModUi" )
   require( "ModUi/utils" )
+  require( "src/Settings" )
   require( "src/ItemUtils" )
   require( "src/DroppedLootAnnounce" )
   require( "RollFor" )
@@ -476,6 +486,15 @@ end
 function M.award( player, item_name, item_id )
   local rf = ModUi:GetModule( "RollFor" )
   rf.award_item( player, item_id, item_name )
+end
+
+function M.epic_threshold()
+  M.loot_quality_threshold( 4 )
+end
+
+function M.loot_quality_threshold( quality )
+  local settings = libStub( "RollFor-Settings" )
+  settings.lootQualityThreshold = quality
 end
 
 return M

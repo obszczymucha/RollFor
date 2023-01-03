@@ -6,6 +6,7 @@
 ## SavedVariables: ModUiDb
 
 Libs\Libs.xml
+src\Settings.lua
 src\ItemUtils.lua
 src\DroppedLootAnnounce.lua
 src\TradeTracker.lua
