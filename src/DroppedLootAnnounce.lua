@@ -5,7 +5,6 @@ if not M then return end
 
 local facade = libStub( "ModUiFacade-1.0" )
 local item_utils = libStub( "ItemUtils" )
-local settings = libStub( "RollFor-Settings" )
 local api = facade.api
 
 M.item = function( ... )
@@ -19,7 +18,7 @@ local function process_dropped_item( item_index )
   if not link then return nil end
 
   local quality = select( 5, api.GetLootSlotInfo( item_index ) ) or 0
-  if quality < settings.lootQualityThreshold then return nil end
+  if quality < RollFor.settings.lootQualityThreshold then return nil end
 
   local item_id = item_utils.get_item_id( link )
   local item_name = item_utils.get_item_name( link )

@@ -1,6 +1,8 @@
 ---@diagnostic disable: redefined-local
 local ModUi = LibStub:GetLibrary( "ModUi-1.0", 4 )
 local M = ModUi:NewModule( "RollFor" )
+if not M then return end
+
 local dropped_loot_announce = LibStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
 local version = "1.15"
 

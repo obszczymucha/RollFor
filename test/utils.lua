@@ -2,17 +2,6 @@ local M = {}
 
 local lu = require( "luaunit" )
 
-function M.load_libstub()
-  ---@diagnostic disable-next-line: lowercase-global
-  strmatch = string.match
-  require( "LibStub" )
-
-  ---@diagnostic disable-next-line: lowercase-global
-  return LibStub
-end
-
-local libStub = M.load_libstub()
-
 local m_slashcmdlist = {}
 local m_messages = {}
 local m_event_callback = nil
@@ -370,7 +359,7 @@ function M.load_real_stuff()
   M.mock_slashcmdlist()
   require( "ModUi" )
   require( "ModUi/utils" )
-  require( "src/Settings" )
+  require( "settings" )
   require( "src/ItemUtils" )
   require( "src/DroppedLootAnnounce" )
   require( "RollFor" )
@@ -493,8 +482,16 @@ function M.epic_threshold()
 end
 
 function M.loot_quality_threshold( quality )
-  local settings = libStub( "RollFor-Settings" )
-  settings.lootQualityThreshold = quality
+  RollFor.settings.lootQualityThreshold = quality
+end
+
+function M.load_libstub()
+  ---@diagnostic disable-next-line: lowercase-global
+  strmatch = string.match
+  require( "LibStub" )
+
+  ---@diagnostic disable-next-line: lowercase-global
+  return LibStub
 end
 
 return M
