@@ -2,6 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/Mo
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
+
 local player = utils.player
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
@@ -15,8 +16,9 @@ local soft_res = utils.soft_res
 local hr = utils.hard_res_item
 local sr = utils.soft_res_item
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_show_loot_that_dropped_if_not_a_master_looter()
+DroppedLootAnnounceIntegrationSpec = {}
+
+function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_that_dropped_if_not_a_master_looter()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -29,8 +31,7 @@ function should_not_show_loot_that_dropped_if_not_a_master_looter()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_show_loot_if_there_are_no_epic_quality_items()
+function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_if_there_are_no_epic_quality_items()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -43,8 +44,7 @@ function should_not_show_loot_if_there_are_no_epic_quality_items()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_one_item_that_dropped_if_a_master_looter_and_not_targetting_an_enemy()
+function DroppedLootAnnounceIntegrationSpec:should_show_one_item_that_dropped_if_a_master_looter_and_not_targetting_an_enemy()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -59,8 +59,7 @@ function should_show_one_item_that_dropped_if_a_master_looter_and_not_targetting
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_more_items_that_dropped_if_a_master_looter_and_not_targetting_an_enemy()
+function DroppedLootAnnounceIntegrationSpec:should_show_more_items_that_dropped_if_a_master_looter_and_not_targetting_an_enemy()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -76,8 +75,7 @@ function should_show_more_items_that_dropped_if_a_master_looter_and_not_targetti
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_only_show_loot_once()
+function DroppedLootAnnounceIntegrationSpec:should_only_show_loot_once()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -94,8 +92,7 @@ function should_only_show_loot_once()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_loot_that_dropped_if_a_master_looter_and_targetting_an_enemy()
+function DroppedLootAnnounceIntegrationSpec:should_show_loot_that_dropped_if_a_master_looter_and_targetting_an_enemy()
   -- Given
   master_looter( "Psikutas" )
   targetting_enemy( "Instructor Razuvious" )
@@ -112,8 +109,7 @@ function should_show_loot_that_dropped_if_a_master_looter_and_targetting_an_enem
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_hard_ressed_items()
+function DroppedLootAnnounceIntegrationSpec:should_show_hard_ressed_items()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -129,8 +125,7 @@ function should_show_hard_ressed_items()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_soft_ressed_items_by_one_player()
+function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_one_player()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -146,8 +141,7 @@ function should_show_soft_ressed_items_by_one_player()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_soft_ressed_items_by_two_players()
+function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two_players()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -163,8 +157,7 @@ function should_show_soft_ressed_items_by_two_players()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_soft_ressed_items_by_two_players_separately_for_each_item()
+function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two_players_separately_for_each_item()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -181,8 +174,7 @@ function should_show_soft_ressed_items_by_two_players_separately_for_each_item()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_soft_ressed_items_by_three_players()
+function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_three_players()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -198,8 +190,7 @@ function should_show_soft_ressed_items_by_three_players()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_show_soft_ressed_items_by_two_players_with_multiple_rolls()
+function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two_players_with_multiple_rolls()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )

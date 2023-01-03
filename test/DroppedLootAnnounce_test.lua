@@ -6,7 +6,7 @@ utils.mock_wow_api()
 utils.load_libstub()
 require( "ModUi/facade" )
 require( "src/ItemUtils" )
-require( "./settings" )
+require( "settings" )
 local mod = require( "src/DroppedLootAnnounce" )
 
 local item = function( name, id, quality ) return mod.item( id, name, string.format( "[%s]", name ), quality or 4 ) end

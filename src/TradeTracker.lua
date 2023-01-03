@@ -9,7 +9,10 @@ local m_items_receiving = {}
 local m_player_accepted = false
 
 local function on_trade_show()
-  M:PrettyPrint( "Trade opened." )
+  if RollFor.settings.tradeTrackerDebug then
+    M:PrettyPrint( "Trade opened." )
+  end
+
   m_trading = true
   m_items_giving = {}
   m_items_receiving = {}
@@ -42,6 +45,8 @@ local function on_trade_closed()
   if not m_trading then return end
   m_trading = false
 
+  if not RollFor.settings.tradeTrackerDebug then return end
+
   if m_player_accepted then
     M:PrettyPrint( "Trade complete." )
     M:PrettyPrint( string.format( "Given: %s", M:dump( m_items_giving ) ) )
@@ -59,15 +64,12 @@ local function on_trade_request_cancel()
   if not m_trading then return end
   m_trading = false
 
-  M:PrettyPrint( "Trade cancelled by target." )
-end
-
-local function on_first_enter_world()
-  M:PrettyPrint( "Loaded." )
+  if RollFor.settings.tradeTrackerDebug then
+    M:PrettyPrint( "Trade cancelled by target." )
+  end
 end
 
 function M.Initialize()
-  M:OnFirstEnterWorld( on_first_enter_world )
   M:OnTradeShow( on_trade_show )
   M:OnTradePlayerItemChanged( on_trade_player_item_changed )
   M:OnTradeTargetItemChanged( on_trade_target_item_changed )
@@ -76,9 +78,4 @@ function M.Initialize()
   M:OnTradeRequestCancel( on_trade_request_cancel )
 end
 
--- TRADE_SHOW
--- TRADE_PLAYER_ITEM_CHANGED <slot>
--- TRADE_TARGET_ITEM_CHANGED <slot>
--- TRADE_ACCEPT_UPDATE <me: bool> <target: bool>
--- TRADE_CLOSED
 return M
