@@ -15,8 +15,9 @@ local assert_messages = utils.assert_messages
 local soft_res = utils.soft_res
 local hr = utils.hard_res_item
 
----@diagnostic disable-next-line: lowercase-global
-function should_announce_hr_and_ignore_all_rolls()
+HardResRollsSpec = {}
+
+function HardResRollsSpec:should_announce_hr_and_ignore_all_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -41,4 +42,4 @@ runner:setOutputType( "text" )
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

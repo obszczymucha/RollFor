@@ -15,8 +15,9 @@ local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
 local tick = utils.tick
 
----@diagnostic disable-next-line: lowercase-global
-function should_prioritize_mainspec_over_offspec_rolls()
+BothSpecRollsSpec = {}
+
+function BothSpecRollsSpec:should_prioritize_mainspec_over_offspec_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -36,8 +37,7 @@ function should_prioritize_mainspec_over_offspec_rolls()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_override_offspec_roll_with_mainspec_and_finish_automatically()
+function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_finish_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -58,8 +58,7 @@ function should_override_offspec_roll_with_mainspec_and_finish_automatically()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_override_offspec_roll_with_mainspec_and_not_finish_automatically()
+function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_not_finish_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -81,8 +80,7 @@ function should_override_offspec_roll_with_mainspec_and_not_finish_automatically
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_both_mainspec_and_offspec_rollers_and_stop_automatically()
+function BothSpecRollsSpec:should_recognize_both_mainspec_and_offspec_rollers_and_stop_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -103,8 +101,7 @@ function should_recognize_both_mainspec_and_offspec_rollers_and_stop_automatical
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_both_mainspec_and_top_offspec_rollers_and_stop_automatically()
+function BothSpecRollsSpec:should_recognize_both_mainspec_and_top_offspec_rollers_and_stop_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -127,8 +124,7 @@ function should_recognize_both_mainspec_and_top_offspec_rollers_and_stop_automat
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_both_top_mainspec_and_offspec_rollers_and_stop_automatically()
+function BothSpecRollsSpec:should_recognize_both_top_mainspec_and_offspec_rollers_and_stop_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -151,8 +147,7 @@ function should_recognize_both_top_mainspec_and_offspec_rollers_and_stop_automat
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_items_less_than_group_size()
+function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_items_less_than_group_size()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -175,8 +170,7 @@ function should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_items_equal_to_group_size()
+function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_items_equal_to_group_size()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -198,8 +192,7 @@ function should_recognize_both_mainspec_rollers_and_not_stop_automatically_with_
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_mainspec_and_offspec_rollers_and_not_stop_automatically_with_items_less_than_group_size()
+function BothSpecRollsSpec:should_recognize_mainspec_and_offspec_rollers_and_not_stop_automatically_with_items_less_than_group_size()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -222,8 +215,7 @@ function should_recognize_mainspec_and_offspec_rollers_and_not_stop_automaticall
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_mainspec_roller_and_top_offspec_roller_if_item_count_is_less_than_group_size()
+function BothSpecRollsSpec:should_recognize_mainspec_roller_and_top_offspec_roller_if_item_count_is_less_than_group_size()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -246,8 +238,7 @@ function should_recognize_mainspec_roller_and_top_offspec_roller_if_item_count_i
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_mainspec_rollers_if_item_count_is_less_than_group_size()
+function BothSpecRollsSpec:should_recognize_mainspec_rollers_if_item_count_is_less_than_group_size()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -276,4 +267,4 @@ runner:setOutputType( "text" )
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

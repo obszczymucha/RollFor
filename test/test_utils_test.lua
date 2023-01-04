@@ -3,8 +3,9 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/Mo
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 
----@diagnostic disable-next-line: lowercase-global
-function should_decolorize_text()
+TestUtilsSpec = {}
+
+function TestUtilsSpec:should_decolorize_text()
   -- Given
   local f = utils.decolorize
 
@@ -13,8 +14,7 @@ function should_decolorize_text()
   lu.assertEquals( f( "|cffa334eeBlessed Tanzanite|r" ), "Blessed Tanzanite" )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_parse_item_link()
+function TestUtilsSpec:should_parse_item_link()
   -- Given
   local input = utils.item_link( "Hearthstone" )
 
@@ -25,8 +25,7 @@ function should_parse_item_link()
   lu.assertEquals( result, "[Hearthstone]" )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_flatten_a_table_into_another_table()
+function TestUtilsSpec:should_flatten_a_table_into_another_table()
   -- Given
   local function f( a, b ) return function() return a, b end end
 
@@ -43,4 +42,4 @@ end
 local runner = lu.LuaUnit.new()
 runner:setOutputType( "text" )
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

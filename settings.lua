@@ -1,4 +1,3 @@
----@diagnostic disable-next-line: undefined-global
 if RollFor and RollFor.settings then return RollFor.settings end
 local M = {}
 

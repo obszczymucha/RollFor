@@ -17,8 +17,9 @@ local roll = utils.roll
 local assert_messages = utils.assert_messages
 local tick = utils.tick
 
----@diagnostic disable-next-line: lowercase-global
-function should_finish_rolling_automatically_if_all_players_rolled()
+MainspecRollsSpec = {}
+
+function MainspecRollsSpec:should_finish_rolling_automatically_if_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -38,8 +39,7 @@ function should_finish_rolling_automatically_if_all_players_rolled()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_finish_rolling_after_the_timer_if_not_all_players_rolled()
+function MainspecRollsSpec:should_finish_rolling_after_the_timer_if_not_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -60,8 +60,7 @@ function should_finish_rolling_after_the_timer_if_not_all_players_rolled()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_tie_rolls_when_all_players_tie()
+function MainspecRollsSpec:should_recognize_tie_rolls_when_all_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -83,8 +82,7 @@ function should_recognize_tie_rolls_when_all_players_tie()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_tie_rolls_when_some_players_tie()
+function MainspecRollsSpec:should_recognize_tie_rolls_when_some_players_tie()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -108,8 +106,7 @@ function should_recognize_tie_rolls_when_some_players_tie()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_detect_and_ignore_double_rolls()
+function MainspecRollsSpec:should_detect_and_ignore_double_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -131,8 +128,7 @@ function should_detect_and_ignore_double_rolls()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_rollers_for_multiple_items_when_all_players_rolled()
+function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_when_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -151,8 +147,7 @@ function should_recognize_multiple_rollers_for_multiple_items_when_all_players_r
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_recognize_multiple_rollers_for_multiple_items_when_not_all_players_rolled()
+function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_when_not_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -180,4 +175,4 @@ runner:setOutputType( "text" )
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

@@ -15,9 +15,10 @@ local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
 local tick = utils.tick
 
+OffspecRollsSpec = {}
+
 -- This gives players a chance to still roll MS if they rolled OS by mistake.
----@diagnostic disable-next-line: lowercase-global
-function should_not_finish_rolling_automatically_if_all_players_rolled()
+function OffspecRollsSpec:should_not_finish_rolling_automatically_if_all_players_rolled()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -37,8 +38,7 @@ function should_not_finish_rolling_automatically_if_all_players_rolled()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_finish_rolling_automatically_if_number_of_items_is_equal_to_the_size_of_the_group()
+function OffspecRollsSpec:should_finish_rolling_automatically_if_number_of_items_is_equal_to_the_size_of_the_group()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -57,8 +57,7 @@ function should_finish_rolling_automatically_if_number_of_items_is_equal_to_the_
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_finish_rolling_automatically_if_number_of_items_is_less_than_the_size_of_the_group()
+function OffspecRollsSpec:should_not_finish_rolling_automatically_if_number_of_items_is_less_than_the_size_of_the_group()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Chuj" )
@@ -81,8 +80,7 @@ function should_not_finish_rolling_automatically_if_number_of_items_is_less_than
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_detect_and_ignore_double_rolls()
+function OffspecRollsSpec:should_detect_and_ignore_double_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -113,4 +111,4 @@ utils.load_libstub()
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

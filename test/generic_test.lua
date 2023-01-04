@@ -18,8 +18,9 @@ local cancel_rolling = utils.cancel_rolling
 local finish_rolling = utils.finish_rolling
 local assert_messages = utils.assert_messages
 
----@diagnostic disable-next-line: lowercase-global
-function should_load_roll_for()
+GenericSpec = {}
+
+function GenericSpec:should_load_roll_for()
   -- Given
   local ModUi = LibStub( "ModUi-1.0" )
 
@@ -30,8 +31,7 @@ function should_load_roll_for()
   lu.assertNotNil( result )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_roll_if_not_in_group()
+function GenericSpec:should_not_roll_if_not_in_group()
   -- Given
   player( "Psikutas" )
 
@@ -44,8 +44,7 @@ function should_not_roll_if_not_in_group()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_print_usage_if_in_party_and_no_item_is_provided()
+function GenericSpec:should_print_usage_if_in_party_and_no_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_party( "Psikutas", "Obszczymucha" )
@@ -59,8 +58,7 @@ function should_print_usage_if_in_party_and_no_item_is_provided()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_print_usage_if_in_raid_and_no_item_is_provided()
+function GenericSpec:should_print_usage_if_in_raid_and_no_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -74,8 +72,7 @@ function should_print_usage_if_in_raid_and_no_item_is_provided()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_print_usage_if_in_party_and_invalid_item_is_provided()
+function GenericSpec:should_print_usage_if_in_party_and_invalid_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_party( "Psikutas", "Obszczymucha" )
@@ -89,8 +86,7 @@ function should_print_usage_if_in_party_and_invalid_item_is_provided()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_print_usage_if_in_raid_and_invalid_item_is_provided()
+function GenericSpec:should_print_usage_if_in_raid_and_invalid_item_is_provided()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -104,8 +100,7 @@ function should_print_usage_if_in_raid_and_invalid_item_is_provided()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_roll_the_item_in_party_chat()
+function GenericSpec:should_roll_the_item_in_party_chat()
   -- Given
   player( "Psikutas" )
   is_in_party( "Psikutas", "Obszczymucha" )
@@ -119,8 +114,7 @@ function should_roll_the_item_in_party_chat()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_roll_again_if_rolling_is_in_progress()
+function GenericSpec:should_not_roll_again_if_rolling_is_in_progress()
   -- Given
   player( "Psikutas" )
   is_in_party( "Psikutas", "Obszczymucha" )
@@ -136,8 +130,7 @@ function should_not_roll_again_if_rolling_is_in_progress()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_roll_the_item_in_raid_chat()
+function GenericSpec:should_roll_the_item_in_raid_chat()
   -- Given
   player( "Psikutas" )
   is_in_raid( "Psikutas", "Obszczymucha" )
@@ -151,8 +144,7 @@ function should_roll_the_item_in_raid_chat()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_roll_the_item_in_raid_warning()
+function GenericSpec:should_roll_the_item_in_raid_warning()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -166,8 +158,7 @@ function should_roll_the_item_in_raid_warning()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_cancel_rolling_if_rolling_is_not_in_progress()
+function GenericSpec:should_not_cancel_rolling_if_rolling_is_not_in_progress()
   -- Given
   player( "Psikutas" )
 
@@ -178,8 +169,7 @@ function should_not_cancel_rolling_if_rolling_is_not_in_progress()
   assert_messages( rolling_not_in_progress() )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_cancel_rolling()
+function GenericSpec:should_cancel_rolling()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -195,8 +185,7 @@ function should_cancel_rolling()
   )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_not_finish_rolling_if_rolling_is_not_in_progress()
+function GenericSpec:should_not_finish_rolling_if_rolling_is_not_in_progress()
   -- Given
   player( "Psikutas" )
 
@@ -207,8 +196,7 @@ function should_not_finish_rolling_if_rolling_is_not_in_progress()
   assert_messages( rolling_not_in_progress() )
 end
 
----@diagnostic disable-next-line: lowercase-global
-function should_finish_rolling()
+function GenericSpec:should_finish_rolling()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
@@ -231,4 +219,4 @@ runner:setOutputType( "text" )
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
