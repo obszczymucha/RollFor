@@ -5,7 +5,7 @@ local M = ModUi:NewModule( "RollFor", { "TradeTracker" } )
 if not M then return end
 
 local dropped_loot_announce = libStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.16"
+local version = "1.17"
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -30,18 +30,24 @@ local m_reserved_by = {}
 
 local AceGUI = libStub( "AceGUI-3.0" )
 local item_utils = libStub( "ItemUtils" )
-local m_softres_frame = nil
---local testJson = "{\"id\":\"812469384114470972\",\"instance\":\"zg\",\"softreserves\":[{\"item\":6948,\"rollBonus\":0,\"name\":\"psikutas\",\"note\":\"\"},{\"item\":6948,\"rollBonus\":0,\"name\":\"Obszczymucha\",\"note\":\"\"},{\"item\":13446,\"rollBonus\":0,\"name\":\"Cykablyat\",\"note\":\"\"}],\"hardreserves\":[],\"note\":\"\",\"discord\":\"\"}"
-local softResItEncryptedData = nil
-local dataDirty = false
+
+-- Persisted values
+local m_softres_data = nil
 local m_softres_items = {}
 local m_hardres_items = {}
-local softResPlayerNameOverrides = {}
-local softResPassing = {}
-local softResPassOptions = nil
-local softResUnpassOptions = nil
-local softResPlayerNameOverrideOptions = nil
-local softResPlayerNameUnoverrideOptions = nil
+local m_softres_player_name_overrides = {}
+local m_softres_passing = {}
+
+-- Non-persisted softres values
+local m_softres_frame = nil
+local m_softres_data_dirty = false
+
+-- Softres pass/override
+local m_softres_pass_options = nil
+local m_softres_unpass_options = nil
+local m_softres_player_name_override_options = nil
+local m_softres_player_name_unoverride_options = nil
+
 local commPrefix = "ModUi-RollFor"
 local wasInGroup = false
 
@@ -70,7 +76,7 @@ local function reset()
   m_item_award_confirmed = false
   m_awarded_items = {}
   m_dropped_items = {}
-  dataDirty = false
+  m_softres_data_dirty = false
   m_softres_items = {}
   m_hardres_items = {}
   m_reserved_by = {}
@@ -243,7 +249,7 @@ function AssignPredictions( predictions )
 end
 
 local function IsPlayerAlreadyOverridingAName( overridingPlayer )
-  for player, override in pairs( softResPlayerNameOverrides ) do
+  for player, override in pairs( m_softres_player_name_overrides ) do
     if player ~= override and override == overridingPlayer then return true end
   end
 
@@ -251,7 +257,7 @@ local function IsPlayerAlreadyOverridingAName( overridingPlayer )
 end
 
 local function IsPlayerSoftResPassing( player )
-  if softResPassing[ player ] or softResPassing[ string.lower( player ) ] then
+  if m_softres_passing[ player ] or m_softres_passing[ string.lower( player ) ] then
     return true
   else
     return false
@@ -262,8 +268,8 @@ local function OverridePlayerNames( players )
   local result = {}
 
   for _, player in pairs( players ) do
-    table.insert( result, softResPlayerNameOverrides[ player.name ] and {
-      name = softResPlayerNameOverrides[ player.name ][ "override" ],
+    table.insert( result, m_softres_player_name_overrides[ player.name ] and {
+      name = m_softres_player_name_overrides[ player.name ][ "override" ],
       rolls = player.rolls
     } or player )
   end
@@ -352,7 +358,7 @@ end
 local function GetAbsentPlayersWhoSoftRessed()
   local result = {}
 
-  for name, override in pairs( softResPlayerNameOverrides ) do
+  for name, override in pairs( m_softres_player_name_overrides ) do
     if not M:IsPlayerInMyGroup( override[ "override" ] ) and not IsPlayerSoftResPassing( name ) then
       table.insert( result, override[ "override" ] )
     end
@@ -362,7 +368,7 @@ local function GetAbsentPlayersWhoSoftRessed()
 end
 
 local function HasPlayerSoftRessed( player )
-  for _, override in pairs( softResPlayerNameOverrides ) do
+  for _, override in pairs( m_softres_player_name_overrides ) do
     if string.lower( player ) == string.lower( override[ "override" ] ) then return true end
   end
 
@@ -410,8 +416,8 @@ local function process_softres_items( entries )
 
       add_soft_ressing_player( result[ id ], entry.name )
 
-      if not softResPlayerNameOverrides[ entry.name ] then
-        softResPlayerNameOverrides[ entry.name ] = { [ "override" ] = entry.name, [ "similarity" ] = 0 }
+      if not m_softres_player_name_overrides[ entry.name ] then
+        m_softres_player_name_overrides[ entry.name ] = { [ "override" ] = entry.name, [ "similarity" ] = 0 }
       end
     end
   end
@@ -498,11 +504,11 @@ local function ShowSoftRes( args )
 end
 
 local function UpdateData( silent )
-  if not dataDirty then return end
+  if not m_softres_data_dirty then return end
 
-  ModUiDb.rollfor.softResItEncryptedData = softResItEncryptedData
+  ModUiDb.rollfor.softres_data = m_softres_data
 
-  local data = M:DecodeBase64( softResItEncryptedData )
+  local data = M:DecodeBase64( m_softres_data )
 
   if data then
     data = libStub:GetLibrary( "LibDeflate" ):DecompressZlib( data )
@@ -524,11 +530,11 @@ local function UpdateData( silent )
     if not silent then M:PrettyPrint( "Could not load soft-res data." ) end
   end
 
-  dataDirty = false
+  m_softres_data_dirty = false
 end
 
 local function ShowSoftResPlayerNameOverrideOptions()
-  local players = softResPlayerNameOverrideOptions
+  local players = m_softres_player_name_override_options
 
   if M:CountElements( players ) == 0 then
     M:PrettyPrint( "There are no players that can be overridden." )
@@ -564,22 +570,22 @@ local function ReportSoftResReady()
 end
 
 local function CreateSoftResPlayerNameOverrideOptions()
-  softResPlayerNameOverrideOptions = GetAbsentPlayersWhoSoftRessed()
+  m_softres_player_name_override_options = GetAbsentPlayersWhoSoftRessed()
 end
 
 local function SoftResPlayerNameOverride( args )
-  if not softResPlayerNameOverrideOptions or not args or args == "" then
+  if not m_softres_player_name_override_options or not args or args == "" then
     CreateSoftResPlayerNameOverrideOptions()
     ShowSoftResPlayerNameOverrideOptions()
     return
   end
 
-  local count = M:CountElements( softResPlayerNameOverrideOptions )
+  local options_count = M:CountElements( m_softres_player_name_override_options )
   local matched = false
   local target = api.UnitName( "target" )
 
   if target and IsPlayerAlreadyOverridingAName( target ) then
-    softResPlayerNameOverrideOptions = nil
+    m_softres_player_name_override_options = nil
     local f = function( value )
       return function( v )
         return v[ "override" ] == value
@@ -587,7 +593,7 @@ local function SoftResPlayerNameOverride( args )
     end
 
     M:PrettyPrint( string.format( "Player |cffff2f2f%s|r is already overriding |cffff9f69%s|r!", target,
-      M:GetKeyByValue( softResPlayerNameOverrides, f( target ) ) ) )
+      M:GetKeyByValue( m_softres_player_name_overrides, f( target ) ) ) )
     return
   end
 
@@ -595,14 +601,14 @@ local function SoftResPlayerNameOverride( args )
     if not matched then
       local index = tonumber( i )
 
-      if index > 0 and index <= count and target then
+      if index > 0 and index <= options_count and target then
         matched = true
-        local player = softResPlayerNameOverrideOptions[ index ]
-        softResPlayerNameOverrides[ player ] = { [ "override" ] = target, [ "similarity" ] = 0 }
-        ModUiDb.rollfor.softResPlayerNameOverrides = softResPlayerNameOverrides
+        local player = m_softres_player_name_override_options[ index ]
+        m_softres_player_name_overrides[ player ] = { [ "override" ] = target, [ "similarity" ] = 0 }
+        ModUiDb.rollfor.softres_player_name_overrides = m_softres_player_name_overrides
 
         M:PrettyPrint( string.format( "|cffff9f69%s|r is now soft-ressing as |cffff9f69%s|r.", target, player ) )
-        local count = M:CountElements( softResPlayerNameOverrideOptions )
+        local count = M:CountElements( m_softres_player_name_override_options )
 
         if count == 0 then
           ReportSoftResReady()
@@ -612,7 +618,7 @@ local function SoftResPlayerNameOverride( args )
   end
 
   if matched then
-    softResPlayerNameOverrideOptions = nil
+    m_softres_player_name_override_options = nil
   else
     CreateSoftResPlayerNameOverrideOptions()
     ShowSoftResPlayerNameOverrideOptions()
@@ -620,17 +626,17 @@ local function SoftResPlayerNameOverride( args )
 end
 
 local function CreateSoftResPlayerNameUnoverrideOptions()
-  softResPlayerNameUnoverrideOptions = {}
+  m_softres_player_name_unoverride_options = {}
 
-  for player, override in pairs( softResPlayerNameOverrides ) do
+  for player, override in pairs( m_softres_player_name_overrides ) do
     if player ~= override[ "override" ] then
-      table.insert( softResPlayerNameUnoverrideOptions, player )
+      table.insert( m_softres_player_name_unoverride_options, player )
     end
   end
 end
 
 local function ShowSoftResPlayerNameUnoverrideOptions()
-  local players = softResPlayerNameUnoverrideOptions
+  local players = m_softres_player_name_unoverride_options
 
   if M:CountElements( players ) == 0 then
     M:PrettyPrint( "There are no players that have their names soft-res overridden." )
@@ -647,8 +653,8 @@ local function ShowSoftResPlayerNameUnoverrideOptions()
     end
 
     local player = players[ i ]
-    local overrider = softResPlayerNameOverrides[ player ][ "override" ]
-    local color = function( player ) return M:IsPlayerInMyGroup( player ) and "ffffff" or "ff2f2f" end
+    local overrider = m_softres_player_name_overrides[ player ][ "override" ]
+    local color = function( _player ) return M:IsPlayerInMyGroup( _player ) and "ffffff" or "ff2f2f" end
     local nextPlayer = string.format( "[|cffff9f69%d|r]:|cff%s%s|r (|cff%s%s|r)", i, color( player ), player,
       color( overrider ),
       overrider )
@@ -667,21 +673,21 @@ local function ShowSoftResPlayerNameUnoverrideOptions()
 end
 
 local function SoftResPlayerNameUnoverride( args )
-  if not softResPlayerNameUnoverrideOptions or not args or args == "" then
+  if not m_softres_player_name_unoverride_options or not args or args == "" then
     CreateSoftResPlayerNameUnoverrideOptions()
     ShowSoftResPlayerNameUnoverrideOptions()
     return
   end
 
-  local count = M:CountElements( softResPlayerNameUnoverrideOptions )
+  local count = M:CountElements( m_softres_player_name_unoverride_options )
 
   for i in (args):gmatch "(%d+)" do
     local index = tonumber( i )
 
     if index > 0 and index <= count then
-      local player = softResPlayerNameUnoverrideOptions[ index ]
-      softResPlayerNameOverrides[ player ] = { [ "override" ] = player, [ "similarity" ] = 0 }
-      ModUiDb.rollfor.softResPlayerNameOverrides = softResPlayerNameOverrides
+      local player = m_softres_player_name_unoverride_options[ index ]
+      m_softres_player_name_overrides[ player ] = { [ "override" ] = player, [ "similarity" ] = 0 }
+      ModUiDb.rollfor.softres_player_name_overrides = m_softres_player_name_overrides
 
       M:PrettyPrint( string.format( "|cffff9f69%s|r's name is no longer soft-res overridden.", player ) )
     end
@@ -695,11 +701,11 @@ local function CreateSoftResPassOptions()
   --local absentPlayersWhoSoftRessed = GetAbsentPlayersWhoSoftRessed()
   local absentPlayersWhoSoftRessed = {}
   local presentPlayersWhoDidNotSoftRes = GetPlayersWhoDidNotSoftRes()
-  softResPassOptions = M:JoinTables( absentPlayersWhoSoftRessed, presentPlayersWhoDidNotSoftRes )
+  m_softres_pass_options = M:JoinTables( absentPlayersWhoSoftRessed, presentPlayersWhoDidNotSoftRes )
 end
 
 local function ShowSoftResPassOptions()
-  if #softResPassOptions == 0 then
+  if #m_softres_pass_options == 0 then
     M:PrettyPrint( "No one is soft-res passing on loot." )
     return
   end
@@ -707,14 +713,14 @@ local function ShowSoftResPassOptions()
   M:PrettyPrint( string.format( "To soft-res pass type |cffff9f69%s|r.", "/srp <numbers...>" ) )
   local buffer = ""
 
-  for i = 1, #softResPassOptions do
+  for i = 1, #m_softres_pass_options do
     local separator = ""
 
     if buffer ~= "" then
       separator = separator .. ", "
     end
 
-    local player = softResPassOptions[ i ]
+    local player = m_softres_pass_options[ i ]
     local nextPlayer = string.format( "[|cffff9f69%d|r]:|cff%s%s|r", i,
       M:IsPlayerInMyGroup( player ) and "ffffff" or "ff2f2f",
       player )
@@ -733,21 +739,21 @@ local function ShowSoftResPassOptions()
 end
 
 local function SoftResPass( args )
-  if not softResPassOptions or not args or args == "" then
+  if not m_softres_pass_options or not args or args == "" then
     CreateSoftResPassOptions()
     ShowSoftResPassOptions()
     return
   end
 
-  local count = M:CountElements( softResPassOptions )
+  local count = M:CountElements( m_softres_pass_options )
 
   for i in (args):gmatch "(%d+)" do
     local index = tonumber( i )
 
     if index > 0 and index <= count then
-      local player = softResPassOptions[ index ]
-      softResPassing[ player ] = true
-      ModUiDb.rollfor.softResPassing = softResPassing
+      local player = m_softres_pass_options[ index ]
+      m_softres_passing[ player ] = true
+      ModUiDb.rollfor.softres_passing = m_softres_passing
 
       M:PrettyPrint( string.format( "|cff%s%s|r is not soft-ressing.", M:IsPlayerInMyGroup( player ) and "ff9f69" or "ff2f2f"
         ,
@@ -758,17 +764,17 @@ local function SoftResPass( args )
   CreateSoftResPassOptions()
   ShowSoftResPassOptions()
 
-  if M:CountElements( softResPassOptions ) == 0 then
+  if M:CountElements( m_softres_pass_options ) == 0 then
     ReportSoftResReady()
   end
 end
 
 local function CreateSoftResUnpassOptions()
-  softResUnpassOptions = M:keys( M:filter( softResPassing, M.ValueIsTrue ) )
+  m_softres_unpass_options = M:keys( M:filter( m_softres_passing, M.ValueIsTrue ) )
 end
 
 local function ShowSoftResUnpassOptions()
-  local players = softResUnpassOptions
+  local players = m_softres_unpass_options
 
   if M:CountElements( players ) == 0 then
     M:PrettyPrint( "No players are soft-res passing on loot." )
@@ -806,21 +812,21 @@ local function ShowSoftResUnpassOptions()
 end
 
 local function SoftResUnpass( args )
-  if not softResUnpassOptions or not args or args == "" then
+  if not m_softres_unpass_options or not args or args == "" then
     CreateSoftResUnpassOptions()
     ShowSoftResUnpassOptions()
     return
   end
 
-  local count = M:CountElements( softResUnpassOptions )
+  local count = M:CountElements( m_softres_unpass_options )
 
   for i in (args):gmatch "(%d+)" do
     local index = tonumber( i )
 
     if index > 0 and index <= count then
-      local player = softResUnpassOptions[ index ]
-      softResPassing[ player ] = false
-      ModUiDb.rollfor.softResPassing = softResPassing
+      local player = m_softres_unpass_options[ index ]
+      m_softres_passing[ player ] = false
+      ModUiDb.rollfor.softres_passing = m_softres_passing
 
       M:PrettyPrint( string.format( "|cff%s%s|r is soft-ressing now.", M:IsPlayerInMyGroup( player ) and "ff2f2f" or "ff9f69"
         ,
@@ -868,20 +874,20 @@ local function StopRolling()
 end
 
 local function SortRolls( rolls )
-  local function RollMap( rolls )
+  local function RollMap( _rolls )
     local result = {}
 
-    for _, roll in pairs( rolls ) do
+    for _, roll in pairs( _rolls ) do
       if not result[ roll ] then result[ roll ] = true end
     end
 
     return result
   end
 
-  local function ToMap( rolls )
+  local function ToMap( _rolls )
     local result = {}
 
-    for k, v in pairs( rolls ) do
+    for k, v in pairs( _rolls ) do
       if result[ v ] then
         table.insert( result[ v ][ "players" ], k )
       else
@@ -911,20 +917,20 @@ local function SortRolls( rolls )
     return result
   end
 
-  local function Merge( sortedRolls, map )
+  local function Merge( sortedRolls, t )
     local result = {}
 
     for _, v in ipairs( sortedRolls ) do
-      table.insert( result, map[ v ] )
+      table.insert( result, t[ v ] )
     end
 
     return result
   end
 
   local sortedRolls = ToSortedRollsArray( RollMap( rolls ) )
-  local map = ToMap( rolls )
+  local t = ToMap( rolls )
 
-  return Merge( sortedRolls, map )
+  return Merge( sortedRolls, t )
 end
 
 local function ShowSortedRolls( limit )
@@ -1282,7 +1288,7 @@ local function ProcessFinishRollSlashCommand()
 end
 
 local function SoftResDataExists()
-  return not (softResItEncryptedData == "" or M:CountElements( m_softres_items ) == 0)
+  return not (m_softres_data == "" or M:CountElements( m_softres_items ) == 0)
 end
 
 local function CheckSoftRes()
@@ -1311,7 +1317,7 @@ local function CheckSoftRes()
       M:PrettyPrint( string.format( "Auto-matched %s to %s (%s similarity).", highlight( player ), highlight( overriddenName )
         ,
         similarity ) )
-      softResPlayerNameOverrides[ overriddenName ] = { [ "override" ] = player, [ "similarity" ] = similarity }
+      m_softres_player_name_overrides[ overriddenName ] = { [ "override" ] = player, [ "similarity" ] = similarity }
     end
 
     if M:CountElements( belowThresholdOverrides ) > 0 then
@@ -1326,9 +1332,9 @@ local function CheckSoftRes()
       M:PrettyPrint( string.format( "If they don't want to soft-res, mark them with %s command.", highlight( "/srp" ) ) )
     end
 
-    local playersWhoDidNotSoftRes = GetPlayersWhoDidNotSoftRes()
+    local count = GetPlayersWhoDidNotSoftRes()
 
-    if #playersWhoDidNotSoftRes == 0 then
+    if #count == 0 then
       ReportSoftResReady()
     end
   end
@@ -1338,8 +1344,39 @@ local function ProcessSoftResCheckSlashCommand()
   CheckSoftRes()
 end
 
+local function clear_storage()
+  ModUiDb.rollfor = {}
+  ModUiDb.rollfor.softres_items = {}
+  ModUiDb.rollfor.hardres_items = {}
+  ModUiDb.rollfor.softres_player_name_overrides = {}
+  ModUiDb.rollfor.softres_passing = {}
+  ModUiDb.rollfor.softres_data = ""
+  ModUiDb.rollfor.awarded_items = {}
+  ModUiDb.rollfor.dropped_items = {}
+
+  m_softres_items = ModUiDb.rollfor.softres_items
+  m_hardres_items = ModUiDb.rollfor.hardres_items
+  m_softres_player_name_overrides = ModUiDb.rollfor.softres_player_name_overrides
+  m_softres_passing = ModUiDb.rollfor.softres_passing
+  m_softres_data = ModUiDb.rollfor.softres_data
+  m_awarded_items = ModUiDb.rollfor.awarded_items
+  m_dropped_items = ModUiDb.rollfor.dropped_items
+end
+
 local function SetupStorage()
   ModUiDb.rollfor = ModUiDb.rollfor or {}
+
+  -- For legacy data compatibility
+  if ModUiDb.rollfor.softResItEncryptedData then
+    clear_storage()
+
+    M:PrettyPrint( string.format( "%s Soft-res data has been cleared. Please re-import if needed.", red( "WARNING!" ) ) )
+  end
+
+  -- Future-proof the data if we need to do the migration.
+  if not ModUiDb.rollfor.version then
+    ModUiDb.rollfor.version = version
+  end
 
   ModUiDb.rollfor.softres_items = ModUiDb.rollfor.softres_items or {}
   m_softres_items = ModUiDb.rollfor.softres_items
@@ -1347,14 +1384,14 @@ local function SetupStorage()
   ModUiDb.rollfor.hardres_items = ModUiDb.rollfor.hardres_items or {}
   m_hardres_items = ModUiDb.rollfor.hardres_items
 
-  ModUiDb.rollfor.softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides or {}
-  softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides
+  ModUiDb.rollfor.softres_player_name_overrides = ModUiDb.rollfor.softres_player_name_overrides or {}
+  m_softres_player_name_overrides = ModUiDb.rollfor.softres_player_name_overrides
 
-  ModUiDb.rollfor.softResPassing = ModUiDb.rollfor.softResPassing or {}
-  softResPassing = ModUiDb.rollfor.softResPassing
+  ModUiDb.rollfor.softres_passing = ModUiDb.rollfor.softres_passing or {}
+  m_softres_passing = ModUiDb.rollfor.softres_passing
 
-  ModUiDb.rollfor.softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData or {}
-  softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData
+  ModUiDb.rollfor.softres_data = ModUiDb.rollfor.softres_data or ""
+  m_softres_data = ModUiDb.rollfor.softres_data
 
   ModUiDb.rollfor.awarded_items = ModUiDb.rollfor.awarded_items or {}
   m_awarded_items = ModUiDb.rollfor.awarded_items
@@ -1372,7 +1409,7 @@ local function ShowGui()
   m_softres_frame:SetHeight( 300 )
   m_softres_frame:SetCallback( "OnClose",
     function( widget )
-      if not dataDirty then
+      if not m_softres_data_dirty then
         if not SoftResDataExists() then
           M:PrettyPrint( "Invalid or no soft-res data found." )
         else
@@ -1395,13 +1432,13 @@ local function ShowGui()
   importEditBox:DisableButton( true )
   importEditBox:SetLabel( "SoftRes.it data" )
 
-  if softResItEncryptedData then
-    importEditBox:SetText( softResItEncryptedData )
+  if m_softres_data then
+    importEditBox:SetText( m_softres_data )
   end
 
   importEditBox:SetCallback( "OnTextChanged", function()
-    dataDirty = true
-    softResItEncryptedData = importEditBox:GetText()
+    m_softres_data_dirty = true
+    m_softres_data = importEditBox:GetText()
   end )
 
   m_softres_frame:AddChild( importEditBox )
@@ -1409,22 +1446,7 @@ end
 
 local function ProcessSoftResSlashCommand( args )
   if args == "init" then
-    ModUiDb.rollfor.softres_items = {}
-    ModUiDb.rollfor.hardres_items = {}
-    ModUiDb.rollfor.softResPlayerNameOverrides = {}
-    ModUiDb.rollfor.softResPassing = {}
-    ModUiDb.rollfor.softResItEncryptedData = ""
-    ModUiDb.rollfor.awarded_items = {}
-    ModUiDb.rollfor.dropped_items = {}
-
-    m_softres_items = ModUiDb.rollfor.softres_items
-    m_hardres_items = ModUiDb.rollfor.hardres_items
-    softResPlayerNameOverrides = ModUiDb.rollfor.softResPlayerNameOverrides
-    softResPassing = ModUiDb.rollfor.softResPassing
-    softResItEncryptedData = ModUiDb.rollfor.softResItEncryptedData
-    m_awarded_items = ModUiDb.rollfor.awarded_items
-    m_dropped_items = ModUiDb.rollfor.dropped_items
-
+    clear_storage()
     M:PrettyPrint( "Soft-res data cleared." )
 
     return
@@ -1511,12 +1533,12 @@ local function OnChatMsgSystem( message )
 end
 
 local function VersionRecentlyReminded()
-  if not ModUiDb.rollfor.lastNewVersionReminder then return false end
+  if not ModUiDb.rollfor.last_new_version_reminder_timestamp then return false end
 
   local time = lua.time()
 
   -- Only remind once a day
-  if time - ModUiDb.rollfor.lastNewVersionReminder > 3600 * 24 then
+  if time - ModUiDb.rollfor.last_new_version_reminder_timestamp > 3600 * 24 then
     return false
   else
     return true
@@ -1542,7 +1564,7 @@ local function OnComm( prefix, message, _, _ )
   local cmd, value = lua.strmatch( message, "^(.*)::(.*)$" )
 
   if cmd == "VERSION" and IsNewVersion( value ) and not VersionRecentlyReminded() then
-    ModUiDb.rollfor.lastNewVersionReminder = lua.time()
+    ModUiDb.rollfor.last_new_version_reminder_timestamp = lua.time()
     M:PrettyPrint( string.format( "New version (%s) is available!", highlight( string.format( "v%s", value ) ) ) )
   end
 end
@@ -1716,15 +1738,16 @@ end
 local function idempotent_hookscript( frame, event, callback )
   if not frame.RollForHookScript then
     frame.RollForHookScript = frame.HookScript
-    frame.HookScript = function( self, event, f )
-      if event:find( "RollForIdempotent", 1, true ) == 1 then
-        if not frame[ event ] then
-          local real_event = event:gsub( "RollForIdempotent", "" )
+
+    frame.HookScript = function( self, _event, f )
+      if _event:find( "RollForIdempotent", 1, true ) == 1 then
+        if not frame[ _event ] then
+          local real_event = _event:gsub( "RollForIdempotent", "" )
           frame.RollForHookScript( self, real_event, f )
-          frame[ event ] = true
+          frame[ _event ] = true
         end
       else
-        frame.RollForHookScript( self, event, f )
+        frame.RollForHookScript( self, _event, f )
       end
     end
   end
@@ -1800,7 +1823,6 @@ local function OnLootSlotCleared()
 
     if item_id then
       M.award_item( m_item_to_be_awarded.player, item_id, item_name, m_item_to_be_awarded.colored_item_name )
-      M:PrettyPrint( string.format( "%s received %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
     else
       M:PrettyPrint( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
     end
@@ -1816,7 +1838,7 @@ function M.award_item( player, item_id, item_name, item_link_or_colored_item_nam
   M:PrettyPrint( string.format( "%s received %s.", highlight( player ), item_link_or_colored_item_name ) )
 end
 
----@diagnostic disable-next-line: unused-local
+---@diagnostic disable-next-line: unused-local, unused-function
 local function remove_from_awarded_items( player, item_id )
   local result = {}
 
