@@ -62,7 +62,8 @@ local function on_trade_closed()
   end
 
   if m_player_accepted then
-    EmitTradeCompleteEvent( m_recipient_name, m_items_giving, m_items_receiving )
+    -- For some fucking unknown reason if these are not cloned then m_items_giving is empty.
+    EmitTradeCompleteEvent( m_recipient_name, E:CloneTable( m_items_giving ), E:CloneTable( m_items_receiving ) )
   end
 end
 

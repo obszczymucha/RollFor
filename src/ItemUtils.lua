@@ -15,4 +15,15 @@ function M.get_item_name( item_link )
   return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h%[(.*)%]|h|r", "%1" )
 end
 
+function M.parse_all_links( item_links )
+  local result = {}
+  if not item_links then return result end
+
+  for item_link in (item_links):gmatch "|c%x%x%x%x%x%x%x%x|Hitem:[^%]]+%]|h|r" do
+    table.insert(result, item_link)
+  end
+
+  return result
+end
+
 return M

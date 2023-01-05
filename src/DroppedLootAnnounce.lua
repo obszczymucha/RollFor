@@ -3,19 +3,18 @@ local libStub = LibStub
 local M = libStub:NewLibrary( "RollFor-DroppedLootAnnounce", 1 )
 if not M then return end
 
-local facade = libStub( "ModUiFacade-1.0" )
 local item_utils = libStub( "ItemUtils" )
-local api = facade.api
+local api = function() return libStub( "ModUiFacade-1.0" ).api end
 
 M.item = function( id, name, link, quality )
   return { id = id, name = name, link = link, quality = quality }
 end
 
 local function process_dropped_item( item_index )
-  local link = api.GetLootSlotLink( item_index )
+  local link = api().GetLootSlotLink( item_index )
   if not link then return nil end
 
-  local quality = select( 5, api.GetLootSlotInfo( item_index ) ) or 0
+  local quality = select( 5, api().GetLootSlotInfo( item_index ) ) or 0
   if quality < RollFor.settings.lootQualityThreshold then return nil end
 
   local item_id = item_utils.get_item_id( link )
@@ -27,10 +26,10 @@ end
 function M.process_dropped_items( softres_items, hardres_items )
   local source_guid = nil
   local items = {}
-  local item_count = api.GetNumLootItems()
+  local item_count = api().GetNumLootItems()
 
   for i = 1, item_count do
-    source_guid = source_guid or api.GetLootSourceInfo( i )
+    source_guid = source_guid or api().GetLootSourceInfo( i )
     local item = process_dropped_item( i )
 
     if item then table.insert( items, item ) end

@@ -5,7 +5,7 @@ local M = ModUi:NewModule( "RollFor", { "TradeTracker" } )
 if not M then return end
 
 local dropped_loot_announce = libStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.17"
+local version = "1.18"
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -27,6 +27,8 @@ local m_item_award_confirmed = false
 local m_awarded_items = {}
 local m_dropped_items = {}
 local m_reserved_by = {}
+
+local m_real_api = nil
 
 local AceGUI = libStub( "AceGUI-3.0" )
 local item_utils = libStub( "ItemUtils" )
@@ -1591,6 +1593,14 @@ local function get_dropped_item_name( item_id )
   return nil
 end
 
+local function has_item_been_awarded( player, item_id )
+  for _, item in pairs( m_awarded_items ) do
+    if item.player == player and item.item_id == item_id then return true end
+  end
+
+  return false
+end
+
 local function on_trade_complete( recipient, items_given, items_received )
   for i = 1, #items_given do
     local item = items_given[ i ]
@@ -1606,8 +1616,58 @@ local function on_trade_complete( recipient, items_given, items_received )
     local item = items_received[ i ]
     local item_id = item_utils.get_item_id( item.link )
 
-    M.unaward_item( recipient, item_id, item.link )
+    if has_item_been_awarded( recipient, item_id ) then
+      M.unaward_item( recipient, item_id, item.link )
+    end
   end
+end
+
+local function mock_table_function( _api, name, values )
+  _api[ name ] = function( key )
+    local value = values[ key ]
+
+    if type( value ) == "function" then
+      return value()
+    else
+      return value
+    end
+  end
+end
+
+local function make_loot_slot_info( count, quality )
+  local result = {}
+
+  for i = 1, count do
+    table.insert( result, function()
+      if i == count then
+        libStub( "ModUiFacade-1.0" ).api = m_real_api
+        m_real_api = nil
+      end
+
+      return nil, nil, nil, nil, quality or 4
+    end )
+  end
+
+  return result
+end
+
+local function simulate_loot_dropped( args )
+  local item_links = item_utils.parse_all_links( args )
+
+  if m_real_api then
+    M:PrettyPrint( "Mocking in progress." )
+    return
+  end
+
+  m_real_api = api
+  libStub( "ModUiFacade-1.0" ).api = M:CloneTable( api )
+  api = libStub( "ModUiFacade-1.0" ).api
+  ModUi.facade.api = api
+  api[ "GetNumLootItems" ] = function() return #item_links end
+  api[ "GetLootSourceInfo" ] = function() return tostring( lua.time() ) end
+  mock_table_function( api, "GetLootSlotLink", item_links )
+  mock_table_function( api, "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
+  ModUi:SimulateEvent( "lootReady" )
 end
 
 local function OnFirstEnterWorld()
@@ -1640,6 +1700,9 @@ local function OnFirstEnterWorld()
   api.SlashCmdList[ "SRP" ] = SoftResPass
   SLASH_SRUP1 = "/srup"
   api.SlashCmdList[ "SRUP" ] = SoftResUnpass
+
+  SLASH_DROPPED1 = "/DROPPED"
+  api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 
   SetupStorage()
 
