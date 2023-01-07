@@ -30,7 +30,7 @@ function BothSpecRollsSpec:should_prioritize_mainspec_over_offspec_rolls()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -51,7 +51,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_finish
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -73,7 +73,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_not_fi
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()

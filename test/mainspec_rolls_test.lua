@@ -32,7 +32,7 @@ function MainspecRollsSpec:should_finish_rolling_automatically_if_all_players_ro
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
     rolling_not_in_progress()
@@ -52,7 +52,7 @@ function MainspecRollsSpec:should_finish_rolling_after_the_timer_if_not_all_play
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
@@ -74,7 +74,7 @@ function MainspecRollsSpec:should_recognize_tie_rolls_when_all_players_tie()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "The highest roll was 69 by Obszczymucha and Psikutas." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
     cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
@@ -97,7 +97,7 @@ function MainspecRollsSpec:should_recognize_tie_rolls_when_some_players_tie()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "The highest roll was 69 by Obszczymucha and Psikutas." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
@@ -120,7 +120,7 @@ function MainspecRollsSpec:should_detect_and_ignore_double_rolls()
 
   -- Then
   assert_messages(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2" ),
     c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),

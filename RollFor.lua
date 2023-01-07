@@ -1198,11 +1198,11 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
 
   local countInfo = ""
 
-  if m_rolled_item_count > 1 then countInfo = string.format( " %d top rolls win.", m_rolled_item_count ) end
+  if m_rolled_item_count > 1 then countInfo = string.format( ". %d top rolls win.", m_rolled_item_count ) end
 
   api.SendChatMessage( string.format( "Roll for %s%s:%s%s",
     m_rolled_item_count > 1 and string.format( "%dx", m_rolled_item_count ) or "", item,
-    (not info or info == "") and "." or string.format( " %s.", info ), countInfo ), GetRollAnnouncementChatType() )
+    (not info or info == "") and "." or string.format( " %s", info ), countInfo ), GetRollAnnouncementChatType() )
   m_rerolling = false
   m_rolling = true
   m_timer = ModUi:ScheduleRepeatingTimer( OnTimer, 1.7 )
@@ -1291,6 +1291,20 @@ end
 
 local function SoftResDataExists()
   return not (m_softres_data == "" or M:CountElements( m_softres_items ) == 0)
+end
+
+function M.get_overridden_name( player_name )
+  for softres_name, matched_name in pairs( m_softres_player_name_overrides ) do
+    if matched_name.override == player_name then return softres_name end
+  end
+
+  return player_name
+end
+
+-- A helper function to allow replicating name auto-matching bug for SR.
+-- TODO: Move this into SoftRes module.
+function M.override( player, override )
+  m_softres_player_name_overrides[ player ] = { [ "override" ] = override, [ "similarity" ] = 1 }
 end
 
 local function CheckSoftRes()
@@ -1497,8 +1511,10 @@ local function has_player_soft_ressed( player )
   local soft_ressing_players = get_soft_ressing_players()
   if not soft_ressing_players then return false end
 
+  local player_name = M.get_overridden_name( player )
+
   for _, value in pairs( soft_ressing_players ) do
-    if value.name == player then return true end
+    if value.name == player_name then return true end
   end
 
   return false

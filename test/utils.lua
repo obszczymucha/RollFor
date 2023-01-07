@@ -556,4 +556,9 @@ function M.recipient_trades_items( ... )
   end
 end
 
+function M.auto_match( player, override )
+  local rf = ModUi:GetModule( "RollFor" )
+  rf.override( player, override )
+end
+
 return M
