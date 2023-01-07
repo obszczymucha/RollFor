@@ -23,7 +23,7 @@ local function process_dropped_item( item_index )
   return M.item( item_id, item_name, link, quality )
 end
 
-function M.process_dropped_items( softres_items, hardres_items )
+function M.process_dropped_items( softres )
   local source_guid = nil
   local items = {}
   local item_count = api().GetNumLootItems()
@@ -35,7 +35,7 @@ function M.process_dropped_items( softres_items, hardres_items )
     if item then table.insert( items, item ) end
   end
 
-  local summary = M.create_item_summary( items, softres_items, hardres_items )
+  local summary = M.create_item_summary( items, softres )
   return source_guid or "unknown", items, M.create_item_announcements( summary )
 end
 
@@ -62,7 +62,7 @@ local function distinct( items )
 end
 
 -- The result is a list of unique items with the counts how many dropped and how many players reserve them.
-function M.create_item_summary( items, softres_items, hardres_items )
+function M.create_item_summary( items, softres )
   local result = {}
   local distinct_items = distinct( items )
 
@@ -77,30 +77,13 @@ function M.create_item_summary( items, softres_items, hardres_items )
     return result
   end
 
-  -- TODO: This is a very simplistic version.
-  -- This needs to be extracted to separate SoftRes/HardRes modules.
-  -- These modules should deal with player name overrides, absent players, received loot, etc.
-  local function find_softressers( item_id )
-    return softres_items and softres_items[ item_id ] or {}
-  end
-
-  -- NOTE: As of now fucking softres.it doesn't allow to both HR and SR, which is stupid,
-  -- because there are items that drop multiple times, like tokens for example.
-  -- One token could be HRed and the other could go to SR.
-  -- A workaround would be not to HR items in softres.it and allow adding HR items via
-  -- the addon. This should only be done for items that drop multiple times though
-  -- to avoid the drama if someone SR the item that is HRed.
-  local function is_hardressed( item_id )
-    return hardres_items[ item_id ] == 1 or false
-  end
-
   for i = 1, #distinct_items do
     local item = distinct_items[ i ]
     local item_count = count_items( item.id )
-    local softressers = find_softressers( item.id )
+    local softressers = softres.get( item.id )
     local softres_count = #softressers
-    table.sort( softressers, function( l, r ) return l.name < r.name end )
-    local hardressed = is_hardressed( item.id )
+    table.sort( softressers, function( l, r ) return l.matched_name < r.matched_name end )
+    local hardressed = softres.is_item_hardressed( item.id )
 
     if item_count > softres_count and softres_count > 0 then
       table.insert( result, { item = item, how_many_dropped = softres_count, softressers = softressers, is_hardressed = hardressed } )
@@ -142,7 +125,7 @@ function M.create_item_announcements( summary )
 
   local function p( player )
     local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.name, rolls )
+    return string.format( "%s%s", player.matched_name, rolls )
   end
 
   for i = 1, #summary do

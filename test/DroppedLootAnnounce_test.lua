@@ -7,6 +7,7 @@ utils.load_libstub()
 require( "ModUi/facade" )
 require( "src/ItemUtils" )
 require( "settings" )
+require( "src/SoftRes" )
 local mod = require( "src/DroppedLootAnnounce" )
 
 local item = function( name, id, quality ) return mod.item( id, name, string.format( "[%s]", name ), quality or 4 ) end
@@ -15,14 +16,10 @@ local hr = function( ... )
   local result = {}
 
   for _, v in pairs( { ... } ) do
-    result[ v ] = 1
+    table.insert( result, { id = v } )
   end
 
   return result
-end
-
-local p = function( name )
-  return { name = name, rolls = 1 }
 end
 
 DroppedLootAnnounceSpec = {}
@@ -38,16 +35,34 @@ function DroppedLootAnnounceSpec:should_create_item_details()
   lu.assertEquals( result.quality, 4 )
 end
 
+local function softres( softresses, hardresses )
+  local sr = SoftRes.new()
+  sr.import_data( { softreserves = softresses, hardreserves = hardresses } )
+
+  return sr
+end
+
+local function sr( player_name, ... )
+  local item_ids = { ... }
+  local items = {}
+
+  for _, v in pairs( item_ids ) do
+    table.insert( items, { id = v } )
+  end
+
+  return { name = player_name, items = items }
+end
+
 ItemSummarySpec = {}
 
 function ItemSummarySpec:should_create_the_summary()
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs, item( "Big mace", 111 ), item( "Small mace", 112 ) }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
 
   -- When
-  local result = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local result = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- Then
   lu.assertEquals( #items, 4 )
@@ -55,7 +70,10 @@ function ItemSummarySpec:should_create_the_summary()
   lu.assertEquals( result[ 1 ], {
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
     how_many_dropped = 2,
-    softressers = { { name = "Obszczymucha", rolls = 1 }, { name = "Psikutas", rolls = 1 } },
+    softressers = {
+      { softres_name = "Obszczymucha", matched_name = "Obszczymucha", rolls = 1 },
+      { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 }
+    },
     is_hardressed = false
   } )
 
@@ -78,10 +96,10 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs, hs, hs }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
 
   -- When
-  local result = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local result = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- Then
   lu.assertEquals( #items, 4 )
@@ -89,7 +107,10 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   lu.assertEquals( result[ 1 ], {
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
     how_many_dropped = 2,
-    softressers = { { name = "Obszczymucha", rolls = 1 }, { name = "Psikutas", rolls = 1 } },
+    softressers = {
+      { softres_name = "Obszczymucha", matched_name = "Obszczymucha", rolls = 1 },
+      { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 }
+    },
     is_hardressed = false
   } )
 
@@ -106,8 +127,8 @@ ItemAnnouncementSpec = {}
 function ItemAnnouncementSpec:should_create_announcements_if_there_is_one_sr_hr_and_normal()
   -- Given
   local items = { item( "Hearthstone", 123 ), item( "Big mace", 111 ), item( "Small mace", 112 ) }
-  local softresses = { [ 123 ] = { p( "Psikutas" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -124,8 +145,8 @@ function ItemAnnouncementSpec:should_create_announcements_if_there_is_one_sr_and
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs }
-  local softresses = { [ 123 ] = { p( "Psikutas" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -141,8 +162,8 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs, item( "Big mace", 111 ), item( "Small mace", 112 ) }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -160,8 +181,8 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs, hs, item( "Big mace", 111 ), item( "Small mace", 112 ) }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -180,8 +201,8 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
   -- Given
   local hs = item( "Hearthstone", 123 )
   local items = { hs, hs, hs, hs, item( "Big mace", 111 ), item( "Small mace", 112 ) }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -201,8 +222,8 @@ function ItemAnnouncementSpec:should_group_items_that_are_not_soft_ressed()
   local hs = item( "Hearthstone", 123 )
   local sm = item( "Small mace", 112 )
   local items = { hs, hs, hs, hs, item( "Big mace", 111 ), sm, sm }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -222,8 +243,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_only_one_sr_item_drop
   local hs = item( "Hearthstone", 123 )
   local sm = item( "Small mace", 112 )
   local items = { hs, item( "Big mace", 111 ), sm, sm }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -241,8 +262,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_only_one_sr_item_drop
   local hs = item( "Hearthstone", 123 )
   local sm = item( "Small mace", 112 )
   local items = { hs, item( "Big mace", 111 ), sm, sm }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ), p( "Ponpon" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ), sr( "Ponpon", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -260,8 +281,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_two_sr_items_dropped_
   local hs = item( "Hearthstone", 123 )
   local sm = item( "Small mace", 112 )
   local items = { hs, hs, item( "Big mace", 111 ), sm, sm }
-  local softresses = { [ 123 ] = { p( "Psikutas" ), p( "Obszczymucha" ), p( "Ponpon" ) } }
-  local summary = mod.create_item_summary( items, softresses, hr( 111 ) )
+  local softresses = { sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ), sr( "Ponpon", 123 ) }
+  local summary = mod.create_item_summary( items, softres( softresses, hr( 111 ) ) )
 
   -- When
   local result = mod.create_item_announcements( summary )
@@ -297,7 +318,7 @@ end
 
 local function process_dropped_items( loot_quality_threshold )
   utils.loot_quality_threshold( loot_quality_threshold or 4 )
-  return mod.process_dropped_items( {}, {} )
+  return mod.process_dropped_items( SoftRes.new() )
 end
 
 function ProcessDroppedItemsIntegrationSpec:should_return_source_guid()

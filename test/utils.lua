@@ -292,6 +292,8 @@ function M.player( name )
   m_target = nil
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
+  local rf = ModUi:GetModule( "RollFor" )
+  rf.awarded_loot.clear()
 end
 
 function M.master_looter( name )
@@ -369,6 +371,10 @@ function M.load_real_stuff()
   require( "src/ItemUtils" )
   require( "src/DroppedLootAnnounce" )
   require( "src/TradeTracker" )
+  require( "src/SoftRes" )
+  require( "src/AwardedLoot" )
+  require( "src/SoftResAwardedLootDecorator" )
+  require( "src/SoftResAbsentPlayersDecorator" )
   require( "RollFor" )
 end
 
@@ -424,7 +430,7 @@ end
 
 function M.import_soft_res( data )
   local rf = ModUi:GetModule( "RollFor" )
-  rf.import_softres_data( data )
+  rf.softres.import_data( data )
 end
 
 local function find_soft_res_entry( softreserves, player )
@@ -558,7 +564,7 @@ end
 
 function M.auto_match( player, override )
   local rf = ModUi:GetModule( "RollFor" )
-  rf.override( player, override )
+  rf.softres.match_name( player, override )
 end
 
 return M

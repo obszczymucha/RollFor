@@ -9,5 +9,10 @@ Libs\Libs.xml
 src\ItemUtils.lua
 src\DroppedLootAnnounce.lua
 src\TradeTracker.lua
+src\SoftRes.lua
+src\SoftResAwardedLootDecorator.lua
+src\SoftResAbsentPlayersDecorator.lua
+src\Json.lua
+src\AwardedLoot.lua
 RollFor.lua
 settings.lua
