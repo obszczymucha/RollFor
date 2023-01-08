@@ -1,40 +1,16 @@
+local modules = LibStub( "RollFor-Modules" )
+if modules.SoftResAbsentPlayersDecorator then return end
+
 local M = {}
 
-function M.new( api, softres )
+function M.new( group_roster, softres )
   local get = softres.get
-
-  local function get_all_players_in_my_group()
-    local result = {}
-
-    if not (api.IsInGroup() or api.IsInRaid()) then
-      local myName = M.MyName()
-      table.insert( result, myName )
-      return result
-    end
-
-    for i = 1, 40 do
-      local name = api.GetRaidRosterInfo( i )
-      if name then table.insert( result, name ) end
-    end
-
-    return result
-  end
-
-  local function is_player_in_my_group( playerName )
-    local players = get_all_players_in_my_group()
-
-    for _, player in pairs( players ) do
-      if string.lower( player ) == string.lower( playerName ) then return true end
-    end
-
-    return false
-  end
 
   local function filter_absent_players( players )
     local present = {}
 
     for _, player in pairs( players ) do
-      if is_player_in_my_group( player.matched_name ) then
+      if group_roster.is_player_in_my_group( player.name ) then
         table.insert( present, player )
       end
     end
@@ -50,5 +26,5 @@ function M.new( api, softres )
   return softres
 end
 
-SoftResAbsentPlayersDecorator = M
+modules.SoftResAbsentPlayersDecorator = M
 return M

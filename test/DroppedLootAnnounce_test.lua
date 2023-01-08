@@ -1,10 +1,10 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../src/?.lua;../Libs/?.lua;../Libs/ModUi/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../src/?.lua;../Libs/?.lua;../Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 utils.mock_wow_api()
 utils.load_libstub()
-require( "ModUi/facade" )
+local modules = require( "src/modules" )
 require( "src/ItemUtils" )
 require( "settings" )
 require( "src/SoftRes" )
@@ -36,10 +36,7 @@ function DroppedLootAnnounceSpec:should_create_item_details()
 end
 
 local function softres( softresses, hardresses )
-  local sr = SoftRes.new()
-  sr.import_data( { softreserves = softresses, hardreserves = hardresses } )
-
-  return sr
+  return modules.SoftRes.new( { softreserves = softresses, hardreserves = hardresses } )
 end
 
 local function sr( player_name, ... )
@@ -71,8 +68,8 @@ function ItemSummarySpec:should_create_the_summary()
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
     how_many_dropped = 2,
     softressers = {
-      { softres_name = "Obszczymucha", matched_name = "Obszczymucha", rolls = 1 },
-      { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 }
+      { name = "Obszczymucha", rolls = 1 },
+      { name = "Psikutas", rolls = 1 }
     },
     is_hardressed = false
   } )
@@ -108,8 +105,8 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
     how_many_dropped = 2,
     softressers = {
-      { softres_name = "Obszczymucha", matched_name = "Obszczymucha", rolls = 1 },
-      { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 }
+      { name = "Obszczymucha", rolls = 1 },
+      { name = "Psikutas", rolls = 1 }
     },
     is_hardressed = false
   } )
@@ -318,7 +315,7 @@ end
 
 local function process_dropped_items( loot_quality_threshold )
   utils.loot_quality_threshold( loot_quality_threshold or 4 )
-  return mod.process_dropped_items( SoftRes.new() )
+  return mod.process_dropped_items( modules.SoftRes.new() )
 end
 
 function ProcessDroppedItemsIntegrationSpec:should_return_source_guid()

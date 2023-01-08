@@ -1,20 +1,19 @@
----@diagnostic disable-next-line: undefined-global
 local libStub = LibStub
-local M = libStub:NewLibrary( "RollFor-DroppedLootAnnounce", 1 )
-if not M then return end
+local modules = libStub( "RollFor-Modules" )
+if modules.DroppedLootAnnounce then return end
 
-local item_utils = libStub( "ItemUtils" )
-local api = function() return libStub( "ModUiFacade-1.0" ).api end
+local M = {}
+local item_utils = modules.ItemUtils
 
 M.item = function( id, name, link, quality )
   return { id = id, name = name, link = link, quality = quality }
 end
 
 local function process_dropped_item( item_index )
-  local link = api().GetLootSlotLink( item_index )
+  local link = modules.api.GetLootSlotLink( item_index )
   if not link then return nil end
 
-  local quality = select( 5, api().GetLootSlotInfo( item_index ) ) or 0
+  local quality = select( 5, modules.api.GetLootSlotInfo( item_index ) ) or 0
   if quality < RollFor.settings.lootQualityThreshold then return nil end
 
   local item_id = item_utils.get_item_id( link )
@@ -26,10 +25,10 @@ end
 function M.process_dropped_items( softres )
   local source_guid = nil
   local items = {}
-  local item_count = api().GetNumLootItems()
+  local item_count = modules.api.GetNumLootItems()
 
   for i = 1, item_count do
-    source_guid = source_guid or api().GetLootSourceInfo( i )
+    source_guid = source_guid or modules.api.GetLootSourceInfo( i )
     local item = process_dropped_item( i )
 
     if item then table.insert( items, item ) end
@@ -82,7 +81,7 @@ function M.create_item_summary( items, softres )
     local item_count = count_items( item.id )
     local softressers = softres.get( item.id )
     local softres_count = #softressers
-    table.sort( softressers, function( l, r ) return l.matched_name < r.matched_name end )
+    table.sort( softressers, function( l, r ) return l.name < r.name end )
     local hardressed = softres.is_item_hardressed( item.id )
 
     if item_count > softres_count and softres_count > 0 then
@@ -125,7 +124,7 @@ function M.create_item_announcements( summary )
 
   local function p( player )
     local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.matched_name, rolls )
+    return string.format( "%s%s", player.name, rolls )
   end
 
   for i = 1, #summary do
@@ -156,4 +155,5 @@ function M.create_item_announcements( summary )
   return result
 end
 
+modules.DroppedLootAnnounce = M
 return M

@@ -4,44 +4,47 @@ local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
 test_utils.load_libstub()
+require( "src/modules" )
 local mod = require( "src/SoftRes" )
+
+local sr = test_utils.soft_res_item
+local hr = test_utils.hard_res_item
+local data = test_utils.create_softres_data
 
 SoftResSpec = {}
 
 function SoftResSpec.new_instances_should_have_empty_item_lists()
   -- Given
-  local sr = mod.new()
-  local sr2 = mod.new()
+  local soft_res = mod.new()
+  local soft_res2 = mod.new()
 
   -- Expect
-  lu.assertEquals( sr.get( 123 ), nil )
-  lu.assertEquals( sr2.get( 123 ), nil )
+  lu.assertEquals( soft_res.get( 123 ), nil )
+  lu.assertEquals( soft_res2.get( 123 ), nil )
 end
 
 function SoftResSpec:should_create_a_proper_object_and_add_an_item()
   -- Given
-  local sr = mod.new()
-  local sr2 = mod.new()
-  sr.add( 123, "Psikutas" )
+  local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
+  local soft_res2 = mod.new()
 
   -- When
-  local result = sr.get( 123 )
-  local result2 = sr2.get( 123 )
+  local result = soft_res.get( 123 )
+  local result2 = soft_res2.get( 123 )
 
   -- Then
   lu.assertEquals( result, {
-    { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 }
+    { name = "Psikutas", rolls = 1 }
   } )
   lu.assertEquals( result2, {} )
 end
 
 function SoftResSpec:should_return_nil_for_untracked_item()
   -- Given
-  local sr = mod.new()
-  sr.add( 123, "Psikutas" )
+  local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
 
   -- When
-  local result = sr.get( "111" )
+  local result = soft_res.get( "111" )
 
   -- Then
   lu.assertEquals( result, {} )
@@ -49,83 +52,46 @@ end
 
 function SoftResSpec:should_add_multiple_players()
   -- Given
-  local sr = mod.new()
-  sr.add( 123, "Psikutas" )
-  sr.add( 123, "Obszczymucha" )
+  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) ) )
 
   -- When
-  local result = sr.get( 123 )
+  local result = soft_res.get( 123 )
 
   -- Then
   lu.assertEquals( result, {
-    { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 1 },
-    { softres_name = "Obszczymucha", matched_name = "Obszczymucha", rolls = 1 }
+    { name = "Psikutas", rolls = 1 },
+    { name = "Obszczymucha", rolls = 1 }
   } )
 end
 
 function SoftResSpec:should_accumulate_rolls()
   -- Given
-  local sr = mod.new()
-  sr.add( 123, "Psikutas" )
-  sr.add( 123, "Psikutas" )
-
+  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Psikutas", 123 ) ) )
+  --
   -- When
-  local result = sr.get( 123 )
+  local result = soft_res.get( 123 )
 
   -- Then
   lu.assertEquals( result, {
-    { softres_name = "Psikutas", matched_name = "Psikutas", rolls = 2 }
-  } )
-end
-
-function SoftResSpec:should_auto_match_player_name()
-  -- Given
-  local matcher = { match = function() return "Psikutas" end }
-  local sr = mod.new( matcher )
-  sr.add( 123, "Psiktuas" )
-
-  -- When
-  local result = sr.get( 123 )
-
-  -- Then
-  lu.assertEquals( result, {
-    { softres_name = "Psiktuas", matched_name = "Psikutas", rolls = 1 }
+    { name = "Psikutas", rolls = 2 }
   } )
 end
 
 function SoftResSpec:should_check_if_player_is_soft_ressing()
-  -- Given
-  local matcher = { match = function( name ) return name == "Psiktuas" and "Psikutas" or name end }
-  local sr = mod.new( matcher )
-
   -- When
-  sr.add( 123, "Psiktuas" )
-  sr.add( 111, "Obszczymucha" )
+  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 111 ) ) )
 
-  -- Then
-  lu.assertEquals( sr.is_player_softressing( "Psiktuas", 123 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Psikutas", 123 ), true )
-  lu.assertEquals( sr.is_player_softressing( "Psikutas", 333 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Psikutas", 111 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Obszczymucha", 111 ), true )
-  lu.assertEquals( sr.is_player_softressing( "Obszczymucha", 123 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Obszczymucha", 124 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Ponpon", 123 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Ponpon", 111 ), false )
-  lu.assertEquals( sr.is_player_softressing( "Ponpon", 333 ), false )
-end
-
-function SoftResSpec:should_clear_the_data()
-  -- Given
-  local sr = mod.new()
-  sr.add( 123, "Psikutas" )
-
-  -- When
-  sr.clear()
-
-  -- Then
-  lu.assertEquals( sr.get( 123 ), {} )
-  lu.assertEquals( sr.is_player_softressing( "Psikutas", 123 ), false )
+  -- Expect
+  lu.assertEquals( soft_res.is_player_softressing( "Psiktuas", 123 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Psikutas", 123 ), true )
+  lu.assertEquals( soft_res.is_player_softressing( "Psikutas", 333 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Psikutas", 111 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Obszczymucha", 111 ), true )
+  lu.assertEquals( soft_res.is_player_softressing( "Obszczymucha", 123 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Obszczymucha", 124 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Ponpon", 123 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Ponpon", 111 ), false )
+  lu.assertEquals( soft_res.is_player_softressing( "Ponpon", 333 ), false )
 end
 
 local runner = lu.LuaUnit.new()

@@ -27,7 +27,6 @@ local award = utils.award
 local trade_with = utils.trade_with
 local trade_items = utils.trade_items
 local trade_complete = utils.trade_complete
-local auto_match = utils.auto_match
 
 SoftResSpec = {}
 
@@ -230,7 +229,7 @@ function SoftResSpec:should_allow_others_to_roll_if_player_who_soft_ressed_alrea
   loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
   roll_for( "Hearthstone", 1, 123 )
   trade_with( "Obszczymucha" )
-  trade_items( { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
+  trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
   trade_complete()
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
@@ -255,7 +254,6 @@ function SoftResSpec:should_only_process_rolls_from_players_who_soft_ressed_if_p
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Sälvatrucha", "Ponpon" )
   soft_res( sr( "Psikutas", 123 ), sr( "Salvatrucha", 123 ), sr( "Ponpon", 123 ) )
-  auto_match( "Salvatrucha", "Sälvatrucha" )
 
   -- When
   roll_for( "Hearthstone", 1, 123 )

@@ -4,6 +4,7 @@ local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
 test_utils.load_libstub()
+require( "src/modules" )
 local utils = require( "src/ItemUtils" )
 
 ItemUtilsSpec = {}

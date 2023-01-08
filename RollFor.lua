@@ -1,11 +1,17 @@
 ---@diagnostic disable-next-line: undefined-global
 local libStub = LibStub
-local ModUi = libStub:GetLibrary( "ModUi-1.0", 4 )
-local M = ModUi:NewModule( "RollFor", { "TradeTracker" } )
+local major = 1
+local minor = 19
+local version = string.format( "%s.%s", major, minor )
+local M = libStub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
-local dropped_loot_announce = libStub:GetLibrary( "RollFor-DroppedLootAnnounce" )
-local version = "1.18"
+local aceTimer = libStub( "AceTimer-3.0" )
+local aceComm = libStub( "AceComm-3.0" )
+M.db = libStub( "AceDB-3.0" ):New( "RollForDb" )
+
+local modules = libStub( "RollFor-Modules" )
+local pretty_print = modules.pretty_print
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -29,7 +35,6 @@ local m_dropped_items = {}
 local m_real_api = nil
 
 local AceGUI = libStub( "AceGUI-3.0" )
-local item_utils = libStub( "ItemUtils" )
 
 -- Persisted values
 local m_softres_data = nil
@@ -38,17 +43,58 @@ local m_softres_data = nil
 local m_softres_frame = nil
 local m_softres_data_dirty = false
 
-local commPrefix = "ModUi-RollFor"
+local commPrefix = "RollFor"
 local wasInGroup = false
 
-local api = ModUi.facade.api
-local lua = ModUi.facade.lua
+M.item_utils = modules.ItemUtils
+M.dropped_loot_announce = modules.DroppedLootAnnounce
 
-local chatFrame = api.ChatFrame1
+M.trade_tracker = modules.TradeTracker.new(
+  function( recipient, items_given, items_received )
+    local function get_dropped_item_name( item_id )
+      for _, item in pairs( m_dropped_items ) do
+        if item.id == item_id then return item.name end
+      end
 
----@diagnostic disable-next-line: unused-local
-M.awarded_loot = AwardedLoot.new()
-M.softres = SoftResAbsentPlayersDecorator.new( api, SoftResAwardedLootDecorator.new( M.awarded_loot, SoftRes.new() ) )
+      return nil
+    end
+
+    for i = 1, #items_given do
+      local item = items_given[ i ]
+      --pretty_print( string.format( "Item: %s", item.link ) )
+      local item_id = M.item_utils.get_item_id( item.link )
+      --pretty_print( string.format( "Item id: %s", item_id ) )
+      local item_name = get_dropped_item_name( item_id )
+      --pretty_print( string.format( "Item name: %s", item_name or "nil" ) )
+
+      if item_name then
+        M.award_item( recipient, item_id, item_name, item.link )
+      end
+    end
+
+    for i = 1, #items_received do
+      local item = items_received[ i ]
+      local item_id = M.item_utils.get_item_id( item.link )
+
+      if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
+        M.unaward_item( recipient, item_id, item.link )
+      end
+    end
+  end
+)
+
+M.softres = nil
+
+function M.import_softres_data( softres_data )
+  M.awarded_loot = modules.AwardedLoot.new() -- This must be here otherwise it doesnt read from the db.
+  M.group_roster = modules.GroupRoster.new( modules.api )
+  M.name_matcher = modules.NameMatcher.new( M.group_roster )
+  local sr = modules.SoftRes.new( softres_data )
+  M.name_matcher.auto_match( sr.get_all_softres_player_names() )
+  local asr = modules.SoftResAwardedLootDecorator.new( M.name_matcher, M.awarded_loot, sr )
+  local msr = modules.SoftResMatchedNameDecorator.new( M.name_matcher, asr )
+  M.softres = modules.SoftResAbsentPlayersDecorator.new( modules.GroupRoster.new( modules.api ), msr )
+end
 
 local function reset()
   m_timer = nil
@@ -72,170 +118,28 @@ local function reset()
   m_softres_data_dirty = false
 end
 
-local function UpdateGroupStatus()
-  wasInGroup = api.IsInGroup() or api.IsInRaid()
+local function update_group_status()
+  wasInGroup = modules.api.IsInGroup() or modules.api.IsInRaid()
 end
 
 local highlight = function( word )
   return string.format( "|cffff9f69%s|r", word )
 end
 
-local red = function( word )
-  return string.format( "|cffff2f2f%s|r", word )
-end
-
-local function Report( text )
-  local _silent = true
-
-  if api.IsInRaid() and not _silent then
-    api.SendChatMessage( text, "RAID" )
-  elseif api.IsInGroup() and not _silent then
-    api.SendChatMessage( text, "PARTY" )
-  else
-    M:PrettyPrint( text )
-  end
-end
-
-function StringSimilarity( s1, s2 )
-  local n = string.len( s1 )
-  local m = string.len( s2 )
-  local ssnc = 0
-
-  if n > m then
-    s1, s2 = s2, s1
-    n, m = m, n
-  end
-
-  for i = n, 1, -1 do
-    if i <= string.len( s1 ) then
-      for j = 1, n - i + 1, 1 do
-        local pattern = string.sub( s1, j, j + i - 1 )
-        if string.len( pattern ) == 0 then break end
-        local foundAt = string.find( s2, pattern )
-
-        if foundAt ~= nil then
-          ssnc = ssnc + (2 * i) ^ 2
-          s1 = string.sub( s1, 0, j - 1 ) .. string.sub( s1, j + i )
-          s2 = string.sub( s2, 0, foundAt - 1 ) .. string.sub( s2, foundAt + i )
-          break
-        end
-      end
-    end
-  end
-
-  return (ssnc / ((n + m) ^ 2)) ^ (1 / 2)
-end
-
-local function Levenshtein( s1, s2 )
-  local len1 = #s1
-  local len2 = #s2
-  local matrix = {}
-  local cost = 1
-  local min = math.min;
-
-  -- quick cut-offs to save time
-  if (len1 == 0) then
-    return len2
-  elseif (len2 == 0) then
-    return len1
-  elseif (s1 == s2) then
-    return 0
-  end
-
-  -- initialise the base matrix values
-  for i = 0, len1, 1 do
-    matrix[ i ] = {}
-    matrix[ i ][ 0 ] = i
-  end
-  for j = 0, len2, 1 do
-    matrix[ 0 ][ j ] = j
-  end
-
-  -- actual Levenshtein algorithm
-  for i = 1, len1, 1 do
-    for j = 1, len2, 1 do
-      if (s1:byte( i ) == s2:byte( j )) then
-        cost = 0
-      end
-
-      matrix[ i ][ j ] = min( matrix[ i - 1 ][ j ] + 1, matrix[ i ][ j - 1 ] + 1, matrix[ i - 1 ][ j - 1 ] + cost )
-    end
-  end
-
-  -- return the last value - this is the Levenshtein distance
-  return matrix[ len1 ][ len2 ]
-end
-
-local function improvedDescending( l, r )
-  return l[ "levenshtein" ] < r[ "levenshtein" ] or
-      l[ "levenshtein" ] == r[ "levenshtein" ] and l[ "similarity" ] > r[ "similarity" ]
-end
-
---local function descending(l, r)
---  return l["similarity"] > r["similarity"]
+--local red = function( word )
+--return string.format( "|cffff2f2f%s|r", word )
 --end
 
-local function GetSimilarityPredictions( playersInGroupWhoDidNotSoftRes, playersNotInGroupWhoSoftRessed, sort )
-  local results = {}
+local function report( text )
+  local _silent = true
 
-  for _, player in pairs( playersInGroupWhoDidNotSoftRes ) do
-    local predictions = {}
-
-    for _, candidate in pairs( playersNotInGroupWhoSoftRessed ) do
-      local prediction = { [ "candidate" ] = candidate, [ "similarity" ] = StringSimilarity( player, candidate ),
-        [ "levenshtein" ] = Levenshtein( player, candidate ) }
-      table.insert( predictions, prediction )
-    end
-
-    table.sort( predictions, sort )
-    results[ player ] = predictions
+  if modules.api.IsInRaid() and not _silent then
+    modules.api.SendChatMessage( text, "RAID" )
+  elseif modules.api.IsInGroup() and not _silent then
+    modules.api.SendChatMessage( text, "PARTY" )
+  else
+    pretty_print( text )
   end
-
-  return results
-end
-
-local function endsWith( str, ending )
-  return ending == "" or str:sub( - #ending ) == ending
-end
-
-local function formatPercent( value )
-  local result = string.format( "%.2f", value * 100 )
-
-  if endsWith( result, "0" ) then
-    result = string.sub( result, 0, string.len( result ) - 1 )
-  end
-
-  if endsWith( result, "0" ) then
-    result = string.sub( result, 0, string.len( result ) - 1 )
-  end
-
-  if endsWith( result, "." ) then
-    result = string.sub( result, 0, string.len( result ) - 1 )
-  end
-
-  return string.format( "%s%%", result )
-end
-
-function AssignPredictions( predictions )
-  local results = {}
-  local belowThresholdResults = {}
-
-  for player, prediction in pairs( predictions ) do
-    local topCandidate = prediction[ 1 ]
-    local similarity = topCandidate[ "similarity" ]
-    local levenshtein = topCandidate[ "levenshtein" ]
-
-    local override = { [ "override" ] = topCandidate[ "candidate" ], [ "similarity" ] = formatPercent( similarity ),
-      [ "levenshtein" ] = levenshtein }
-
-    if similarity >= 0.57 then
-      results[ player ] = override
-    else
-      belowThresholdResults[ player ] = override
-    end
-  end
-
-  return results, belowThresholdResults
 end
 
 local function map( t, f )
@@ -250,28 +154,28 @@ local function map( t, f )
   return result
 end
 
-local function GetAllPlayers()
-  return map( M:GetAllPlayersInMyGroup(), function( player )
-    return { softres_name = player, matched_name = player, rolls = 1 }
+local function get_all_players()
+  return map( M.group_roster.get_all_players_in_my_group(), function( player )
+    return { name = player, rolls = 1 }
   end )
 end
 
-local function IncludeReservedRolls( item_id )
+local function include_reserved_rolls( item_id )
   local reservedByPlayers = M.softres.get( item_id )
-  local reserving_player_count = M:CountElements( reservedByPlayers )
-  local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or GetAllPlayers()
-  table.sort( reservedByPlayers, function( l, r ) return l.matched_name < r.matched_name end )
+  local reserving_player_count = modules.count_elements( reservedByPlayers )
+  local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or get_all_players()
+  table.sort( reservedByPlayers, function( l, r ) return l.name < r.name end )
   return rollers, reservedByPlayers, reserving_player_count
 end
 
-local function ShowSoftRes( args )
+local function show_softres()
   local needsRefetch = false
   local softressed_item_ids = M.softres.get_item_ids()
   local items = {}
 
   for _, item_id in pairs( softressed_item_ids ) do
     local players = M.softres.get( item_id )
-    local itemLink = M:GetItemLink( item_id )
+    local itemLink = modules.fetch_item_link( item_id )
 
     if not itemLink then
       needsRefetch = true
@@ -280,88 +184,86 @@ local function ShowSoftRes( args )
     end
   end
 
-  local silent = not (args and args == "report")
-
   if needsRefetch then
-    M:DebugMsg( "Not all items were fetched. Retrying...", silent )
-    M:ScheduleTimer( ShowSoftRes, 1 )
+    pretty_print( "Not all items were fetched. Retrying..." )
+    aceTimer:ScheduleTimer( show_softres, 1 )
     return
   end
 
-  if M:CountElements( items ) == 0 then
-    Report( "No soft-res items found." )
+  if modules.count_elements( items ) == 0 then
+    report( "No soft-res items found." )
     return
   end
 
-  Report( "Soft-ressed items (red players are not in your group):" )
+  report( "Soft-ressed items (red players are not in your group):" )
   local colorize = function( player )
     local rolls = player.rolls > 1 and string.format( " (%s)", player.rolls ) or ""
     return string.format( "|cff%s%s|r%s",
-      M:IsPlayerInMyGroup( player.matched_name ) and "ffffff" or "ff2f2f",
-      player.matched_name, rolls )
+      M.group_roster.is_player_in_my_group( player.name ) and "ffffff" or "ff2f2f",
+      player.name, rolls )
   end
 
   for itemLink, players in pairs( items ) do
-    if M:CountElements( players ) > 0 then
-      Report( string.format( "%s: %s", itemLink, M:TableToCommifiedPrettyString( players, colorize ) ) )
+    if modules.count_elements( players ) > 0 then
+      report( string.format( "%s: %s", itemLink, modules.prettify_table( players, colorize ) ) )
     end
   end
 end
 
-local function UpdateData()
-  if not m_softres_data_dirty or not m_softres_data then return end
-  ModUiDb.rollfor.softres_data = m_softres_data
+local function update_softres_data()
+  if not m_softres_data_dirty then return end
 
-  if M.softres.import_encrypted_data( m_softres_data ) then
-    M:PrettyPrint( string.format( "Data loaded successfully. Use %s command to list.", highlight( "/srs" ) ) )
+  RollForDb.rollfor.softres_data = m_softres_data
+  local softres_data = modules.SoftRes.decode( m_softres_data )
+
+  M.import_softres_data( softres_data )
+
+  if softres_data then
+    pretty_print( string.format( "Data loaded successfully. Use %s command to list.", highlight( "/srs" ) ) )
   else
-    M:PrettyPrint( "Could not load soft-res data." )
+    pretty_print( "Could not load soft-res data." )
   end
 
   m_softres_data_dirty = false
 end
 
-local function ReportSoftResReady()
-  Report( "Soft-res setup is complete." )
-end
-
-local function ThereWasATie( topRoll, topRollers )
+local function there_was_a_tie( topRoll, topRollers )
   table.sort( topRollers )
-  local topRollersStr = M:TableToCommifiedPrettyString( topRollers )
-  local topRollersStrColored = M:TableToCommifiedPrettyString( topRollers, highlight )
+  local topRollersStr = modules.prettify_table( topRollers )
+  local topRollersStrColored = modules.prettify_table( topRollers, highlight )
 
-  M:PrettyPrint( string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
-    m_rerolling and "re-" or "", topRoll, topRollersStrColored ), M:GetGroupChatType() )
-  api.SendChatMessage( string.format( "The %shighest %sroll was %d by %s.",
+  pretty_print( string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
+    m_rerolling and "re-" or "", topRoll, topRollersStrColored ), modules.get_group_chat_type() )
+  modules.api.SendChatMessage( string.format( "The %shighest %sroll was %d by %s.",
     not m_rerolling and m_winner_count > 0 and "next " or "",
-    m_rerolling and "re-" or "", topRoll, topRollersStr ), M:GetGroupChatType() )
+    m_rerolling and "re-" or "", topRoll, topRollersStr ), modules.get_group_chat_type() )
   m_rolls = {}
-  m_rollers = map( topRollers, function( player_name ) return { softres_name = player_name, matched_name = player_name, rolls = 1 } end )
+  m_rollers = map( topRollers, function( player_name ) return { name = player_name, rolls = 1 } end )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
-  ModUi:ScheduleTimer( function() api.SendChatMessage( string.format( "%s /roll for %s now.", topRollersStr, m_rolled_item.link ),
-      M:GetGroupChatType() )
+  aceTimer:ScheduleTimer( function() modules.api.SendChatMessage( string.format( "%s /roll for %s now.", topRollersStr, m_rolled_item.link ),
+      modules.get_group_chat_type() )
   end, 2.5 )
 end
 
-local function CancelRollingTimer()
-  ModUi:CancelTimer( m_timer )
+local function cancel_rolling_timer()
+  aceTimer:CancelTimer( m_timer )
   m_timer = nil
 end
 
-local function PrintRollingComplete()
-  M:PrettyPrint( string.format( "Rolling for %s has %s.", m_rolled_item.link, m_cancelled and "been cancelled" or "finished" ) )
+local function print_rolling_complete()
+  pretty_print( string.format( "Rolling for %s has %s.", m_rolled_item.link, m_cancelled and "been cancelled" or "finished" ) )
 end
 
-local function StopRolling()
+local function stop_rolling()
   if not m_rolling then return end
 
   m_rolling = false
 end
 
-local function SortRolls( rolls )
-  local function RollMap( _rolls )
+local function sort_rolls( rolls )
+  local function roll_map( _rolls )
     local result = {}
 
     for _, roll in pairs( _rolls ) do
@@ -371,7 +273,7 @@ local function SortRolls( rolls )
     return result
   end
 
-  local function ToMap( _rolls )
+  local function to_map( _rolls )
     local result = {}
 
     for k, v in pairs( _rolls ) do
@@ -393,7 +295,7 @@ local function SortRolls( rolls )
     end
   end
 
-  local function ToSortedRollsArray( rollMap )
+  local function to_sorted_rolls_array( rollMap )
     local result = {}
 
     for k in pairs( rollMap ) do
@@ -404,7 +306,7 @@ local function SortRolls( rolls )
     return result
   end
 
-  local function Merge( sortedRolls, t )
+  local function merge( sortedRolls, t )
     local result = {}
 
     for _, v in ipairs( sortedRolls ) do
@@ -414,35 +316,35 @@ local function SortRolls( rolls )
     return result
   end
 
-  local sortedRolls = ToSortedRollsArray( RollMap( rolls ) )
-  local t = ToMap( rolls )
+  local sortedRolls = to_sorted_rolls_array( roll_map( rolls ) )
+  local t = to_map( rolls )
 
-  return Merge( sortedRolls, t )
+  return merge( sortedRolls, t )
 end
 
-local function ShowSortedRolls( limit )
-  local sortedRolls = SortRolls( m_rolls )
+local function show_sorted_rolls( limit )
+  local sortedRolls = sort_rolls( m_rolls )
   local i = 1
 
-  M:PrettyPrint( "Rolls:" )
+  pretty_print( "Rolls:" )
 
   for _, v in ipairs( sortedRolls ) do
     if limit and limit > 0 and i > limit then return end
 
-    M:PrettyPrint( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], M:TableToCommifiedPrettyString( v[ "players" ] ) ) )
+    pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], modules.prettify_table( v[ "players" ] ) ) )
     i = i + 1
   end
 end
 
-local function PrintWinner( roll, players, is_offspec )
+local function print_winner( roll, players, is_offspec )
   local f = highlight
   local offspec = is_offspec and " (OS)" or ""
 
-  M:PrettyPrint( string.format( "%s %srolled the %shighest (%s) for %s%s.", M:TableToCommifiedPrettyString( players, f ),
+  pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, f ),
     m_rerolling and "re-" or "", not m_rerolling and m_winner_count > 0 and "next " or "", f( roll ), m_rolled_item.link, offspec ) )
-  api.SendChatMessage( string.format( "%s %srolled the %shighest (%d) for %s%s.", M:TableToCommifiedPrettyString( players ),
+  modules.api.SendChatMessage( string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
     m_rerolling and "re-" or "", not m_rerolling and m_winner_count > 0 and "next " or "", roll, m_rolled_item.link, offspec ),
-    M:GetGroupChatType() )
+    modules.get_group_chat_type() )
 end
 
 local function have_all_players_rolled_offspec()
@@ -456,8 +358,8 @@ local function have_all_players_rolled_offspec()
 end
 
 local function have_all_rolls_been_exhausted()
-  local mainspec_roll_count = M:CountElements( m_rolls )
-  local offspec_roll_count = M:CountElements( m_offspec_rolls )
+  local mainspec_roll_count = modules.count_elements( m_rolls )
+  local offspec_roll_count = modules.count_elements( m_offspec_rolls )
   local total_roll_count = mainspec_roll_count + offspec_roll_count
 
   if m_rolled_item_count == #m_offspec_rollers and have_all_players_rolled_offspec() or
@@ -483,16 +385,15 @@ local function reindex( t )
 end
 
 local function announce_extra_rolls_left()
-  local remaining_rollers = reindex( M:filter( m_rollers, function( _, roller ) return roller.rolls > 0 end ) )
+  local remaining_rollers = reindex( modules.filter( m_rollers, function( _, roller ) return roller.rolls > 0 end ) )
 
   local transform = function( player )
     local rolls = player.rolls == 1 and "1 roll" or string.format( "%s rolls", player.rolls )
-    return string.format( "%s (%s)", player.matched_name, rolls )
+    return string.format( "%s (%s)", player.name, rolls )
   end
 
-  ModUi.remaining_rollers = remaining_rollers
-  local message = M:TableToCommifiedPrettyString( remaining_rollers, transform )
-  api.SendChatMessage( string.format( "SR rolls remaining: %s", message ), M:GetGroupChatType() )
+  local message = modules.prettify_table( remaining_rollers, transform )
+  modules.api.SendChatMessage( string.format( "SR rolls remaining: %s", message ), modules.get_group_chat_type() )
 end
 
 local function was_there_a_tie( sorted_rolls )
@@ -509,23 +410,23 @@ local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_o
 
     if m_rolled_item_count == candidate_count then
       if m_rolled_item_reserved and not forced and not rolls_exhausted then
-        PrintWinner( roll, players, is_offspec )
+        print_winner( roll, players, is_offspec )
         announce_extra_rolls_left()
       else
-        StopRolling()
-        PrintWinner( roll, players, is_offspec )
+        stop_rolling()
+        print_winner( roll, players, is_offspec )
         m_winner_count = m_winner_count + 1
       end
 
       return
     elseif was_there_a_tie( sorted_rolls ) and (rolls_exhausted or is_offspec or m_seconds_left <= 0) then
-      ThereWasATie( roll, players )
+      there_was_a_tie( roll, players )
       return
     else
-      PrintWinner( roll, players, is_offspec )
+      print_winner( roll, players, is_offspec )
 
       if forced then
-        StopRolling()
+        stop_rolling()
         m_winner_count = m_winner_count + 1
         return
       elseif m_rolled_item_reserved and not rolls_exhausted then
@@ -540,55 +441,55 @@ local function process_sorted_rolls( sorted_rolls, forced, rolls_exhausted, is_o
   if fallback_fn and m_winner_count < m_rolled_item_count then
     fallback_fn()
   else
-    StopRolling()
+    stop_rolling()
   end
 end
 
-local function FinalizeRolling( forced )
-  CancelRollingTimer()
+local function finalize_rolling( forced )
+  cancel_rolling_timer()
   local rolls_exhausted = have_all_rolls_been_exhausted()
 
-  local mainspec_roll_count = M:CountElements( m_rolls )
-  local offspec_roll_count = M:CountElements( m_offspec_rolls )
+  local mainspec_roll_count = modules.count_elements( m_rolls )
+  local offspec_roll_count = modules.count_elements( m_offspec_rolls )
 
   if mainspec_roll_count + offspec_roll_count == 0 then
-    StopRolling()
-    M:PrettyPrint( string.format( "Nobody rolled for %s.", m_rolled_item.link ) )
-    api.SendChatMessage( string.format( "Nobody rolled for %s.", m_rolled_item.link ), M:GetGroupChatType() )
-    PrintRollingComplete()
+    stop_rolling()
+    pretty_print( string.format( "Nobody rolled for %s.", m_rolled_item.link ) )
+    modules.api.SendChatMessage( string.format( "Nobody rolled for %s.", m_rolled_item.link ), modules.get_group_chat_type() )
+    print_rolling_complete()
     return
   end
 
-  local offspec_rolling = function() process_sorted_rolls( SortRolls( m_offspec_rolls ), forced, rolls_exhausted, true ) end
+  local offspec_rolling = function() process_sorted_rolls( sort_rolls( m_offspec_rolls ), forced, rolls_exhausted, true ) end
 
   if mainspec_roll_count > 0 then
-    process_sorted_rolls( SortRolls( m_rolls ), forced, rolls_exhausted, false, offspec_rolling )
+    process_sorted_rolls( sort_rolls( m_rolls ), forced, rolls_exhausted, false, offspec_rolling )
   else
     offspec_rolling()
   end
 
   if not m_rolling then
-    PrintRollingComplete()
+    print_rolling_complete()
   end
 end
 
-local function OnTimer()
+local function on_timer()
   if not m_timer then return end
 
   m_seconds_left = m_seconds_left - 1
 
   if m_seconds_left <= 0 then
-    FinalizeRolling()
+    finalize_rolling()
   elseif m_seconds_left == 3 then
-    api.SendChatMessage( "Stopping rolls in 3", M:GetGroupChatType() )
+    modules.api.SendChatMessage( "Stopping rolls in 3", modules.get_group_chat_type() )
   elseif m_seconds_left < 3 then
-    api.SendChatMessage( m_seconds_left, M:GetGroupChatType() )
+    modules.api.SendChatMessage( m_seconds_left, modules.get_group_chat_type() )
   end
 end
 
-local function GetRollAnnouncementChatType()
-  local chatType = M:GetGroupChatType()
-  local rank = M:MyRaidRank()
+local function get_roll_announcement_chat_type()
+  local chatType = modules.get_group_chat_type()
+  local rank = modules.my_raid_rank()
 
   if chatType == "RAID" and rank > 0 then
     return "RAID_WARNING"
@@ -597,15 +498,15 @@ local function GetRollAnnouncementChatType()
   end
 end
 
-local function GetSoftResInfo( softRessers, f )
-  return string.format( "(SR by %s)", M:TableToCommifiedPrettyString( softRessers, f ) )
+local function get_softres_info( softRessers, f )
+  return string.format( "(SR by %s)", modules.prettify_table( softRessers, f ) )
 end
 
-local function Subtract( from, t )
+local function subtract( from, t )
   local result = {}
 
   for _, v in ipairs( from ) do
-    if not M:TableContainsValue( t, v, function( entry ) return entry.matched_name end ) then
+    if not modules.table_contains_value( t, v, function( entry ) return entry.name end ) then
       table.insert( result, v )
     end
   end
@@ -620,7 +521,7 @@ local function compose( f1, f2 )
 end
 
 local function copy_roller( roller )
-  return { softres_name = roller.softres_name, matched_name = roller.matched_name, rolls = roller.rolls }
+  return { name = roller.name, rolls = roller.rolls }
 end
 
 local function copy_rollers( t )
@@ -633,7 +534,7 @@ local function copy_rollers( t )
   return result
 end
 
-local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
+local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
   m_rollers = whoCanRoll
   m_rolled_item = item
   m_rolled_item_count = count
@@ -641,37 +542,34 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
   m_rolled_item_reserved = softResCount > 0
 
   local name_with_rolls = function( player )
-    if softResCount == count then return player.matched_name end
+    if softResCount == count then return player.name end
     local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.matched_name, rolls )
+    return string.format( "%s%s", player.name, rolls )
   end
 
   if m_rolled_item_reserved and softResCount <= count then
-    M:PrettyPrint( string.format( "%s is soft-ressed by %s.",
+    pretty_print( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
-      M:TableToCommifiedPrettyString( reservedBy, compose( name_with_rolls, highlight ) ) ) )
+      modules.prettify_table( reservedBy, compose( name_with_rolls, highlight ) ) ) )
 
-    api.SendChatMessage( string.format( "%s is soft-ressed by %s.",
+    modules.api.SendChatMessage( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
-      M:TableToCommifiedPrettyString( reservedBy, name_with_rolls ) ), GetRollAnnouncementChatType() )
+      modules.prettify_table( reservedBy, name_with_rolls ) ), get_roll_announcement_chat_type() )
 
     m_rolled_item_count = count - softResCount
     info = string.format( "(everyone except %s can roll). /roll (MS) or /roll 99 (OS)",
-      M:TableToCommifiedPrettyString( reservedBy, function( player ) return player.matched_name end ) )
-    m_rollers = Subtract( M:GetAllPlayersInMyGroup(), reservedBy )
+      modules.prettify_table( reservedBy, function( player ) return player.name end ) )
+    m_rollers = subtract( M.group_roster.get_all_players_in_my_group(), reservedBy )
     m_offspec_rollers = {}
   elseif softResCount > 0 then
-    info = GetSoftResInfo( reservedBy, name_with_rolls )
+    info = get_softres_info( reservedBy, name_with_rolls )
   else
     if not info or info == "" then info = "/roll (MS) or /roll 99 (OS)" end
     m_offspec_rollers = copy_rollers( m_rollers )
   end
 
-  ModUi.rollers = m_rollers
-  ModUi.offspec_rollers = m_offspec_rollers
-
   if m_rolled_item_count == 0 or #m_rollers == 0 then
-    StopRolling()
+    stop_rolling()
     return
   end
 
@@ -684,32 +582,32 @@ local function RollFor( whoCanRoll, count, item, seconds, info, reservedBy )
 
   if m_rolled_item_count > 1 then countInfo = string.format( ". %d top rolls win.", m_rolled_item_count ) end
 
-  api.SendChatMessage( string.format( "Roll for %s%s:%s%s",
+  modules.api.SendChatMessage( string.format( "Roll for %s%s:%s%s",
     m_rolled_item_count > 1 and string.format( "%dx", m_rolled_item_count ) or "", item.link,
-    (not info or info == "") and "." or string.format( " %s", info ), countInfo ), GetRollAnnouncementChatType() )
+    (not info or info == "") and "." or string.format( " %s", info ), countInfo ), get_roll_announcement_chat_type() )
   m_rerolling = false
   m_rolling = true
-  m_timer = ModUi:ScheduleRepeatingTimer( OnTimer, 1.7 )
+  m_timer = aceTimer:ScheduleRepeatingTimer( on_timer, 1.7 )
 end
 
 local function announce_hr( item )
-  api.SendChatMessage( string.format( "%s is hard-ressed.", item ), GetRollAnnouncementChatType() )
+  modules.api.SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
 end
 
-local function ProcessRollForSlashCommand( args, slashCommand, whoRolls )
-  if not api.IsInGroup() then
-    M:PrettyPrint( "Not in a group." )
+local function process_roll_for_slash_command( args, slashCommand, whoRolls )
+  if not modules.api.IsInGroup() then
+    pretty_print( "Not in a group." )
     return
   end
 
   for itemCount, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
     if m_rolling then
-      M:PrettyPrint( "Rolling already in progress." )
+      pretty_print( "Rolling already in progress." )
       return
     end
 
     local count = (not itemCount or itemCount == "") and 1 or tonumber( itemCount )
-    local item_id = M:GetItemId( item_link )
+    local item_id = M.item_utils.get_item_id( item_link )
     local rollers, reservedByPlayers = whoRolls( item_id )
     local item = { link = item_link, id = item_id }
 
@@ -718,40 +616,40 @@ local function ProcessRollForSlashCommand( args, slashCommand, whoRolls )
       return
     elseif seconds and seconds ~= "" and seconds ~= " " then
       local secs = tonumber( seconds )
-      RollFor( rollers, count, item, secs <= 3 and 4 or secs, info, reservedByPlayers )
+      roll_for( rollers, count, item, secs <= 3 and 4 or secs, info, reservedByPlayers )
     else
-      RollFor( rollers, count, item, 8, info, reservedByPlayers )
+      roll_for( rollers, count, item, 8, info, reservedByPlayers )
     end
 
     return
   end
 
-  M:PrettyPrint( string.format( "Usage: %s <%s> [%s]", slashCommand, highlight( "item" ), highlight( "seconds" ) ) )
+  pretty_print( string.format( "Usage: %s <%s> [%s]", slashCommand, highlight( "item" ), highlight( "seconds" ) ) )
 end
 
-local function ProcessSoftShowSortedRollsSlashCommand( args )
+local function process_show_sorted_rolls_slash_command( args )
   if m_rolling then
-    M:PrettyPrint( "Rolling is in progress." )
+    pretty_print( "Rolling is in progress." )
     return
   end
 
-  if not m_rolls or M:CountElements( m_rolls ) == 0 then
-    M:PrettyPrint( "No rolls found." )
+  if not m_rolls or modules.count_elements( m_rolls ) == 0 then
+    pretty_print( "No rolls found." )
     return
   end
 
   for limit in (args):gmatch "(%d+)" do
-    ShowSortedRolls( tonumber( limit ) )
+    show_sorted_rolls( tonumber( limit ) )
     return
   end
 
-  ShowSortedRolls( 5 )
+  show_sorted_rolls( 5 )
 end
 
-local function DecorateWithRollingCheck( f )
+local function decorate_with_rolling_check( f )
   return function( ... )
     if not m_rolling then
-      M:PrettyPrint( "Rolling not in progress." )
+      pretty_print( "Rolling not in progress." )
       return
     end
 
@@ -759,67 +657,58 @@ local function DecorateWithRollingCheck( f )
   end
 end
 
-local function ProcessCancelRollSlashCommand()
-  CancelRollingTimer()
+local function process_cancell_roll_slash_command()
+  cancel_rolling_timer()
   m_cancelled = true
-  StopRolling()
-  PrintRollingComplete()
+  stop_rolling()
+  print_rolling_complete()
 end
 
-local function ProcessFinishRollSlashCommand()
-  FinalizeRolling( true )
+local function process_finish_roll_slash_command()
+  finalize_rolling( true )
 end
 
 local function clear_storage()
-  ModUiDb.rollfor = {}
-  ModUiDb.rollfor.softres_items = {}
-  ModUiDb.rollfor.hardres_items = {}
-  ModUiDb.rollfor.softres_player_name_overrides = {}
-  ModUiDb.rollfor.softres_passing = {}
-  ModUiDb.rollfor.softres_data = ""
-  ModUiDb.rollfor.awarded_items = {}
-  ModUiDb.rollfor.dropped_items = {}
+  RollForDb.rollfor = {}
+  RollForDb.rollfor.softres_items = {}
+  RollForDb.rollfor.hardres_items = {}
+  RollForDb.rollfor.softres_player_name_overrides = {}
+  RollForDb.rollfor.softres_passing = {}
+  RollForDb.rollfor.softres_data = ""
+  RollForDb.rollfor.awarded_items = {}
+  RollForDb.rollfor.dropped_items = {}
 
-  m_softres_data = ModUiDb.rollfor.softres_data
-  m_dropped_items = ModUiDb.rollfor.dropped_items
+  m_softres_data = RollForDb.rollfor.softres_data
+  m_dropped_items = RollForDb.rollfor.dropped_items
 end
 
-local function SetupStorage()
-  ModUiDb.rollfor = ModUiDb.rollfor or {}
-
-  -- For legacy data compatibility
-  if ModUiDb.rollfor.softResItEncryptedData then
-    clear_storage()
-
-    M:PrettyPrint( string.format( "%s Soft-res data has been cleared. Please re-import if needed.", red( "WARNING!" ) ) )
-  end
+local function setup_storage()
+  RollForDb.rollfor = RollForDb.rollfor or {}
 
   -- Future-proof the data if we need to do the migration.
-  if not ModUiDb.rollfor.version then
-    ModUiDb.rollfor.version = version
+  if not RollForDb.rollfor.version then
+    RollForDb.rollfor.version = version
   end
 
-  ModUiDb.rollfor.hardres_items = ModUiDb.rollfor.hardres_items or {}
+  RollForDb.rollfor.hardres_items = RollForDb.rollfor.hardres_items or {}
+  RollForDb.rollfor.softres_player_name_overrides = RollForDb.rollfor.softres_player_name_overrides or {}
+  RollForDb.rollfor.softres_passing = RollForDb.rollfor.softres_passing or {}
 
-  ModUiDb.rollfor.softres_player_name_overrides = ModUiDb.rollfor.softres_player_name_overrides or {}
+  RollForDb.rollfor.softres_data = RollForDb.rollfor.softres_data or nil
+  m_softres_data = RollForDb.rollfor.softres_data
 
-  ModUiDb.rollfor.softres_passing = ModUiDb.rollfor.softres_passing or {}
+  RollForDb.rollfor.awarded_items = RollForDb.rollfor.awarded_items or {}
 
-  ModUiDb.rollfor.softres_data = ModUiDb.rollfor.softres_data or nil
-  m_softres_data = ModUiDb.rollfor.softres_data
-
-  ModUiDb.rollfor.awarded_items = ModUiDb.rollfor.awarded_items or {}
-
-  ModUiDb.rollfor.dropped_items = ModUiDb.rollfor.dropped_items or {}
-  m_dropped_items = ModUiDb.rollfor.dropped_items
+  RollForDb.rollfor.dropped_items = RollForDb.rollfor.dropped_items or {}
+  m_dropped_items = RollForDb.rollfor.dropped_items
   m_softres_data_dirty = true
 end
 
-local function CheckSoftRes()
-  M:PrettyPrint( "TODO: Implement me!" )
+local function check_softres()
+  pretty_print( "TODO: Implement me!" )
 end
 
-local function ShowGui()
+local function show_gui()
   m_softres_frame = AceGUI:Create( "Frame" )
   m_softres_frame.frame:SetFrameStrata( "DIALOG" )
   m_softres_frame:SetTitle( "SoftResLoot" )
@@ -830,13 +719,13 @@ local function ShowGui()
     function( widget )
       if not m_softres_data_dirty then
         if not m_softres_data then
-          M:PrettyPrint( "Invalid or no soft-res data found." )
+          pretty_print( "Invalid or no soft-res data found." )
         else
-          CheckSoftRes()
+          check_softres()
         end
       else
-        UpdateData()
-        CheckSoftRes()
+        update_softres_data()
+        check_softres()
       end
 
       AceGUI:Release( widget )
@@ -863,22 +752,23 @@ local function ShowGui()
   m_softres_frame:AddChild( importEditBox )
 end
 
-local function ProcessSoftResSlashCommand( args )
+local function process_softres_slash_command( args )
   if args == "init" then
     clear_storage()
-    M:PrettyPrint( "Soft-res data cleared." )
+    M.awarded_loot = modules.AwardedLoot.new()
+    pretty_print( "Soft-res data cleared." )
 
     return
   end
 
-  ShowGui()
+  show_gui()
 end
 
 local function has_rolls_left( player_name, offspec_roll )
   local rollers = offspec_roll and m_offspec_rollers or m_rollers
 
   for _, v in pairs( rollers ) do
-    if v.matched_name == player_name then
+    if v.name == player_name then
       return v.rolls > 0
     end
   end
@@ -890,7 +780,7 @@ local function subtract_roll( player_name, offspec )
   local rollers = offspec and m_offspec_rollers or m_rollers
 
   for _, v in pairs( rollers ) do
-    if v.matched_name == player_name then
+    if v.name == player_name then
       v.rolls = v.rolls - 1
       return
     end
@@ -905,7 +795,7 @@ local function record_roll( player_name, roll, offspec )
   end
 end
 
-local function OnRoll( player, roll, min, max )
+local function on_roll( player, roll, min, max )
   if not m_rolling or min ~= 1 or (max ~= 99 and max ~= 100) then return end
 
   local offspec_roll = max == 99
@@ -913,106 +803,77 @@ local function OnRoll( player, roll, min, max )
   local soft_ressed_by_player = M.softres.is_player_softressing( player, m_rolled_item.id )
 
   if soft_ressed and not soft_ressed_by_player then
-    M:PrettyPrint( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
+    pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
     return
   elseif soft_ressed and soft_ressed_by_player and offspec_roll then
-    M:PrettyPrint( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
+    pretty_print( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
     return
   elseif not has_rolls_left( player, offspec_roll ) then
-    M:PrettyPrint( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player, roll ) )
+    pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player, roll ) )
     return
   end
 
   subtract_roll( player, offspec_roll )
   record_roll( player, roll, offspec_roll )
 
-  if have_all_rolls_been_exhausted() then FinalizeRolling() end
+  if have_all_rolls_been_exhausted() then finalize_rolling() end
 end
 
-local function OnChatMsgSystem( message )
+local function on_chat_msg_system( message )
   for player, roll, min, max in (message):gmatch( "([^%s]+) rolls (%d+) %((%d+)%-(%d+)%)" ) do
-    OnRoll( player, tonumber( roll ), tonumber( min ), tonumber( max ) )
+    on_roll( player, tonumber( roll ), tonumber( min ), tonumber( max ) )
   end
 end
 
-local function VersionRecentlyReminded()
-  if not ModUiDb.rollfor.last_new_version_reminder_timestamp then return false end
+local function version_recently_reminded()
+  if not RollForDb.rollfor.last_new_version_reminder_timestamp then return false end
 
-  local time = lua.time()
+  local time = modules.lua.time()
 
   -- Only remind once a day
-  if time - ModUiDb.rollfor.last_new_version_reminder_timestamp > 3600 * 24 then
+  if time - RollForDb.rollfor.last_new_version_reminder_timestamp > 3600 * 24 then
     return false
   else
     return true
   end
 end
 
-local function StripDots( v )
+local function strip_dots( v )
   local result, _ = v:gsub( "%.", "" )
   return result
 end
 
-local function IsNewVersion( v )
-  local myVersion = tonumber( StripDots( version ) )
-  local theirVersion = tonumber( StripDots( v ) )
+local function is_new_version( v )
+  local myVersion = tonumber( strip_dots( version ) )
+  local theirVersion = tonumber( strip_dots( v ) )
 
   return theirVersion > myVersion
 end
 
 -- OnComm(prefix, message, distribution, sender)
-local function OnComm( prefix, message, _, _ )
+local function on_comm( prefix, message, _, _ )
   if prefix ~= commPrefix then return end
 
-  local cmd, value = lua.strmatch( message, "^(.*)::(.*)$" )
+  local cmd, value = modules.lua.strmatch( message, "^(.*)::(.*)$" )
 
-  if cmd == "VERSION" and IsNewVersion( value ) and not VersionRecentlyReminded() then
-    ModUiDb.rollfor.last_new_version_reminder_timestamp = lua.time()
-    M:PrettyPrint( string.format( "New version (%s) is available!", highlight( string.format( "v%s", value ) ) ) )
+  if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
+    RollForDb.rollfor.last_new_version_reminder_timestamp = modules.lua.time()
+    pretty_print( string.format( "New version (%s) is available!", highlight( string.format( "v%s", value ) ) ) )
   end
 end
 
-local function BroadcastVersion( target )
-  ModUi:SendCommMessage( commPrefix, "VERSION::" .. version, target )
+local function broadcast_version( target )
+  aceComm:SendCommMessage( commPrefix, "VERSION::" .. version, target )
 end
 
-local function BroadcastVersionToTheGuild()
-  if not api.IsInGuild() then return end
-  BroadcastVersion( "GUILD" )
+local function broadcast_version_to_the_guild()
+  if not modules.api.IsInGuild() then return end
+  broadcast_version( "GUILD" )
 end
 
-local function BroadcastVersionToTheGroup()
-  if not api.IsInGroup() and not api.IsInRaid() then return end
-  BroadcastVersion( api.IsInRaid() and "RAID" or "PARTY" )
-end
-
-local function get_dropped_item_name( item_id )
-  for _, item in pairs( m_dropped_items ) do
-    if item.id == item_id then return item.name end
-  end
-
-  return nil
-end
-
-local function on_trade_complete( recipient, items_given, items_received )
-  for i = 1, #items_given do
-    local item = items_given[ i ]
-    local item_id = item_utils.get_item_id( item.link )
-    local item_name = get_dropped_item_name( item_id )
-
-    if item_name then
-      M.award_item( recipient, item_id, item_name, item.link )
-    end
-  end
-
-  for i = 1, #items_received do
-    local item = items_received[ i ]
-    local item_id = item_utils.get_item_id( item.link )
-
-    if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
-      M.unaward_item( recipient, item_id, item.link )
-    end
-  end
+local function broadcast_version_to_the_group()
+  if not modules.api.IsInGroup() and not modules.api.IsInRaid() then return end
+  broadcast_version( modules.api.IsInRaid() and "RAID" or "PARTY" )
 end
 
 local function mock_table_function( _api, name, values )
@@ -1033,8 +894,8 @@ local function make_loot_slot_info( count, quality )
   for i = 1, count do
     table.insert( result, function()
       if i == count then
-        libStub( "ModUiFacade-1.0" ).api = m_real_api
-        m_real_api = nil
+        modules.api = modules.real_api
+        modules.real_api = nil
       end
 
       return nil, nil, nil, nil, quality or 4
@@ -1044,92 +905,33 @@ local function make_loot_slot_info( count, quality )
   return result
 end
 
-local function simulate_loot_dropped( args )
-  local item_links = item_utils.parse_all_links( args )
-
-  if m_real_api then
-    M:PrettyPrint( "Mocking in progress." )
-    return
-  end
-
-  m_real_api = api
-  libStub( "ModUiFacade-1.0" ).api = M:CloneTable( api )
-  api = libStub( "ModUiFacade-1.0" ).api
-  ModUi.facade.api = api
-  api[ "GetNumLootItems" ] = function() return #item_links end
-  api[ "GetLootSourceInfo" ] = function() return tostring( lua.time() ) end
-  mock_table_function( api, "GetLootSlotLink", item_links )
-  mock_table_function( api, "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
-  ModUi:SimulateEvent( "lootReady" )
-end
-
-local function OnFirstEnterWorld()
-  reset()
-
-  -- Roll For commands
-  SLASH_RF1 = "/rf"
-  api.SlashCmdList[ "RF" ] = function( args ) ProcessRollForSlashCommand( args, "/rf", IncludeReservedRolls ) end
-  SLASH_ARF1 = "/arf"
-  api.SlashCmdList[ "ARF" ] = function( args ) ProcessRollForSlashCommand( args, "/arf", GetAllPlayers ) end
-  SLASH_CR1 = "/cr"
-  api.SlashCmdList[ "CR" ] = DecorateWithRollingCheck( ProcessCancelRollSlashCommand )
-  SLASH_FR1 = "/fr"
-  api.SlashCmdList[ "FR" ] = DecorateWithRollingCheck( ProcessFinishRollSlashCommand )
-
-  -- Soft Res commands
-  SLASH_SR1 = "/sr"
-  api.SlashCmdList[ "SR" ] = ProcessSoftResSlashCommand
-  SLASH_SSR1 = "/ssr"
-  api.SlashCmdList[ "SSR" ] = ProcessSoftShowSortedRollsSlashCommand
-  SLASH_SRS1 = "/srs"
-  api.SlashCmdList[ "SRS" ] = ShowSoftRes
-
-  SLASH_DROPPED1 = "/DROPPED"
-  api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
-
-  SetupStorage()
-  UpdateData()
-
-  BroadcastVersionToTheGuild()
-  BroadcastVersionToTheGroup()
-
-  ModUi:RegisterComm( commPrefix, OnComm )
-  UpdateGroupStatus()
-
-  M:PrettyPrint( string.format( "Loaded (%s).", highlight( string.format( "v%s", version ) ) ) )
-end
-
-local function OnJoinedGroup()
+local function on_joined_group()
   if not wasInGroup then
-    BroadcastVersionToTheGroup()
+    broadcast_version_to_the_group()
   end
 
-  UpdateGroupStatus()
+  update_group_status()
 end
 
-local function OnLeftGroup()
-  UpdateGroupStatus()
+local function on_left_group()
+  update_group_status()
 end
 
-local function Init()
-  M.PrettyPrint = function( _, message ) chatFrame:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
-end
+local function on_loot_ready()
+  if not modules.is_player_master_looter() or m_announcing then return end
 
-local function OnLootReady()
-  if not M:IsPlayerMasterLooter() or m_announcing then return end
-
-  local source_guid, items, announcements = dropped_loot_announce.process_dropped_items( M.softres )
+  local source_guid, items, announcements = M.dropped_loot_announce.process_dropped_items( M.softres )
   local was_announced = m_announced_source_ids[ source_guid ]
   if was_announced then return end
 
   m_announcing = true
   local item_count = #items
 
-  local target = api.UnitName( "target" )
-  local target_msg = target and not api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
+  local target = modules.api.UnitName( "target" )
+  local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
 
   if item_count > 0 then
-    api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), M:GetGroupChatType() )
+    modules.api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), modules.get_group_chat_type() )
 
     for i = 1, item_count do
       local item = items[ i ]
@@ -1137,25 +939,78 @@ local function OnLootReady()
     end
 
     for i = 1, #announcements do
-      api.SendChatMessage( announcements[ i ], M:GetGroupChatType() )
+      modules.api.SendChatMessage( announcements[ i ], modules.get_group_chat_type() )
     end
 
-    ModUiDb.rollfor.dropped_items = m_dropped_items
+    RollForDb.rollfor.dropped_items = m_dropped_items
     m_announced_source_ids[ source_guid ] = true
   end
 
   m_announcing = false
 end
 
+local function simulate_loot_dropped( args )
+  local item_links = M.item_utils.parse_all_links( args )
+
+  if m_real_api then
+    pretty_print( "Mocking in progress." )
+    return
+  end
+
+  modules.real_api = modules.api
+  modules.api = modules.clone( modules.api )
+  modules.api[ "GetNumLootItems" ] = function() return #item_links end
+  modules.api[ "GetLootSourceInfo" ] = function() return tostring( modules.lua.time() ) end
+  mock_table_function( modules.api, "GetLootSlotLink", item_links )
+  mock_table_function( modules.api, "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
+  on_loot_ready()
+end
+
+local function on_first_enter_world()
+  reset()
+
+  -- Roll For commands
+  SLASH_RF1 = "/rf"
+  modules.api.SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf", include_reserved_rolls ) end
+  SLASH_ARF1 = "/arf"
+  modules.api.SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", get_all_players ) end
+  SLASH_CR1 = "/cr"
+  modules.api.SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancell_roll_slash_command )
+  SLASH_FR1 = "/fr"
+  modules.api.SlashCmdList[ "FR" ] = decorate_with_rolling_check( process_finish_roll_slash_command )
+
+  -- Soft Res commands
+  SLASH_SR1 = "/sr"
+  modules.api.SlashCmdList[ "SR" ] = process_softres_slash_command
+  SLASH_SSR1 = "/ssr"
+  modules.api.SlashCmdList[ "SSR" ] = process_show_sorted_rolls_slash_command
+  SLASH_SRS1 = "/srs"
+  modules.api.SlashCmdList[ "SRS" ] = show_softres
+
+  SLASH_DROPPED1 = "/DROPPED"
+  modules.api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
+
+  setup_storage()
+  update_softres_data()
+
+  broadcast_version_to_the_guild()
+  broadcast_version_to_the_group()
+
+  aceComm:RegisterComm( commPrefix, on_comm )
+  update_group_status()
+
+  pretty_print( string.format( "Loaded (%s).", highlight( string.format( "v%s", version ) ) ) )
+end
+
 ---@diagnostic disable-next-line: unused-local, unused-function
-local function OnPartyMessage( message, player )
+local function on_party_message( message, player )
   for name, roll in (message):gmatch( "(%a+) rolls (%d+)" ) do
     --M:Print( string.format( "Party: %s %s", name, message ) )
-    OnRoll( name, tonumber( roll ), 1, 100 )
+    on_roll( name, tonumber( roll ), 1, 100 )
   end
   for name, roll in (message):gmatch( "(%a+) rolls os (%d+)" ) do
     --M:Print( string.format( "Party: %s %s", name, message ) )
-    OnRoll( name, tonumber( roll ), 1, 99 )
+    on_roll( name, tonumber( roll ), 1, 99 )
   end
 end
 
@@ -1206,7 +1061,7 @@ local function hook_loot_confirmation_events( base_frame_name, yes_button, no_bu
     if player and colored_item_name then
       m_item_to_be_awarded = { player = player, colored_item_name = colored_item_name }
       m_item_award_confirmed = true
-      M:PrettyPrint( string.format( "Attempting to award %s with %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
+      pretty_print( string.format( "Attempting to award %s with %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
     end
   end )
 
@@ -1216,11 +1071,11 @@ local function hook_loot_confirmation_events( base_frame_name, yes_button, no_bu
   end )
 end
 
-local function OnOpenMasterLootList()
+local function on_open_master_loot_list()
   -- item name: StaticPopup1Text.text_arg1
   -- example: "|cffa334eeBlessed Tanzanite|r"
 
-  for k, frame in pairs( api.MasterLooterFrame ) do
+  for k, frame in pairs( modules.api.MasterLooterFrame ) do
     if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
       idempotent_hookscript( frame, "OnClick", function()
         local base_frame_name, yes_button, no_button = find_loot_confirmation_details()
@@ -1240,15 +1095,15 @@ local function get_item_id( item_name )
   return nil
 end
 
-local function OnLootSlotCleared()
+local function on_loot_slot_cleared()
   if m_item_to_be_awarded and m_item_award_confirmed then
-    local item_name = M:decolorize( m_item_to_be_awarded.colored_item_name )
+    local item_name = modules.decolorize( m_item_to_be_awarded.colored_item_name )
     local item_id = get_item_id( item_name )
 
     if item_id then
       M.award_item( m_item_to_be_awarded.player, item_id, item_name, m_item_to_be_awarded.colored_item_name )
     else
-      M:PrettyPrint( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
+      pretty_print( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
     end
 
     m_item_to_be_awarded = nil
@@ -1258,31 +1113,74 @@ end
 
 function M.award_item( player, item_id, item_name, item_link_or_colored_item_name )
   M.awarded_loot.award( player, item_id, item_name )
-  M:PrettyPrint( string.format( "%s received %s.", highlight( player ), item_link_or_colored_item_name ) )
+  pretty_print( string.format( "%s received %s.", highlight( player ), item_link_or_colored_item_name ) )
 end
 
 ---@diagnostic disable-next-line: unused-local
 function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   --TODO: Think if we want to do this.
   --m_awarded_items = remove_from_awarded_items( player, item_id )
-  --ModUiDb.rollfor.awarded_items = m_awarded_items
-  M:PrettyPrint( string.format( "%s returned %s.", highlight( player ), item_link_or_colored_item_name ) )
+  --RollForDb.rollfor.awarded_items = m_awarded_items
+  pretty_print( string.format( "%s returned %s.", highlight( player ), item_link_or_colored_item_name ) )
 end
 
-function M.Initialize()
-  Init()
-  M:OnFirstEnterWorld( OnFirstEnterWorld )
-  M:OnChatMsgSystem( OnChatMsgSystem )
-  M:OnJoinedGroup( OnJoinedGroup )
-  M:OnLeftGroup( OnLeftGroup )
-  M:OnLootReady( OnLootReady )
-  M:OnOpenMasterLootList( OnOpenMasterLootList )
-  M:OnLootSlotCleared( OnLootSlotCleared )
-  M:OnTradeComplete( on_trade_complete )
+local m_first_enter_world
 
-  -- For testing:
-  --M:OnPartyMessage( OnPartyMessage )
-  --M:OnPartyLeaderMessage( OnPartyMessage )
+--eventHandler( frame, event, ... )
+local function eventHandler( _, event, ... )
+  if event == "PLAYER_LOGIN" then
+    m_first_enter_world = false
+  elseif event == "PLAYER_ENTERING_WORLD" then
+    if not m_first_enter_world then
+      on_first_enter_world()
+      m_first_enter_world = true
+    end
+  elseif event == "GROUP_FORMED" then
+    on_joined_group()
+  elseif event == "GROUP_JOINED" then
+    on_joined_group()
+  elseif event == "GROUP_LEFT" then
+    on_left_group()
+  elseif event == "CHAT_MSG_SYSTEM" then
+    on_chat_msg_system( ... )
+  elseif event == "LOOT_READY" then
+    on_loot_ready()
+  elseif event == "OPEN_MASTER_LOOT_LIST" then
+    on_open_master_loot_list()
+  elseif event == "LOOT_SLOT_CLEARED" then
+    on_loot_slot_cleared()
+  elseif event == "TRADE_SHOW" then
+    M.trade_tracker.on_trade_show()
+  elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
+    M.trade_tracker.on_trade_player_item_changed( ... )
+  elseif event == "TRADE_TARGET_ITEM_CHANGED" then
+    M.trade_tracker.on_trade_target_item_changed( ... )
+  elseif event == "TRADE_CLOSED" then
+    M.trade_tracker.on_trade_closed()
+  elseif event == "TRADE_ACCEPT_UPDATE" then
+    M.trade_tracker.on_trade_accept_update( ... )
+  elseif event == "TRADE_REQUEST_CANCEL" then
+    M.trade_tracker.on_trade_request_cancel()
+  end
 end
+
+local frame = modules.api.CreateFrame( "FRAME", "RollForFrame" )
+
+frame:RegisterEvent( "PLAYER_LOGIN" )
+frame:RegisterEvent( "PLAYER_ENTERING_WORLD" )
+frame:RegisterEvent( "GROUP_JOINED" )
+frame:RegisterEvent( "GROUP_LEFT" )
+frame:RegisterEvent( "GROUP_FORMED" )
+frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
+frame:RegisterEvent( "LOOT_READY" )
+frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
+frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
+frame:RegisterEvent( "TRADE_SHOW" )
+frame:RegisterEvent( "TRADE_PLAYER_ITEM_CHANGED" )
+frame:RegisterEvent( "TRADE_TARGET_ITEM_CHANGED" )
+frame:RegisterEvent( "TRADE_CLOSED" )
+frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
+frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
+frame:SetScript( "OnEvent", eventHandler )
 
 return M

@@ -3,16 +3,20 @@
 ## Author: Obszczymucha
 ## Version: 1.0.3
 ## Notes: An automated item roller with soft ressing support via softres.it.
-## SavedVariables: ModUiDb
+## SavedVariables: RollForDb
 
 Libs\Libs.xml
+src\modules.lua
 src\ItemUtils.lua
 src\DroppedLootAnnounce.lua
 src\TradeTracker.lua
 src\SoftRes.lua
 src\SoftResAwardedLootDecorator.lua
 src\SoftResAbsentPlayersDecorator.lua
+src\SoftResMatchedNameDecorator.lua
 src\Json.lua
 src\AwardedLoot.lua
+src\GroupRoster.lua
+src\NameMatcher.lua
 RollFor.lua
 settings.lua

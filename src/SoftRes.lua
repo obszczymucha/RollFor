@@ -1,3 +1,6 @@
+local modules = LibStub( "RollFor-Modules" )
+if modules.SoftRes then return end
+
 local M = {}
 
 ---@diagnostic disable-next-line: undefined-global
@@ -15,6 +18,8 @@ local libStub = LibStub
 local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
 
 local function decode_base64( data )
+  if not data then return nil end
+
   data = string.gsub( data, '[^' .. b .. '=]', '' )
   return (data:gsub( '.', function( x )
     if (x == '=') then return '' end
@@ -29,7 +34,19 @@ local function decode_base64( data )
   end ))
 end
 
-function M.new( name_matcher )
+function M.decode( encoded_softres_data )
+  local data = decode_base64( encoded_softres_data )
+  if not data then return nil end
+
+  data = libStub( "LibDeflate" ):DecompressZlib( data )
+  if not data then return nil end
+
+  data = libStub( "Json-0.1.2" ).decode( data )
+
+  return data
+end
+
+function M.new( softres_data )
   local softres_items = {}
   local hardres_items = {}
 
@@ -41,16 +58,15 @@ function M.new( name_matcher )
   local function add( item_id, player_name )
     softres_items[ item_id ] = softres_items[ item_id ] or {}
     local items = softres_items[ item_id ]
-    local name = name_matcher and name_matcher.match( player_name ) or player_name
 
     for _, value in pairs( items ) do
-      if value.matched_name == name then
+      if value.name == player_name then
         value.rolls = value.rolls + 1
         return
       end
     end
 
-    table.insert( items, { softres_name = player_name, matched_name = name, rolls = 1 } )
+    table.insert( items, { name = player_name, rolls = 1 } )
   end
 
   local function add_hr( item_id )
@@ -65,7 +81,7 @@ function M.new( name_matcher )
     if not softres_items[ item_id ] then return false end
 
     for _, v in pairs( softres_items[ item_id ] ) do
-      if v.matched_name == player_name then return true end
+      if v.name == player_name then return true end
     end
 
     return false
@@ -96,24 +112,11 @@ function M.new( name_matcher )
     end
   end
 
-  local function import_data( softres_data )
+  local function process_data()
     clear()
     if not softres_data then return end
     process_softres_items( softres_data.softreserves )
     process_hardres_items( softres_data.hardreserves )
-  end
-
-  local function import_encrypted_data( softres_data )
-    local data = decode_base64( softres_data )
-    if not data then return false end
-
-    data = libStub( "LibDeflate" ):DecompressZlib( data )
-    if not data then return false end
-
-    data = libStub( "Json-0.1.2" ).decode( data )
-    import_data( data )
-
-    return true
   end
 
   local function get_item_ids()
@@ -128,16 +131,6 @@ function M.new( name_matcher )
 
   local function is_item_hardressed( item_id )
     return hardres_items[ item_id ] and hardres_items[ item_id ] == 1 or false
-  end
-
-  local function match_name( softres_name, matched_name )
-    for _, players in pairs( softres_items ) do
-      for _, player in pairs( players ) do
-        if player.softres_name == softres_name then
-          player.matched_name = matched_name
-        end
-      end
-    end
   end
 
   local function dump( o )
@@ -164,20 +157,35 @@ function M.new( name_matcher )
     print( dump( softres_items ) )
   end
 
+  local function get_all_softres_player_names()
+    local softres_player_names = {}
+
+    for _, softres_players in pairs( softres_items ) do
+      for _, player in pairs( softres_players ) do
+        softres_player_names[ player.name ] = 1
+      end
+    end
+
+    local result = {}
+
+    for player_name, _ in pairs( softres_player_names ) do
+      table.insert( result, player_name )
+    end
+
+    return result
+  end
+
+  process_data()
+
   return {
-    clear = clear,
-    add = add,
     get = get,
     is_player_softressing = is_player_softressing,
-    import_encrypted_data = import_encrypted_data,
-    import_data = import_data,
     get_item_ids = get_item_ids,
     is_item_hardressed = is_item_hardressed,
-    match_name = match_name,
-    show = show
+    show = show,
+    get_all_softres_player_names = get_all_softres_player_names
   }
 end
 
-SoftRes = M
-
+modules.SoftRes = M
 return M

@@ -1,11 +1,20 @@
+local modules = LibStub( "RollFor-Modules" )
+if modules.AwardedLoot then return end
+
 local M = {}
 
-function M.new()
-  local awarded_items = {}
+local function persist( items )
+  if not RollForDb then RollForDb = {} end
+  if not RollForDb.rollfor then RollForDb.rollfor = {} end
+  RollForDb.rollfor.awarded_items = items
+end
 
-  -- TODO: persist
-  local function award( player, item_id, item_name )
-    table.insert( awarded_items, { player = player, item_id = item_id, item_name = item_name } )
+function M.new()
+  local awarded_items = RollForDb and RollForDb.rollfor and RollForDb.rollfor.awarded_items or {} -- TODO: This breaks tests.
+
+  local function award( player, item_id )
+    table.insert( awarded_items, { player = player, item_id = item_id } )
+    persist( awarded_items )
   end
 
   local function has_item_been_awarded( player, item_id )
@@ -27,5 +36,5 @@ function M.new()
   }
 end
 
-AwardedLoot = M
+modules.AwardedLoot = M
 return M

@@ -21,13 +21,10 @@ local assert_messages = utils.assert_messages
 GenericSpec = {}
 
 function GenericSpec:should_load_roll_for()
-  -- Given
-  local ModUi = LibStub( "ModUi-1.0" )
-
   -- When
-  local result = ModUi:GetModule( "RollFor" )
+  local result = LibStub( "RollFor-1" )
 
-  -- Then
+  -- Expect
   lu.assertNotNil( result )
 end
 

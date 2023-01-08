@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/ModUi/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -12,6 +12,10 @@ local trade_items = utils.trade_items
 local recipient_trades_items = utils.recipient_trades_items
 local assert_messages = utils.assert_messages
 local c = utils.console_message
+
+utils.load_libstub()
+require( "src/modules" )
+local mod = require( "src/TradeTracker" )
 
 TradeTrackerIntegrationSpec = {}
 
@@ -60,22 +64,16 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_is_co
   )
 end
 
-local function create_module( name, callback )
-  local M = ModUi:NewModule( name, { "TradeTracker" } )
-  if not M then return M end
-
-  M:OnTradeComplete( callback )
-end
+TradeTrackerSpec = {}
 
 function TradeTrackerIntegrationSpec:should_call_back_with_recipient_name()
   -- Given
-  player( "Psikutas" )
-  trade_with( "Obszczymucha" )
   local result
-  create_module( "mod1", function( recipient ) result = recipient end )
+  local trade_tracker = mod.new( function( recipient ) result = recipient end )
+  trade_with( "Obszczymucha", trade_tracker )
 
   -- When
-  trade_complete()
+  trade_complete( trade_tracker )
 
   -- Then
   lu.assertEquals( result, "Obszczymucha" )
@@ -83,14 +81,14 @@ end
 
 function TradeTrackerIntegrationSpec:should_call_back_with_items_given()
   -- Given
-  player( "Psikutas" )
-  trade_with( "Obszczymucha" )
   local result
-  create_module( "mod2", function( _, items_given ) result = items_given end )
-  trade_items( { item_link = "fake item link", quantity = 1 } )
+  local trade_tracker = mod.new( function( _, giving_items ) result = giving_items end )
+  player( "Psikutas" )
+  trade_with( "Obszczymucha", trade_tracker )
+  trade_items( trade_tracker, { item_link = "fake item link", quantity = 1 } )
 
   -- When
-  trade_complete()
+  trade_complete( trade_tracker )
 
   -- Then
   lu.assertEquals( result, {
@@ -100,14 +98,14 @@ end
 
 function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
   -- Given
-  player( "Psikutas" )
-  trade_with( "Obszczymucha" )
   local result
-  create_module( "mod3", function( _, _, items_received ) result = items_received end )
-  recipient_trades_items( { item_link = "fake item link", quantity = 1 } )
+  local trade_tracker = mod.new( function( _, _, receiving_items ) result = receiving_items end )
+  player( "Psikutas" )
+  trade_with( "Obszczymucha", trade_tracker )
+  recipient_trades_items( trade_tracker, { item_link = "fake item link", quantity = 1 } )
 
   -- When
-  trade_complete()
+  trade_complete( trade_tracker )
 
   -- Then
   lu.assertEquals( result, {

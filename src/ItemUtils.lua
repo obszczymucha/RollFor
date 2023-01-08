@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local M = libStub:NewLibrary( "ItemUtils", 1 )
-if not M then return end
+local modules = LibStub( "RollFor-Modules" )
+if modules.ItemUtils then return end
+
+local M = {}
 
 function M.get_item_id( item_link )
   for item_id in (item_link):gmatch "|c%x%x%x%x%x%x%x%x|Hitem:(%d+):.+|r" do
@@ -20,10 +20,11 @@ function M.parse_all_links( item_links )
   if not item_links then return result end
 
   for item_link in (item_links):gmatch "|c%x%x%x%x%x%x%x%x|Hitem:[^%]]+%]|h|r" do
-    table.insert(result, item_link)
+    table.insert( result, item_link )
   end
 
   return result
 end
 
+modules.ItemUtils = M
 return M

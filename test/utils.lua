@@ -50,13 +50,13 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
-  CreateFrame = function( _, frameName )
+  M.modules().api.CreateFrame = function( _, frameName )
     print( string.format( "[ CreateFrame ]: %s", frameName ) )
 
     return {
       RegisterEvent = function() end,
       SetScript = function( _, name, callback )
-        if frameName == "ModUiFrame" and name == "OnEvent" then
+        if frameName == "RollForFrame" and name == "OnEvent" then
           M.debug( "Registered ModUi callback." )
           m_event_callback = callback
         end
@@ -86,33 +86,36 @@ function M.mock_library( name, object )
   return result
 end
 
-local function facade()
-  M.load_libstub()
-  return LibStub( "ModUiFacade-1.0" )
-end
-
-function M.mock_facade()
+function M.mock_api()
+  M.mock_slashcmdlist()
   M.mock( "IsInGuild", false )
   M.mock( "IsInGroup", false )
   M.mock( "IsInRaid", false )
   M.mock( "UnitIsFriend", false )
   M.mock( "InCombatLockdown", false )
+  M.mock( "UnitName", "Psikutas" )
   M.mock_messages()
 end
 
+function M.modules()
+  M.load_libstub()
+  require( "src/modules" )
+  return LibStub( "RollFor-Modules" )
+end
+
 function M.mock_slashcmdlist()
-  facade().api.SlashCmdList = m_slashcmdlist
+  M.modules().api.SlashCmdList = m_slashcmdlist
 end
 
 function M.mock_messages()
   m_messages = {}
 
-  facade().api.SendChatMessage = function( message, chat )
+  M.modules().api.SendChatMessage = function( message, chat )
     local parsed_message = M.parse_item_link( message )
     table.insert( m_messages, { message = parsed_message, chat = chat } )
   end
 
-  facade().api.ChatFrame1 = {
+  M.modules().api.ChatFrame1 = {
     AddMessage = function( _, message )
       local message_without_colors = M.parse_item_link( M.decolorize( message ) )
       table.insert( m_messages, { message = message_without_colors, chat = "CONSOLE" } )
@@ -126,14 +129,14 @@ end
 
 function M.mock( funcName, result )
   if type( result ) == "function" then
-    facade().api[ funcName ] = result
+    M.modules().api[ funcName ] = result
   else
-    facade().api[ funcName ] = function() return result end
+    M.modules().api[ funcName ] = function() return result end
   end
 end
 
 function M.mock_object( name, result )
-  facade().api[ name ] = result
+  M.modules().api[ name ] = result
 end
 
 function M.run_command( command, args )
@@ -181,7 +184,7 @@ function M.roll_os( player_name, roll )
 end
 
 function M.init()
-  M.mock_facade()
+  M.mock_api()
   M.fire_login_events()
   M.mock_messages()
   M.import_soft_res( nil )
@@ -202,7 +205,7 @@ function M.raid_member( name )
 end
 
 function M.mock_table_function( name, values )
-  facade().api[ name ] = function( key )
+  M.modules().api[ name ] = function( key )
     local value = values[ key ]
 
     if type( value ) == "function" then
@@ -286,13 +289,18 @@ function M.mock_unit_name()
   M.mock_table_function( "UnitName", { [ "player" ] = m_player_name, [ "target" ] = m_target } )
 end
 
+function M.load_roll_for()
+  local libStub = M.load_libstub()
+  return libStub( "RollFor-1" )
+end
+
 function M.player( name )
   M.init()
   m_player_name = name
   m_target = nil
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
-  local rf = ModUi:GetModule( "RollFor" )
+  local rf = M.load_roll_for()
   rf.awarded_loot.clear()
 end
 
@@ -362,12 +370,10 @@ end
 
 function M.load_real_stuff()
   M.load_libstub()
-  require( "ModUi/facade" )
-  M.mock_facade()
-  M.mock_slashcmdlist()
-  require( "ModUi" )
-  require( "ModUi/utils" )
   require( "settings" )
+  require( "src/modules" )
+  M.mock_api()
+  M.mock_slashcmdlist()
   require( "src/ItemUtils" )
   require( "src/DroppedLootAnnounce" )
   require( "src/TradeTracker" )
@@ -375,6 +381,9 @@ function M.load_real_stuff()
   require( "src/AwardedLoot" )
   require( "src/SoftResAwardedLootDecorator" )
   require( "src/SoftResAbsentPlayersDecorator" )
+  require( "src/SoftResMatchedNameDecorator" )
+  require( "src/GroupRoster" )
+  require( "src/NameMatcher" )
   require( "RollFor" )
 end
 
@@ -429,8 +438,8 @@ function M.targetting_enemy( name )
 end
 
 function M.import_soft_res( data )
-  local rf = ModUi:GetModule( "RollFor" )
-  rf.softres.import_data( data )
+  local rf = M.load_roll_for()
+  rf.import_softres_data( data )
 end
 
 local function find_soft_res_entry( softreserves, player )
@@ -443,7 +452,7 @@ local function find_soft_res_entry( softreserves, player )
   return nil
 end
 
-function M.soft_res( ... )
+function M.create_softres_data( ... )
   local items = { ... }
   local hardreserves = {}
   local softreserves = {}
@@ -474,7 +483,11 @@ function M.soft_res( ... )
     softreserves = softreserves
   }
 
-  M.import_soft_res( data )
+  return data
+end
+
+function M.soft_res( ... )
+  M.import_soft_res( M.create_softres_data( ... ) )
 end
 
 function M.soft_res_item( player, item_id )
@@ -486,7 +499,7 @@ function M.hard_res_item( item_id )
 end
 
 function M.award( player, item_name, item_id )
-  local rf = ModUi:GetModule( "RollFor" )
+  local rf = M.load_roll_for()
   rf.award_item( player, item_id, item_name, M.item_link( item_name, item_id ) )
 end
 
@@ -507,27 +520,48 @@ function M.load_libstub()
   return LibStub
 end
 
-function M.trade_with( recipient )
+function M.trade_with( recipient, trade_tracker )
   RollFor.settings.tradeTrackerDebug = true
   M.mock_object( "TradeFrameRecipientNameText", { GetText = function() return recipient end } )
-  M.fire_event( "TRADE_SHOW" )
+
+  if trade_tracker then
+    trade_tracker.on_trade_show()
+  else
+    M.fire_event( "TRADE_SHOW" )
+  end
 end
 
-function M.cancel_trade()
+function M.cancel_trade( trade_tracker )
   RollFor.settings.tradeTrackerDebug = true
-  M.fire_event( "TRADE_ACCEPT_UPDATE", 0 )
-  M.fire_event( "TRADE_CLOSED" )
+
+  if trade_tracker then
+    trade_tracker.on_trade_accept_update( 0 )
+    trade_tracker.on_trade_closed()
+  else
+    M.fire_event( "TRADE_ACCEPT_UPDATE", 0 )
+    M.fire_event( "TRADE_CLOSED" )
+  end
 end
 
-function M.trade_cancelled_by_recipient()
+function M.trade_cancelled_by_recipient( trade_tracker )
   RollFor.settings.tradeTrackerDebug = true
-  M.fire_event( "TRADE_REQUEST_CANCEL" )
+  if trade_tracker then
+    trade_tracker.on_trade_request_cancel()
+  else
+    M.fire_event( "TRADE_REQUEST_CANCEL" )
+  end
 end
 
-function M.trade_complete()
+function M.trade_complete( trade_tracker )
   RollFor.settings.tradeTrackerDebug = true
-  M.fire_event( "TRADE_ACCEPT_UPDATE", 1 )
-  M.fire_event( "TRADE_CLOSED" )
+
+  if trade_tracker then
+    trade_tracker.on_trade_accept_update( 1 )
+    trade_tracker.on_trade_closed()
+  else
+    M.fire_event( "TRADE_ACCEPT_UPDATE", 1 )
+    M.fire_event( "TRADE_CLOSED" )
+  end
 end
 
 function M.map( t, f )
@@ -542,29 +576,38 @@ function M.map( t, f )
   return result
 end
 
-function M.trade_items( ... )
+function M.trade_items( trade_tracker, ... )
   local items = { ... }
   M.mock_table_function( "GetTradePlayerItemInfo", M.map( items, function( v ) return function() return _, _, v.quantity end end ) )
   M.mock_table_function( "GetTradePlayerItemLink", M.map( items, function( v ) return function() return v.item_link end end ) )
 
   for i = 1, #items do
-    M.fire_event( "TRADE_PLAYER_ITEM_CHANGED", i )
+    if trade_tracker then
+      trade_tracker.on_trade_player_item_changed( i )
+    else
+      M.fire_event( "TRADE_PLAYER_ITEM_CHANGED", i )
+    end
   end
 end
 
-function M.recipient_trades_items( ... )
+function M.recipient_trades_items( trade_tracker, ... )
   local items = { ... }
   M.mock_table_function( "GetTradeTargetItemInfo", M.map( items, function( v ) return function() return _, _, v.quantity end end ) )
   M.mock_table_function( "GetTradeTargetItemLink", M.map( items, function( v ) return function() return v.item_link end end ) )
 
   for i = 1, #items do
-    M.fire_event( "TRADE_TARGET_ITEM_CHANGED", i )
+    if trade_tracker then
+      trade_tracker.on_trade_target_item_changed( i )
+    else
+      M.fire_event( "TRADE_TARGET_ITEM_CHANGED", i )
+    end
   end
 end
 
 function M.auto_match( player, override )
-  local rf = ModUi:GetModule( "RollFor" )
-  rf.softres.match_name( player, override )
+  local rf = M.load_roll_for()
+  -- TODO: fix
+  --rf.softres.match_name( player, override )
 end
 
 return M
