@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 19
+local minor = 20
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -9,7 +9,7 @@ local version = string.format( "%s.%s", major, minor )
 
 local ace_timer = lib_stub( "AceTimer-3.0" )
 local modules = lib_stub( "RollFor-Modules" )
-local version_broadcast = modules.VersionBroadcast.new( version )
+M.version_broadcast = modules.VersionBroadcast.new( version )
 
 M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
@@ -61,9 +61,9 @@ function M.import_softres_data( softres_data )
   M.awarded_loot = modules.AwardedLoot.new() -- This must be here otherwise it doesnt read from the db.
   M.group_roster = modules.GroupRoster.new( modules.api )
   M.name_matcher = modules.NameMatcher.new( M.group_roster )
-  local sr = modules.SoftRes.new( softres_data )
-  M.name_matcher.auto_match( sr.get_all_softres_player_names() )
-  local asr = modules.SoftResAwardedLootDecorator.new( M.name_matcher, M.awarded_loot, sr )
+  M.unfiltered_softres = modules.SoftRes.new( softres_data )
+  M.name_matcher.auto_match( M.unfiltered_softres.get_all_softres_player_names() )
+  local asr = modules.SoftResAwardedLootDecorator.new( M.name_matcher, M.awarded_loot, M.unfiltered_softres )
   local msr = modules.SoftResMatchedNameDecorator.new( M.name_matcher, asr )
   M.softres = modules.SoftResAbsentPlayersDecorator.new( modules.GroupRoster.new( modules.api ), msr )
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
@@ -115,11 +115,12 @@ end
 
 local function show_softres()
   local needsRefetch = false
-  local softressed_item_ids = M.softres.get_item_ids()
+  local softressed_item_ids = M.unfiltered_softres.get_item_ids()
   local items = {}
 
+  pretty_print( modules.dump( softressed_item_ids ) )
   for _, item_id in pairs( softressed_item_ids ) do
-    local players = M.softres.get( item_id )
+    local players = M.unfiltered_softres.get( item_id )
     local itemLink = modules.fetch_item_link( item_id )
 
     if not itemLink then
@@ -163,7 +164,7 @@ function M.update_softres_data( data )
   M.import_softres_data( data )
 
   if softres_data then
-    pretty_print( string.format( "Data loaded successfully. Use %s command to list.", hl( "/srs" ) ) )
+    pretty_print( string.format( "Soft-res data loaded successfully. Use %s command to list.", hl( "/srs" ) ) )
   else
     pretty_print( "Could not load soft-res data." )
   end
@@ -656,7 +657,7 @@ local function process_softres_slash_command( args )
     return
   end
 
-  modules.SoftResGui.show()
+  M.softres_gui.show()
 end
 
 local function has_rolls_left( player_name, offspec_roll )
@@ -795,11 +796,12 @@ function M.on_first_enter_world()
   modules.api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 
   setup_storage()
-  M.update_softres_data( RollForDb.rollfor.softres_data )
 
-  version_broadcast.broadcast()
-
+  M.softres_gui = modules.SoftResGui.new( M )
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
+  M.version_broadcast.broadcast()
+  M.update_softres_data( RollForDb.rollfor.softres_data )
+  M.softres_gui.load( RollForDb.rollfor.softres_data )
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function

@@ -16,11 +16,11 @@ function M.handle_events( origin )
         m_first_enter_world = true
       end
     elseif event == "GROUP_FORMED" then
-      origin.on_joined_group()
+      origin.version_broadcast.on_joined_group()
     elseif event == "GROUP_JOINED" then
-      origin.on_joined_group()
+      origin.version_broadcast.on_joined_group()
     elseif event == "GROUP_LEFT" then
-      origin.on_left_group()
+      origin.version_broadcast.on_left_group()
     elseif event == "CHAT_MSG_SYSTEM" then
       origin.on_chat_msg_system( ... )
     elseif event == "LOOT_READY" then
