@@ -157,7 +157,7 @@ end
 
 local function include_reserved_rolls( item_id )
   local reservedByPlayers = M.softres.get( item_id )
-  local reserving_player_count = modules.count_elements( reservedByPlayers )
+  local reserving_player_count = #reservedByPlayers
   local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or get_all_players()
   table.sort( reservedByPlayers, function( l, r ) return l.name < r.name end )
   return rollers, reservedByPlayers, reserving_player_count
@@ -191,6 +191,7 @@ local function show_softres()
   end
 
   report( "Soft-ressed items (red players are not in your group):" )
+
   local colorize = function( player )
     local rolls = player.rolls > 1 and string.format( " (%s)", player.rolls ) or ""
     return string.format( "|cff%s%s|r%s",
