@@ -61,11 +61,8 @@ M.trade_tracker = modules.TradeTracker.new(
 
     for i = 1, #items_given do
       local item = items_given[ i ]
-      --pretty_print( string.format( "Item: %s", item.link ) )
       local item_id = M.item_utils.get_item_id( item.link )
-      --pretty_print( string.format( "Item id: %s", item_id ) )
       local item_name = get_dropped_item_name( item_id )
-      --pretty_print( string.format( "Item name: %s", item_name or "nil" ) )
 
       if item_name then
         M.award_item( recipient, item_id, item_name, item.link )
@@ -690,7 +687,7 @@ local function setup_storage()
     RollForDb.rollfor.version = version
   end
 
-  RollForDb.rollfor.hardres_items = RollForDb.rollfor.hardres_items or {}
+
   RollForDb.rollfor.softres_player_name_overrides = RollForDb.rollfor.softres_player_name_overrides or {}
   RollForDb.rollfor.softres_passing = RollForDb.rollfor.softres_passing or {}
 

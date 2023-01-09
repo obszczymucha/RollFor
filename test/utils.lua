@@ -301,6 +301,8 @@ function M.player( name )
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
   local rf = M.load_roll_for()
+
+  -- TODO: Maybe awarded loot shouldn't be accessible.
   rf.awarded_loot.clear()
 end
 

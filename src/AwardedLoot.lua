@@ -27,6 +27,7 @@ function M.new()
 
   local function clear()
     awarded_items = {}
+    persist( {} )
   end
 
   return {
