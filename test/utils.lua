@@ -387,6 +387,7 @@ function M.load_real_stuff()
   require( "src/GroupRoster" )
   require( "src/NameMatcher" )
   require( "src/EventHandler" )
+  require( "src/VersionBroadcast" )
   require( "RollFor" )
 end
 

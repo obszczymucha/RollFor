@@ -13,6 +13,10 @@ function M.highlight( word )
   return string.format( "|cffff9f69%s|r", word )
 end
 
+--local red = function( word )
+--return string.format( "|cffff2f2f%s|r", word )
+--end
+
 function M.pretty_print( message ) M.api.ChatFrame1:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
 
 function M.count_elements( t, f )
@@ -145,6 +149,18 @@ function M.table_contains_value( t, value, f )
   end
 
   return false
+end
+
+function M.map( t, f )
+  if type( f ) ~= "function" then return t end
+
+  local result = {}
+
+  for k, v in pairs( t ) do
+    result[ k ] = f( v )
+  end
+
+  return result
 end
 
 return M

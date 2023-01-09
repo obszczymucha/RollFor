@@ -6,12 +6,10 @@ local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
 local version = string.format( "%s.%s", major, minor )
-local comm_prefix = "RollFor"
 
 local ace_timer = lib_stub( "AceTimer-3.0" )
-local ace_comm = lib_stub( "AceComm-3.0" )
-local ace_gui = lib_stub( "AceGUI-3.0" )
 local modules = lib_stub( "RollFor-Modules" )
+local version_broadcast = modules.VersionBroadcast.new( version )
 
 M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
@@ -36,17 +34,6 @@ local m_cancelled = false
 local m_item_to_be_awarded = nil
 local m_item_award_confirmed = false
 local m_dropped_items = {}
-
-local m_real_api = nil
-
--- Persisted values
-local m_softres_data = nil
-
--- Non-persisted softres values
-local m_softres_frame = nil
-local m_softres_data_dirty = false
-
-local was_in_group = false
 
 M.item_utils = modules.ItemUtils
 M.dropped_loot_announce = modules.DroppedLootAnnounce
@@ -114,16 +101,7 @@ local function reset()
   m_item_to_be_awarded = nil
   m_item_award_confirmed = false
   m_dropped_items = {}
-  m_softres_data_dirty = false
 end
-
-local function update_group_status()
-  was_in_group = modules.api.IsInGroup() or modules.api.IsInRaid()
-end
-
---local red = function( word )
---return string.format( "|cffff2f2f%s|r", word )
---end
 
 local function report( text )
   local _silent = true
@@ -137,20 +115,8 @@ local function report( text )
   end
 end
 
-local function map( t, f )
-  if type( f ) ~= "function" then return t end
-
-  local result = {}
-
-  for k, v in pairs( t ) do
-    result[ k ] = f( v )
-  end
-
-  return result
-end
-
 local function get_all_players()
-  return map( M.group_roster.get_all_players_in_my_group(), function( player )
+  return modules.map( M.group_roster.get_all_players_in_my_group(), function( player )
     return { name = player, rolls = 1 }
   end )
 end
@@ -206,21 +172,17 @@ local function show_softres()
   end
 end
 
-local function update_softres_data()
-  if not m_softres_data_dirty then return end
+function M.update_softres_data( data )
+  RollForDb.rollfor.softres_data = data
+  local softres_data = modules.SoftRes.decode( data )
 
-  RollForDb.rollfor.softres_data = m_softres_data
-  local softres_data = modules.SoftRes.decode( m_softres_data )
-
-  M.import_softres_data( softres_data )
+  M.import_softres_data( data )
 
   if softres_data then
     pretty_print( string.format( "Data loaded successfully. Use %s command to list.", hl( "/srs" ) ) )
   else
     pretty_print( "Could not load soft-res data." )
   end
-
-  m_softres_data_dirty = false
 end
 
 local function there_was_a_tie( topRoll, topRollers )
@@ -234,7 +196,7 @@ local function there_was_a_tie( topRoll, topRollers )
     not m_rerolling and m_winner_count > 0 and "next " or "",
     m_rerolling and "re-" or "", topRoll, topRollersStr ), modules.get_group_chat_type() )
   m_rolls = {}
-  m_rollers = map( topRollers, function( player_name ) return { name = player_name, rolls = 1 } end )
+  m_rollers = modules.map( topRollers, function( player_name ) return { name = player_name, rolls = 1 } end )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
@@ -674,7 +636,6 @@ local function clear_storage()
   RollForDb.rollfor.awarded_items = {}
   RollForDb.rollfor.dropped_items = {}
 
-  m_softres_data = RollForDb.rollfor.softres_data
   m_dropped_items = RollForDb.rollfor.dropped_items
 end
 
@@ -689,63 +650,15 @@ local function setup_storage()
 
   RollForDb.rollfor.softres_player_name_overrides = RollForDb.rollfor.softres_player_name_overrides or {}
   RollForDb.rollfor.softres_passing = RollForDb.rollfor.softres_passing or {}
-
   RollForDb.rollfor.softres_data = RollForDb.rollfor.softres_data or nil
-  m_softres_data = RollForDb.rollfor.softres_data
-
   RollForDb.rollfor.awarded_items = RollForDb.rollfor.awarded_items or {}
 
   RollForDb.rollfor.dropped_items = RollForDb.rollfor.dropped_items or {}
   m_dropped_items = RollForDb.rollfor.dropped_items
-  m_softres_data_dirty = true
 end
 
-local function check_softres()
+function M.check_softres()
   pretty_print( "TODO: Implement me!" )
-end
-
-local function show_gui()
-  m_softres_frame = ace_gui:Create( "Frame" )
-  m_softres_frame.frame:SetFrameStrata( "DIALOG" )
-  m_softres_frame:SetTitle( "SoftResLoot" )
-  m_softres_frame:SetLayout( "Fill" )
-  m_softres_frame:SetWidth( 565 )
-  m_softres_frame:SetHeight( 300 )
-  m_softres_frame:SetCallback( "OnClose",
-    function( widget )
-      if not m_softres_data_dirty then
-        if not m_softres_data then
-          pretty_print( "Invalid or no soft-res data found." )
-        else
-          check_softres()
-        end
-      else
-        update_softres_data()
-        check_softres()
-      end
-
-      ace_gui:Release( widget )
-    end
-  )
-
-  m_softres_frame:SetStatusText( "" )
-
-  local importEditBox = ace_gui:Create( "MultiLineEditBox" )
-  importEditBox:SetFullWidth( true )
-  importEditBox:SetFullHeight( true )
-  importEditBox:DisableButton( true )
-  importEditBox:SetLabel( "SoftRes.it data" )
-
-  if m_softres_data then
-    importEditBox:SetText( m_softres_data )
-  end
-
-  importEditBox:SetCallback( "OnTextChanged", function()
-    m_softres_data_dirty = true
-    m_softres_data = importEditBox:GetText()
-  end )
-
-  m_softres_frame:AddChild( importEditBox )
 end
 
 local function process_softres_slash_command( args )
@@ -757,7 +670,7 @@ local function process_softres_slash_command( args )
     return
   end
 
-  show_gui()
+  modules.SoftResGui.show()
 end
 
 local function has_rolls_left( player_name, offspec_roll )
@@ -821,57 +734,6 @@ function M.on_chat_msg_system( message )
   end
 end
 
-local function version_recently_reminded()
-  if not RollForDb.rollfor.last_new_version_reminder_timestamp then return false end
-
-  local time = modules.lua.time()
-
-  -- Only remind once a day
-  if time - RollForDb.rollfor.last_new_version_reminder_timestamp > 3600 * 24 then
-    return false
-  else
-    return true
-  end
-end
-
-local function strip_dots( v )
-  local result, _ = v:gsub( "%.", "" )
-  return result
-end
-
-local function is_new_version( v )
-  local myVersion = tonumber( strip_dots( version ) )
-  local theirVersion = tonumber( strip_dots( v ) )
-
-  return theirVersion > myVersion
-end
-
--- OnComm(prefix, message, distribution, sender)
-local function on_comm( prefix, message, _, _ )
-  if prefix ~= comm_prefix then return end
-
-  local cmd, value = modules.lua.strmatch( message, "^(.*)::(.*)$" )
-
-  if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
-    RollForDb.rollfor.last_new_version_reminder_timestamp = modules.lua.time()
-    pretty_print( string.format( "New version (%s) is available!", hl( string.format( "v%s", value ) ) ) )
-  end
-end
-
-local function broadcast_version( target )
-  ace_comm:SendCommMessage( comm_prefix, "VERSION::" .. version, target )
-end
-
-local function broadcast_version_to_the_guild()
-  if not modules.api.IsInGuild() then return end
-  broadcast_version( "GUILD" )
-end
-
-local function broadcast_version_to_the_group()
-  if not modules.api.IsInGroup() and not modules.api.IsInRaid() then return end
-  broadcast_version( modules.api.IsInRaid() and "RAID" or "PARTY" )
-end
-
 local function mock_table_function( _api, name, values )
   _api[ name ] = function( key )
     local value = values[ key ]
@@ -899,18 +761,6 @@ local function make_loot_slot_info( count, quality )
   end
 
   return result
-end
-
-function M.on_joined_group()
-  if not was_in_group then
-    broadcast_version_to_the_group()
-  end
-
-  update_group_status()
-end
-
-function M.on_left_group()
-  update_group_status()
 end
 
 function M.on_loot_ready()
@@ -948,7 +798,7 @@ end
 local function simulate_loot_dropped( args )
   local item_links = M.item_utils.parse_all_links( args )
 
-  if m_real_api then
+  if modules.real_api then
     pretty_print( "Mocking in progress." )
     return
   end
@@ -988,13 +838,9 @@ function M.on_first_enter_world()
   modules.api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 
   setup_storage()
-  update_softres_data()
+  M.update_softres_data( RollForDb.rollfor.softres_data )
 
-  broadcast_version_to_the_guild()
-  broadcast_version_to_the_group()
-
-  ace_comm:RegisterComm( comm_prefix, on_comm )
-  update_group_status()
+  version_broadcast.broadcast()
 
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
 end
