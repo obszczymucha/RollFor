@@ -9,6 +9,10 @@ M.lua = {
   strmatch = strmatch
 }
 
+function M.highlight( word )
+  return string.format( "|cffff9f69%s|r", word )
+end
+
 function M.pretty_print( message ) M.api.ChatFrame1:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
 
 function M.count_elements( t, f )

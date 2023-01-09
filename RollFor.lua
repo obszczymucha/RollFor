@@ -2,18 +2,21 @@
 local lib_stub = LibStub
 local major = 1
 local minor = 19
-local version = string.format( "%s.%s", major, minor )
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
+
+local version = string.format( "%s.%s", major, minor )
+local comm_prefix = "RollFor"
 
 local ace_timer = lib_stub( "AceTimer-3.0" )
 local ace_comm = lib_stub( "AceComm-3.0" )
 local ace_gui = lib_stub( "AceGUI-3.0" )
+local modules = lib_stub( "RollFor-Modules" )
 
 M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
-local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
+local hl = modules.highlight
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -43,7 +46,6 @@ local m_softres_data = nil
 local m_softres_frame = nil
 local m_softres_data_dirty = false
 
-local comm_prefix = "RollFor"
 local was_in_group = false
 
 M.item_utils = modules.ItemUtils
@@ -117,10 +119,6 @@ end
 
 local function update_group_status()
   was_in_group = modules.api.IsInGroup() or modules.api.IsInRaid()
-end
-
-local highlight = function( word )
-  return string.format( "|cffff9f69%s|r", word )
 end
 
 --local red = function( word )
@@ -216,7 +214,7 @@ local function update_softres_data()
   M.import_softres_data( softres_data )
 
   if softres_data then
-    pretty_print( string.format( "Data loaded successfully. Use %s command to list.", highlight( "/srs" ) ) )
+    pretty_print( string.format( "Data loaded successfully. Use %s command to list.", hl( "/srs" ) ) )
   else
     pretty_print( "Could not load soft-res data." )
   end
@@ -227,7 +225,7 @@ end
 local function there_was_a_tie( topRoll, topRollers )
   table.sort( topRollers )
   local topRollersStr = modules.prettify_table( topRollers )
-  local topRollersStrColored = modules.prettify_table( topRollers, highlight )
+  local topRollersStrColored = modules.prettify_table( topRollers, hl )
 
   pretty_print( string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
     m_rerolling and "re-" or "", topRoll, topRollersStrColored ), modules.get_group_chat_type() )
@@ -334,7 +332,7 @@ local function show_sorted_rolls( limit )
 end
 
 local function print_winner( roll, players, is_offspec )
-  local f = highlight
+  local f = hl
   local offspec = is_offspec and " (OS)" or ""
 
   pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, f ),
@@ -547,7 +545,7 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
   if m_rolled_item_reserved and softResCount <= count then
     pretty_print( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
-      modules.prettify_table( reservedBy, compose( name_with_rolls, highlight ) ) ) )
+      modules.prettify_table( reservedBy, compose( name_with_rolls, hl ) ) ) )
 
     modules.api.SendChatMessage( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
@@ -621,7 +619,7 @@ local function process_roll_for_slash_command( args, slashCommand, whoRolls )
     return
   end
 
-  pretty_print( string.format( "Usage: %s <%s> [%s]", slashCommand, highlight( "item" ), highlight( "seconds" ) ) )
+  pretty_print( string.format( "Usage: %s <%s> [%s]", slashCommand, hl( "item" ), hl( "seconds" ) ) )
 end
 
 local function process_show_sorted_rolls_slash_command( args )
@@ -855,7 +853,7 @@ local function on_comm( prefix, message, _, _ )
 
   if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
     RollForDb.rollfor.last_new_version_reminder_timestamp = modules.lua.time()
-    pretty_print( string.format( "New version (%s) is available!", highlight( string.format( "v%s", value ) ) ) )
+    pretty_print( string.format( "New version (%s) is available!", hl( string.format( "v%s", value ) ) ) )
   end
 end
 
@@ -997,7 +995,7 @@ function M.on_first_enter_world()
   ace_comm:RegisterComm( comm_prefix, on_comm )
   update_group_status()
 
-  pretty_print( string.format( "Loaded (%s).", highlight( string.format( "v%s", version ) ) ) )
+  pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function
@@ -1108,7 +1106,7 @@ end
 
 function M.award_item( player, item_id, item_name, item_link_or_colored_item_name )
   M.awarded_loot.award( player, item_id, item_name )
-  pretty_print( string.format( "%s received %s.", highlight( player ), item_link_or_colored_item_name ) )
+  pretty_print( string.format( "%s received %s.", hl( player ), item_link_or_colored_item_name ) )
 end
 
 ---@diagnostic disable-next-line: unused-local
@@ -1116,7 +1114,7 @@ function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   --TODO: Think if we want to do this.
   --m_awarded_items = remove_from_awarded_items( player, item_id )
   --RollForDb.rollfor.awarded_items = m_awarded_items
-  pretty_print( string.format( "%s returned %s.", highlight( player ), item_link_or_colored_item_name ) )
+  pretty_print( string.format( "%s returned %s.", hl( player ), item_link_or_colored_item_name ) )
 end
 
 modules.EventHandler.handle_events( M )
