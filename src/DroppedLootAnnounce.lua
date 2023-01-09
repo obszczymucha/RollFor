@@ -9,6 +9,28 @@ M.item = function( id, name, link, quality )
   return { id = id, name = name, link = link, quality = quality }
 end
 
+local function distinct( items )
+  local result = {}
+
+  local function exists( item )
+    for i = 1, #result do
+      if result[ i ].id == item.id then return true end
+    end
+
+    return false
+  end
+
+  for i = 1, #items do
+    local item = items[ i ]
+
+    if not exists( item ) then
+      table.insert( result, item )
+    end
+  end
+
+  return result
+end
+
 local function process_dropped_item( item_index )
   local link = modules.api.GetLootSlotLink( item_index )
   if not link then return nil end
@@ -36,28 +58,6 @@ function M.process_dropped_items( softres )
 
   local summary = M.create_item_summary( items, softres )
   return source_guid or "unknown", items, M.create_item_announcements( summary )
-end
-
-local function distinct( items )
-  local result = {}
-
-  local function exists( item )
-    for i = 1, #result do
-      if result[ i ].id == item.id then return true end
-    end
-
-    return false
-  end
-
-  for i = 1, #items do
-    local item = items[ i ]
-
-    if not exists( item ) then
-      table.insert( result, item )
-    end
-  end
-
-  return result
 end
 
 -- The result is a list of unique items with the counts how many dropped and how many players reserve them.
@@ -153,6 +153,47 @@ function M.create_item_announcements( summary )
   end
 
   return result
+end
+
+function M.new( dropped_loot, softres )
+  local announcing = false
+  local announced_source_ids = {}
+
+  local function on_loot_ready()
+    if not modules.is_player_master_looter() or announcing then return end
+
+    local source_guid, items, announcements = M.process_dropped_items( softres )
+    local was_announced = announced_source_ids[ source_guid ]
+    if was_announced then return end
+
+    announcing = true
+    local item_count = #items
+
+    local target = modules.api.UnitName( "target" )
+    local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
+
+    if item_count > 0 then
+      modules.api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), modules.get_group_chat_type() )
+
+      for i = 1, item_count do
+        local item = items[ i ]
+        dropped_loot.add( item.id, item.name )
+      end
+
+      for i = 1, #announcements do
+        modules.api.SendChatMessage( announcements[ i ], modules.get_group_chat_type() )
+      end
+
+      dropped_loot.persist()
+      announced_source_ids[ source_guid ] = true
+    end
+
+    announcing = false
+  end
+
+  return {
+    on_loot_ready = on_loot_ready
+  }
 end
 
 modules.DroppedLootAnnounce = M

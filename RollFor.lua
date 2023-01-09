@@ -28,30 +28,18 @@ local m_offspec_rolls = {}
 local m_rollers = {}
 local m_offspec_rollers = {}
 local m_winner_count = 0
-local m_announced_source_ids = {}
-local m_announcing = false
 local m_cancelled = false
 local m_item_to_be_awarded = nil
 local m_item_award_confirmed = false
-local m_dropped_items = {}
 
 M.item_utils = modules.ItemUtils
-M.dropped_loot_announce = modules.DroppedLootAnnounce
 
 M.trade_tracker = modules.TradeTracker.new(
   function( recipient, items_given, items_received )
-    local function get_dropped_item_name( item_id )
-      for _, item in pairs( m_dropped_items ) do
-        if item.id == item_id then return item.name end
-      end
-
-      return nil
-    end
-
     for i = 1, #items_given do
       local item = items_given[ i ]
       local item_id = M.item_utils.get_item_id( item.link )
-      local item_name = get_dropped_item_name( item_id )
+      local item_name = M.dropped_loot.get_dropped_item_name( item_id )
 
       if item_name then
         M.award_item( recipient, item_id, item_name, item.link )
@@ -69,8 +57,6 @@ M.trade_tracker = modules.TradeTracker.new(
   end
 )
 
-M.softres = nil
-
 function M.import_softres_data( softres_data )
   M.awarded_loot = modules.AwardedLoot.new() -- This must be here otherwise it doesnt read from the db.
   M.group_roster = modules.GroupRoster.new( modules.api )
@@ -80,6 +66,7 @@ function M.import_softres_data( softres_data )
   local asr = modules.SoftResAwardedLootDecorator.new( M.name_matcher, M.awarded_loot, sr )
   local msr = modules.SoftResMatchedNameDecorator.new( M.name_matcher, asr )
   M.softres = modules.SoftResAbsentPlayersDecorator.new( modules.GroupRoster.new( modules.api ), msr )
+  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
 end
 
 local function reset()
@@ -95,12 +82,9 @@ local function reset()
   m_rollers = {}
   m_offspec_rollers = {}
   m_winner_count = 0
-  m_announced_source_ids = {}
-  m_announcing = false
   m_cancelled = false
   m_item_to_be_awarded = nil
   m_item_award_confirmed = false
-  m_dropped_items = {}
 end
 
 local function report( text )
@@ -636,7 +620,8 @@ local function clear_storage()
   RollForDb.rollfor.awarded_items = {}
   RollForDb.rollfor.dropped_items = {}
 
-  m_dropped_items = RollForDb.rollfor.dropped_items
+  M.dropped_loot = modules.DroppedLoot.new()
+  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
 end
 
 local function setup_storage()
@@ -654,7 +639,8 @@ local function setup_storage()
   RollForDb.rollfor.awarded_items = RollForDb.rollfor.awarded_items or {}
 
   RollForDb.rollfor.dropped_items = RollForDb.rollfor.dropped_items or {}
-  m_dropped_items = RollForDb.rollfor.dropped_items
+  M.dropped_loot = modules.DroppedLoot.new( RollForDb.rollfor.dropped_items )
+  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot )
 end
 
 function M.check_softres()
@@ -764,35 +750,6 @@ local function make_loot_slot_info( count, quality )
 end
 
 function M.on_loot_ready()
-  if not modules.is_player_master_looter() or m_announcing then return end
-
-  local source_guid, items, announcements = M.dropped_loot_announce.process_dropped_items( M.softres )
-  local was_announced = m_announced_source_ids[ source_guid ]
-  if was_announced then return end
-
-  m_announcing = true
-  local item_count = #items
-
-  local target = modules.api.UnitName( "target" )
-  local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
-
-  if item_count > 0 then
-    modules.api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), modules.get_group_chat_type() )
-
-    for i = 1, item_count do
-      local item = items[ i ]
-      table.insert( m_dropped_items, { id = item.id, name = item.name } )
-    end
-
-    for i = 1, #announcements do
-      modules.api.SendChatMessage( announcements[ i ], modules.get_group_chat_type() )
-    end
-
-    RollForDb.rollfor.dropped_items = m_dropped_items
-    m_announced_source_ids[ source_guid ] = true
-  end
-
-  m_announcing = false
 end
 
 local function simulate_loot_dropped( args )
@@ -927,18 +884,10 @@ function M.on_open_master_loot_list()
   end
 end
 
-local function get_item_id( item_name )
-  for _, item in pairs( m_dropped_items ) do
-    if item.name == item_name then return item.id end
-  end
-
-  return nil
-end
-
 function M.on_loot_slot_cleared()
   if m_item_to_be_awarded and m_item_award_confirmed then
     local item_name = modules.decolorize( m_item_to_be_awarded.colored_item_name )
-    local item_id = get_item_id( item_name )
+    local item_id = M.dropped_loot.get_dropped_item_id( item_name )
 
     if item_id then
       M.award_item( m_item_to_be_awarded.player, item_id, item_name, m_item_to_be_awarded.colored_item_name )

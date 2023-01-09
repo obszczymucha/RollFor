@@ -8,6 +8,7 @@
 Libs\Libs.xml
 src\modules.lua
 src\ItemUtils.lua
+src\DroppedLoot.lua
 src\DroppedLootAnnounce.lua
 src\TradeTracker.lua
 src\SoftRes.lua

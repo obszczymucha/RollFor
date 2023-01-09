@@ -249,6 +249,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   )
 end
 
+-- TODO
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
   -- Given
   master_looter( "Psikutas" )

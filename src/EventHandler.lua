@@ -24,7 +24,7 @@ function M.handle_events( origin )
     elseif event == "CHAT_MSG_SYSTEM" then
       origin.on_chat_msg_system( ... )
     elseif event == "LOOT_READY" then
-      origin.on_loot_ready()
+      origin.dropped_loot_announce.on_loot_ready()
     elseif event == "OPEN_MASTER_LOOT_LIST" then
       origin.on_open_master_loot_list()
     elseif event == "LOOT_SLOT_CLEARED" then
