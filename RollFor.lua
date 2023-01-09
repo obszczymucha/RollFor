@@ -1,16 +1,18 @@
 ---@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
+local lib_stub = LibStub
 local major = 1
 local minor = 19
 local version = string.format( "%s.%s", major, minor )
-local M = libStub:NewLibrary( string.format( "RollFor-%s", major ), minor )
+local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
-local aceTimer = libStub( "AceTimer-3.0" )
-local aceComm = libStub( "AceComm-3.0" )
-M.db = libStub( "AceDB-3.0" ):New( "RollForDb" )
+local ace_timer = lib_stub( "AceTimer-3.0" )
+local ace_comm = lib_stub( "AceComm-3.0" )
+local ace_gui = lib_stub( "AceGUI-3.0" )
 
-local modules = libStub( "RollFor-Modules" )
+M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
+
+local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
 
 local m_timer = nil
@@ -34,8 +36,6 @@ local m_dropped_items = {}
 
 local m_real_api = nil
 
-local AceGUI = libStub( "AceGUI-3.0" )
-
 -- Persisted values
 local m_softres_data = nil
 
@@ -43,8 +43,8 @@ local m_softres_data = nil
 local m_softres_frame = nil
 local m_softres_data_dirty = false
 
-local commPrefix = "RollFor"
-local wasInGroup = false
+local comm_prefix = "RollFor"
+local was_in_group = false
 
 M.item_utils = modules.ItemUtils
 M.dropped_loot_announce = modules.DroppedLootAnnounce
@@ -116,7 +116,7 @@ local function reset()
 end
 
 local function update_group_status()
-  wasInGroup = modules.api.IsInGroup() or modules.api.IsInRaid()
+  was_in_group = modules.api.IsInGroup() or modules.api.IsInRaid()
 end
 
 local highlight = function( word )
@@ -183,7 +183,7 @@ local function show_softres()
 
   if needsRefetch then
     pretty_print( "Not all items were fetched. Retrying..." )
-    aceTimer:ScheduleTimer( show_softres, 1 )
+    ace_timer:ScheduleTimer( show_softres, 1 )
     return
   end
 
@@ -239,13 +239,13 @@ local function there_was_a_tie( topRoll, topRollers )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
-  aceTimer:ScheduleTimer( function() modules.api.SendChatMessage( string.format( "%s /roll for %s now.", topRollersStr, m_rolled_item.link ),
+  ace_timer:ScheduleTimer( function() modules.api.SendChatMessage( string.format( "%s /roll for %s now.", topRollersStr, m_rolled_item.link ),
       modules.get_group_chat_type() )
   end, 2.5 )
 end
 
 local function cancel_rolling_timer()
-  aceTimer:CancelTimer( m_timer )
+  ace_timer:CancelTimer( m_timer )
   m_timer = nil
 end
 
@@ -584,7 +584,7 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
     (not info or info == "") and "." or string.format( " %s", info ), countInfo ), get_roll_announcement_chat_type() )
   m_rerolling = false
   m_rolling = true
-  m_timer = aceTimer:ScheduleRepeatingTimer( on_timer, 1.7 )
+  m_timer = ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
 end
 
 local function announce_hr( item )
@@ -706,7 +706,7 @@ local function check_softres()
 end
 
 local function show_gui()
-  m_softres_frame = AceGUI:Create( "Frame" )
+  m_softres_frame = ace_gui:Create( "Frame" )
   m_softres_frame.frame:SetFrameStrata( "DIALOG" )
   m_softres_frame:SetTitle( "SoftResLoot" )
   m_softres_frame:SetLayout( "Fill" )
@@ -725,13 +725,13 @@ local function show_gui()
         check_softres()
       end
 
-      AceGUI:Release( widget )
+      ace_gui:Release( widget )
     end
   )
 
   m_softres_frame:SetStatusText( "" )
 
-  local importEditBox = AceGUI:Create( "MultiLineEditBox" )
+  local importEditBox = ace_gui:Create( "MultiLineEditBox" )
   importEditBox:SetFullWidth( true )
   importEditBox:SetFullHeight( true )
   importEditBox:DisableButton( true )
@@ -816,7 +816,7 @@ local function on_roll( player, roll, min, max )
   if have_all_rolls_been_exhausted() then finalize_rolling() end
 end
 
-local function on_chat_msg_system( message )
+function M.on_chat_msg_system( message )
   for player, roll, min, max in (message):gmatch( "([^%s]+) rolls (%d+) %((%d+)%-(%d+)%)" ) do
     on_roll( player, tonumber( roll ), tonumber( min ), tonumber( max ) )
   end
@@ -849,7 +849,7 @@ end
 
 -- OnComm(prefix, message, distribution, sender)
 local function on_comm( prefix, message, _, _ )
-  if prefix ~= commPrefix then return end
+  if prefix ~= comm_prefix then return end
 
   local cmd, value = modules.lua.strmatch( message, "^(.*)::(.*)$" )
 
@@ -860,7 +860,7 @@ local function on_comm( prefix, message, _, _ )
 end
 
 local function broadcast_version( target )
-  aceComm:SendCommMessage( commPrefix, "VERSION::" .. version, target )
+  ace_comm:SendCommMessage( comm_prefix, "VERSION::" .. version, target )
 end
 
 local function broadcast_version_to_the_guild()
@@ -902,19 +902,19 @@ local function make_loot_slot_info( count, quality )
   return result
 end
 
-local function on_joined_group()
-  if not wasInGroup then
+function M.on_joined_group()
+  if not was_in_group then
     broadcast_version_to_the_group()
   end
 
   update_group_status()
 end
 
-local function on_left_group()
+function M.on_left_group()
   update_group_status()
 end
 
-local function on_loot_ready()
+function M.on_loot_ready()
   if not modules.is_player_master_looter() or m_announcing then return end
 
   local source_guid, items, announcements = M.dropped_loot_announce.process_dropped_items( M.softres )
@@ -960,10 +960,11 @@ local function simulate_loot_dropped( args )
   modules.api[ "GetLootSourceInfo" ] = function() return tostring( modules.lua.time() ) end
   mock_table_function( modules.api, "GetLootSlotLink", item_links )
   mock_table_function( modules.api, "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
-  on_loot_ready()
+
+  M.on_loot_ready()
 end
 
-local function on_first_enter_world()
+function M.on_first_enter_world()
   reset()
 
   -- Roll For commands
@@ -993,7 +994,7 @@ local function on_first_enter_world()
   broadcast_version_to_the_guild()
   broadcast_version_to_the_group()
 
-  aceComm:RegisterComm( commPrefix, on_comm )
+  ace_comm:RegisterComm( comm_prefix, on_comm )
   update_group_status()
 
   pretty_print( string.format( "Loaded (%s).", highlight( string.format( "v%s", version ) ) ) )
@@ -1068,10 +1069,7 @@ local function hook_loot_confirmation_events( base_frame_name, yes_button, no_bu
   end )
 end
 
-local function on_open_master_loot_list()
-  -- item name: StaticPopup1Text.text_arg1
-  -- example: "|cffa334eeBlessed Tanzanite|r"
-
+function M.on_open_master_loot_list()
   for k, frame in pairs( modules.api.MasterLooterFrame ) do
     if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
       idempotent_hookscript( frame, "OnClick", function()
@@ -1092,7 +1090,7 @@ local function get_item_id( item_name )
   return nil
 end
 
-local function on_loot_slot_cleared()
+function M.on_loot_slot_cleared()
   if m_item_to_be_awarded and m_item_award_confirmed then
     local item_name = modules.decolorize( m_item_to_be_awarded.colored_item_name )
     local item_id = get_item_id( item_name )
@@ -1121,63 +1119,5 @@ function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   pretty_print( string.format( "%s returned %s.", highlight( player ), item_link_or_colored_item_name ) )
 end
 
-local m_first_enter_world
-
---eventHandler( frame, event, ... )
-local function eventHandler( _, event, ... )
-  if event == "PLAYER_LOGIN" then
-    m_first_enter_world = false
-  elseif event == "PLAYER_ENTERING_WORLD" then
-    if not m_first_enter_world then
-      on_first_enter_world()
-      m_first_enter_world = true
-    end
-  elseif event == "GROUP_FORMED" then
-    on_joined_group()
-  elseif event == "GROUP_JOINED" then
-    on_joined_group()
-  elseif event == "GROUP_LEFT" then
-    on_left_group()
-  elseif event == "CHAT_MSG_SYSTEM" then
-    on_chat_msg_system( ... )
-  elseif event == "LOOT_READY" then
-    on_loot_ready()
-  elseif event == "OPEN_MASTER_LOOT_LIST" then
-    on_open_master_loot_list()
-  elseif event == "LOOT_SLOT_CLEARED" then
-    on_loot_slot_cleared()
-  elseif event == "TRADE_SHOW" then
-    M.trade_tracker.on_trade_show()
-  elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
-    M.trade_tracker.on_trade_player_item_changed( ... )
-  elseif event == "TRADE_TARGET_ITEM_CHANGED" then
-    M.trade_tracker.on_trade_target_item_changed( ... )
-  elseif event == "TRADE_CLOSED" then
-    M.trade_tracker.on_trade_closed()
-  elseif event == "TRADE_ACCEPT_UPDATE" then
-    M.trade_tracker.on_trade_accept_update( ... )
-  elseif event == "TRADE_REQUEST_CANCEL" then
-    M.trade_tracker.on_trade_request_cancel()
-  end
-end
-
-local frame = modules.api.CreateFrame( "FRAME", "RollForFrame" )
-
-frame:RegisterEvent( "PLAYER_LOGIN" )
-frame:RegisterEvent( "PLAYER_ENTERING_WORLD" )
-frame:RegisterEvent( "GROUP_JOINED" )
-frame:RegisterEvent( "GROUP_LEFT" )
-frame:RegisterEvent( "GROUP_FORMED" )
-frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
-frame:RegisterEvent( "LOOT_READY" )
-frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
-frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
-frame:RegisterEvent( "TRADE_SHOW" )
-frame:RegisterEvent( "TRADE_PLAYER_ITEM_CHANGED" )
-frame:RegisterEvent( "TRADE_TARGET_ITEM_CHANGED" )
-frame:RegisterEvent( "TRADE_CLOSED" )
-frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
-frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
-frame:SetScript( "OnEvent", eventHandler )
-
+modules.EventHandler.handle_events( M )
 return M

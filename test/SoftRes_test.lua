@@ -11,9 +11,9 @@ local sr = test_utils.soft_res_item
 local hr = test_utils.hard_res_item
 local data = test_utils.create_softres_data
 
-SoftResSpec = {}
+SoftResIntegrationSpec = {}
 
-function SoftResSpec.new_instances_should_have_empty_item_lists()
+function SoftResIntegrationSpec.new_instances_should_have_empty_item_lists()
   -- Given
   local soft_res = mod.new()
   local soft_res2 = mod.new()
@@ -23,7 +23,7 @@ function SoftResSpec.new_instances_should_have_empty_item_lists()
   lu.assertEquals( soft_res2.get( 123 ), nil )
 end
 
-function SoftResSpec:should_create_a_proper_object_and_add_an_item()
+function SoftResIntegrationSpec:should_create_a_proper_object_and_add_an_item()
   -- Given
   local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
   local soft_res2 = mod.new()
@@ -39,7 +39,7 @@ function SoftResSpec:should_create_a_proper_object_and_add_an_item()
   lu.assertEquals( result2, {} )
 end
 
-function SoftResSpec:should_return_nil_for_untracked_item()
+function SoftResIntegrationSpec:should_return_nil_for_untracked_item()
   -- Given
   local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
 
@@ -50,7 +50,7 @@ function SoftResSpec:should_return_nil_for_untracked_item()
   lu.assertEquals( result, {} )
 end
 
-function SoftResSpec:should_add_multiple_players()
+function SoftResIntegrationSpec:should_add_multiple_players()
   -- Given
   local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) ) )
 
@@ -64,7 +64,7 @@ function SoftResSpec:should_add_multiple_players()
   } )
 end
 
-function SoftResSpec:should_accumulate_rolls()
+function SoftResIntegrationSpec:should_accumulate_rolls()
   -- Given
   local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Psikutas", 123 ) ) )
   --
@@ -77,7 +77,7 @@ function SoftResSpec:should_accumulate_rolls()
   } )
 end
 
-function SoftResSpec:should_check_if_player_is_soft_ressing()
+function SoftResIntegrationSpec:should_check_if_player_is_soft_ressing()
   -- When
   local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 111 ) ) )
 

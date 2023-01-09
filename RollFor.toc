@@ -18,5 +18,6 @@ src\Json.lua
 src\AwardedLoot.lua
 src\GroupRoster.lua
 src\NameMatcher.lua
+src\EventHandler.lua
 RollFor.lua
 settings.lua

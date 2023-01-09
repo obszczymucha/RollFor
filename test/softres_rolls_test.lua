@@ -28,9 +28,9 @@ local trade_with = utils.trade_with
 local trade_items = utils.trade_items
 local trade_complete = utils.trade_complete
 
-SoftResSpec = {}
+SoftResIntegrationSpec = {}
 
-function SoftResSpec:should_announce_sr_and_ignore_all_rolls_if_item_is_soft_ressed_by_one_player()
+function SoftResIntegrationSpec:should_announce_sr_and_ignore_all_rolls_if_item_is_soft_ressed_by_one_player()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Rikus" )
@@ -50,7 +50,7 @@ function SoftResSpec:should_announce_sr_and_ignore_all_rolls_if_item_is_soft_res
   )
 end
 
-function SoftResSpec:should_only_process_rolls_from_players_who_soft_ressed_and_finish_automatically()
+function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_ressed_and_finish_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon", "Rikus" )
@@ -73,7 +73,7 @@ function SoftResSpec:should_only_process_rolls_from_players_who_soft_ressed_and_
   )
 end
 
-function SoftResSpec:should_ignore_offspec_rolls_by_players_who_soft_ressed_and_announce_they_still_have_to_roll()
+function SoftResIntegrationSpec:should_ignore_offspec_rolls_by_players_who_soft_ressed_and_announce_they_still_have_to_roll()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -98,7 +98,7 @@ function SoftResSpec:should_ignore_offspec_rolls_by_players_who_soft_ressed_and_
   )
 end
 
-function SoftResSpec:should_announce_current_highest_roller_if_a_player_who_soft_ressed_did_not_roll_and_rolls_were_manually_finished()
+function SoftResIntegrationSpec:should_announce_current_highest_roller_if_a_player_who_soft_ressed_did_not_roll_and_rolls_were_manually_finished()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -123,7 +123,7 @@ function SoftResSpec:should_announce_current_highest_roller_if_a_player_who_soft
   )
 end
 
-function SoftResSpec:should_announce_all_missing_sr_rolls_if_players_didnt_roll_on_time()
+function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_players_didnt_roll_on_time()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon", "Rikus" )
@@ -143,7 +143,7 @@ function SoftResSpec:should_announce_all_missing_sr_rolls_if_players_didnt_roll_
   )
 end
 
-function SoftResSpec:should_allow_multiple_rolls_if_a_player_soft_ressed_multiple_times()
+function SoftResIntegrationSpec:should_allow_multiple_rolls_if_a_player_soft_ressed_multiple_times()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Ponpon" )
@@ -165,7 +165,7 @@ function SoftResSpec:should_allow_multiple_rolls_if_a_player_soft_ressed_multipl
   )
 end
 
-function SoftResSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_tied_rolls()
+function SoftResIntegrationSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_tied_rolls()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Ponpon", "Rikus", "Pimp" )
@@ -193,7 +193,7 @@ function SoftResSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ignore_non_ti
   )
 end
 
-function SoftResSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item()
+function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Ponpon" )
@@ -219,7 +219,7 @@ function SoftResSpec:should_allow_others_to_roll_if_player_who_soft_ressed_alrea
   )
 end
 
-function SoftResSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_trade()
+function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_trade()
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -249,7 +249,37 @@ function SoftResSpec:should_allow_others_to_roll_if_player_who_soft_ressed_alrea
   )
 end
 
-function SoftResSpec:should_only_process_rolls_from_players_who_soft_ressed_if_players_name_was_auto_matched_and_finish_automatically()
+function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
+  soft_res( sr( "Obszczymucha", 123 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  roll_for( "Hearthstone", 1, 123 )
+  trade_with( "Obszczymucha" )
+  trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
+  trade_complete()
+  roll_for( "Hearthstone", 1, 123 )
+  roll( "Ponpon", 1 )
+  tick( 8 )
+
+  -- Then
+  assert_messages(
+    r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
+    crw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
+    c( "RollFor: Started trading with Obszczymucha." ),
+    c( "RollFor: Trading with Obszczymucha complete." ),
+    c( "RollFor: Obszczymucha received [Hearthstone]." ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
+    rolling_finished()
+  )
+end
+
+function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_ressed_if_players_name_was_auto_matched_and_finish_automatically()
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Sälvatrucha", "Ponpon" )

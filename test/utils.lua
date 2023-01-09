@@ -386,6 +386,7 @@ function M.load_real_stuff()
   require( "src/SoftResMatchedNameDecorator" )
   require( "src/GroupRoster" )
   require( "src/NameMatcher" )
+  require( "src/EventHandler" )
   require( "RollFor" )
 end
 
