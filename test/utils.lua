@@ -396,6 +396,7 @@ function M.load_real_stuff()
   require( "src/NameMatcher" )
   require( "src/EventHandler" )
   require( "src/VersionBroadcast" )
+  require( "src/MasterLoot" )
   require( "RollFor" )
 end
 

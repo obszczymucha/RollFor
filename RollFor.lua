@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 20
+local minor = 21
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -29,8 +29,6 @@ local m_rollers = {}
 local m_offspec_rollers = {}
 local m_winner_count = 0
 local m_cancelled = false
-local m_item_to_be_awarded = nil
-local m_item_award_confirmed = false
 
 M.item_utils = modules.ItemUtils
 
@@ -83,8 +81,6 @@ local function reset()
   m_offspec_rollers = {}
   m_winner_count = 0
   m_cancelled = false
-  m_item_to_be_awarded = nil
-  m_item_award_confirmed = false
 end
 
 local function report( text )
@@ -797,6 +793,7 @@ function M.on_first_enter_world()
 
   setup_storage()
 
+  M.master_loot = modules.MasterLoot.new( M )
   M.softres_gui = modules.SoftResGui.new( M )
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
   M.version_broadcast.broadcast()
@@ -813,92 +810,6 @@ local function on_party_message( message, player )
   for name, roll in (message):gmatch( "(%a+) rolls os (%d+)" ) do
     --M:Print( string.format( "Party: %s %s", name, message ) )
     on_roll( name, tonumber( roll ), 1, 99 )
-  end
-end
-
-local function idempotent_hookscript( frame, event, callback )
-  if not frame.RollForHookScript then
-    frame.RollForHookScript = frame.HookScript
-
-    frame.HookScript = function( self, _event, f )
-      if _event:find( "RollForIdempotent", 1, true ) == 1 then
-        if not frame[ _event ] then
-          local real_event = _event:gsub( "RollForIdempotent", "" )
-          frame.RollForHookScript( self, real_event, f )
-          frame[ _event ] = true
-        end
-      else
-        frame.RollForHookScript( self, _event, f )
-      end
-    end
-  end
-
-  frame:HookScript( "RollForIdempotent" .. event, callback )
-end
-
-local function find_loot_confirmation_details()
-  local frames = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
-
-  for i = 1, #frames do
-    local base_frame_name = frames[ i ]
-    local frame = _G[ base_frame_name .. "Text" ]
-
-    if frame and frame:IsVisible() and frame.text_arg1 and frame.text_arg2 then
-      local yes_button = _G[ base_frame_name .. "Button1" ]
-      local no_button = _G[ base_frame_name .. "Button2" ]
-
-      return base_frame_name, yes_button, no_button
-    end
-  end
-
-  return nil
-end
-
-local function hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
-  idempotent_hookscript( yes_button, "OnClick", function()
-    local text_frame = _G[ base_frame_name .. "Text" ]
-    local player = text_frame and text_frame.text_arg2
-    local colored_item_name = text_frame and text_frame.text_arg1
-
-    if player and colored_item_name then
-      m_item_to_be_awarded = { player = player, colored_item_name = colored_item_name }
-      m_item_award_confirmed = true
-      pretty_print( string.format( "Attempting to award %s with %s.", m_item_to_be_awarded.player, m_item_to_be_awarded.colored_item_name ) )
-    end
-  end )
-
-  idempotent_hookscript( no_button, "OnClick", function()
-    m_item_award_confirmed = false
-    m_item_to_be_awarded = nil
-  end )
-end
-
-function M.on_open_master_loot_list()
-  for k, frame in pairs( modules.api.MasterLooterFrame ) do
-    if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
-      idempotent_hookscript( frame, "OnClick", function()
-        local base_frame_name, yes_button, no_button = find_loot_confirmation_details()
-        if base_frame_name and yes_button and no_button then
-          hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
-        end
-      end )
-    end
-  end
-end
-
-function M.on_loot_slot_cleared()
-  if m_item_to_be_awarded and m_item_award_confirmed then
-    local item_name = modules.decolorize( m_item_to_be_awarded.colored_item_name )
-    local item_id = M.dropped_loot.get_dropped_item_id( item_name )
-
-    if item_id then
-      M.award_item( m_item_to_be_awarded.player, item_id, item_name, m_item_to_be_awarded.colored_item_name )
-    else
-      pretty_print( string.format( "Cannot determine item id for %s.", m_item_to_be_awarded.colored_item_name ) )
-    end
-
-    m_item_to_be_awarded = nil
-    m_item_award_confirmed = false
   end
 end
 

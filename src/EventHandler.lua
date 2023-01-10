@@ -26,9 +26,9 @@ function M.handle_events( origin )
     elseif event == "LOOT_READY" then
       origin.dropped_loot_announce.on_loot_ready()
     elseif event == "OPEN_MASTER_LOOT_LIST" then
-      origin.on_open_master_loot_list()
+      origin.master_loot.on_open_master_loot_list()
     elseif event == "LOOT_SLOT_CLEARED" then
-      origin.on_loot_slot_cleared()
+      origin.master_loot.on_loot_slot_cleared()
     elseif event == "TRADE_SHOW" then
       origin.trade_tracker.on_trade_show()
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
