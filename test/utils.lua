@@ -11,15 +11,19 @@ local m_is_master_looter = false
 local m_player_name = nil
 local m_target = nil
 
+M.debug_enabled = false
+
 function M.princess()
   return "kenny"
 end
 
 function M.debug( message )
+  if not M.debug_enabled then return end
   print( string.format( "[ debug ]: %s", message ) )
 end
 
 function M.lndebug( message )
+  if not M.debug_enabled then return end
   print( "\n" )
   M.debug( message )
 end
@@ -51,8 +55,6 @@ end
 
 function M.mock_wow_api()
   M.modules().api.CreateFrame = function( _, frameName )
-    print( string.format( "[ CreateFrame ]: %s", frameName ) )
-
     return {
       RegisterEvent = function() end,
       SetScript = function( _, name, callback )
@@ -63,6 +65,10 @@ function M.mock_wow_api()
       end
     }
   end
+end
+
+function M.highlight( word )
+  return string.format( "|cffff9f69%s|r", word )
 end
 
 function M.decolorize( input )
@@ -610,10 +616,126 @@ function M.recipient_trades_items( trade_tracker, ... )
   end
 end
 
-function M.auto_match( player, override )
-  local rf = M.load_roll_for()
-  -- TODO: fix
-  --rf.softres.match_name( player, override )
+local function get_players_in_group( api )
+  local result = {}
+
+  for i = 1, 40 do
+    local player_name = api.GetRaidRosterInfo( i )
+    if player_name then
+      table.insert( result, player_name )
+    end
+  end
+
+  return result
+end
+
+local function mock_frame( frame_name, on_click_callback )
+  local callbacks = {}
+  local visible = false
+
+  local fire_event = function( event_name )
+    if on_click_callback then on_click_callback() end
+
+    if not callbacks[ event_name ] then
+      M.debug( string.format( "No callbacks for %s event in frame %s.", event_name, frame_name ) )
+      return
+    end
+
+    for _, callback in pairs( callbacks[ event_name ] ) do
+      M.debug( string.format( "Firing event %s on frame %s.", event_name, frame_name ) )
+      callback()
+    end
+  end
+
+  local function hook_script( _, event_name, callback )
+    M.debug( string.format( "Hooked event %s in frame %s.", event_name, frame_name ) )
+    callbacks[ event_name ] = callbacks[ event_name ] or {}
+    table.insert( callbacks[ event_name ], callback )
+  end
+
+  local function show()
+    if visible then return end
+
+    visible = true
+    fire_event( "OnShow" )
+  end
+
+  local function close()
+    if not visible then return end
+
+    visible = false
+    fire_event( "OnClose" )
+  end
+
+  local function is_visible()
+    return visible
+  end
+
+  return {
+    fire_event = fire_event,
+    HookScript = hook_script,
+    Show = show,
+    Close = close,
+    IsVisible = is_visible
+  }
+end
+
+local function mock_master_looter_frame( item_name, players )
+  local result = {}
+
+  for i = 1, #players do
+    local frame_name = "player" .. i
+    local player_name = players[ i ]
+
+    local frame = mock_frame( frame_name, function()
+      local text_frame = mock_frame( "StaticPopup1Text" )
+      text_frame.text_arg1 = M.highlight( item_name )
+      text_frame.text_arg2 = player_name
+      text_frame:Show()
+      M.mock_object( "StaticPopup1Text", text_frame )
+
+      local yes_button = mock_frame( "StaticPopup1Button1", function() text_frame:Close() end )
+      M.mock_object( "StaticPopup1Button1", yes_button )
+
+      local no_button = mock_frame( "StaticPopup1Button2", function() text_frame:Close() end )
+      M.mock_object( "StaticPopup1Button2", no_button )
+
+      M.debug( string.format( "Frame clicked: player: %s item: %s", player_name, item_name ) )
+    end )
+
+    frame.player_name = player_name
+    frame.item_name = item_name
+    result[ frame_name ] = frame
+  end
+
+  return result
+end
+
+local function get_player_frame_from_master_looter_frame( player_name, mlf )
+  for k, frame in pairs( mlf ) do
+    if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
+      if frame.player_name == player_name then return frame end
+    end
+  end
+end
+
+function M.master_loot( item_name, player_name )
+  local mods = M.modules()
+  local players = get_players_in_group( mods.api )
+  local master_looter_frame = mock_master_looter_frame( item_name, players )
+  M.mock_object( "MasterLooterFrame", master_looter_frame )
+  M.fire_event( "OPEN_MASTER_LOOT_LIST" )
+  local player_frame = get_player_frame_from_master_looter_frame( player_name, master_looter_frame )
+  player_frame.fire_event( "OnClick" )
+end
+
+function M.confirm_master_looting()
+  M.modules().api.StaticPopup1Button1.fire_event( "OnClick" )
+  M.fire_event( "LOOT_SLOT_CLEARED" )
+end
+
+function M.cancel_master_looting()
+  M.modules().api.StaticPopup1Button2.fire_event( "OnClick" )
 end
 
 return M
