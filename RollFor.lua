@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 21
+local minor = 22
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -55,16 +55,31 @@ M.trade_tracker = modules.TradeTracker.new(
   end
 )
 
-function M.import_softres_data( softres_data )
-  M.awarded_loot = modules.AwardedLoot.new() -- This must be here otherwise it doesnt read from the db.
-  M.group_roster = modules.GroupRoster.new( modules.api )
-  M.name_matcher = modules.NameMatcher.new( M.group_roster )
-  M.unfiltered_softres = modules.SoftRes.new( softres_data )
-  M.name_matcher.auto_match( M.unfiltered_softres.get_all_softres_player_names() )
-  local asr = modules.SoftResAwardedLootDecorator.new( M.name_matcher, M.awarded_loot, M.unfiltered_softres )
-  local msr = modules.SoftResMatchedNameDecorator.new( M.name_matcher, asr )
-  M.softres = modules.SoftResAbsentPlayersDecorator.new( modules.GroupRoster.new( modules.api ), msr )
+local function create_components()
+  M.api = function() return modules.api end
+
+  M.awarded_loot = modules.AwardedLoot.new()
+  M.group_roster = modules.GroupRoster.new( M.api )
+  M.unfiltered_softres = modules.SoftRes.new()
+  M.name_matcher = modules.NameMatcher.new( M.group_roster, M.unfiltered_softres )
+  M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
+  M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
+
+  local abstent_softres = function( softres )
+    return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres )
+  end
+
+  M.softres = abstent_softres( M.awarded_loot_softres )
+  M.dropped_loot = modules.DroppedLoot.new()
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
+  M.softres_check = modules.SoftResCheck.new( M.unfiltered_softres, M.name_matcher )
+  M.master_loot = modules.MasterLoot.new( M )
+  M.softres_gui = modules.SoftResGui.new( M )
+end
+
+function M.import_softres_data( softres_data )
+  M.unfiltered_softres.import( softres_data )
+  M.name_matcher.auto_match()
 end
 
 local function reset()
@@ -83,18 +98,6 @@ local function reset()
   m_cancelled = false
 end
 
-local function report( text )
-  local _silent = true
-
-  if modules.api.IsInRaid() and not _silent then
-    modules.api.SendChatMessage( text, "RAID" )
-  elseif modules.api.IsInGroup() and not _silent then
-    modules.api.SendChatMessage( text, "PARTY" )
-  else
-    pretty_print( text )
-  end
-end
-
 local function get_all_players()
   return modules.map( M.group_roster.get_all_players_in_my_group(), function( player )
     return { name = player, rolls = 1 }
@@ -110,78 +113,83 @@ local function include_reserved_rolls( item_id )
 end
 
 local function show_softres()
-  local needsRefetch = false
-  local softressed_item_ids = M.unfiltered_softres.get_item_ids()
+  local needs_refetch = false
+  local softressed_item_ids = M.matched_name_softres.get_item_ids()
   local items = {}
+  local p = function( text ) modules.pretty_print( text, modules.normal ) end
 
-  pretty_print( modules.dump( softressed_item_ids ) )
   for _, item_id in pairs( softressed_item_ids ) do
-    local players = M.unfiltered_softres.get( item_id )
-    local itemLink = modules.fetch_item_link( item_id )
+    local players = M.matched_name_softres.get( item_id )
+    local item_link = modules.fetch_item_link( item_id )
 
-    if not itemLink then
-      needsRefetch = true
+    if not item_link then
+      needs_refetch = true
     else
-      items[ itemLink ] = players
+      items[ item_link ] = players
     end
   end
 
-  if needsRefetch then
-    pretty_print( "Not all items were fetched. Retrying..." )
+  if needs_refetch then
+    p( "Not all items were fetched. Retrying..." )
     ace_timer:ScheduleTimer( show_softres, 1 )
     return
   end
 
   if modules.count_elements( items ) == 0 then
-    report( "No soft-res items found." )
+    p( "No soft-res items found." )
     return
   end
 
-  report( "Soft-ressed items (red players are not in your group):" )
+  M.name_matcher.report()
+  p( "Soft-ressed items (red players are not in your group):" )
 
   local colorize = function( player )
-    local rolls = player.rolls > 1 and string.format( " (%s)", player.rolls ) or ""
-    return string.format( "|cff%s%s|r%s",
-      M.group_roster.is_player_in_my_group( player.name ) and "ffffff" or "ff2f2f",
-      player.name, rolls )
+    local c = M.group_roster.is_player_in_my_group( player.name ) and modules.white or modules.red
+    return player.rolls > 1 and string.format( "%s (%s)", c( player.name ), player.rolls ) or string.format( "%s", c( player.name ) )
   end
 
-  for itemLink, players in pairs( items ) do
+  for item_link, players in pairs( items ) do
     if modules.count_elements( players ) > 0 then
-      report( string.format( "%s: %s", itemLink, modules.prettify_table( players, colorize ) ) )
+      p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
     end
   end
 end
 
-function M.update_softres_data( data )
+function M.update_softres_data( data, data_loaded_callback )
   RollForDb.rollfor.softres_data = data
   local softres_data = modules.SoftRes.decode( data )
 
-  M.import_softres_data( data )
-
-  if softres_data then
-    pretty_print( string.format( "Soft-res data loaded successfully. Use %s command to list.", hl( "/srs" ) ) )
-  else
-    pretty_print( "Could not load soft-res data." )
+  if not softres_data then
+    pretty_print( "Could not load soft-res data!", modules.red )
+    M.import_softres_data( { softreserves = {}, hardreserves = {} } )
+    return
   end
+
+  M.import_softres_data( softres_data )
+
+  pretty_print( "Soft-res data loaded successfully!" )
+  if data_loaded_callback then data_loaded_callback() end
 end
 
 local function there_was_a_tie( topRoll, topRollers )
   table.sort( topRollers )
-  local topRollersStr = modules.prettify_table( topRollers )
-  local topRollersStrColored = modules.prettify_table( topRollers, hl )
+  local top_rollers_str = modules.prettify_table( topRollers )
+  local top_rollers_str_colored = modules.prettify_table( topRollers, hl )
 
-  pretty_print( string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
-    m_rerolling and "re-" or "", topRoll, topRollersStrColored ), modules.get_group_chat_type() )
-  modules.api.SendChatMessage( string.format( "The %shighest %sroll was %d by %s.",
-    not m_rerolling and m_winner_count > 0 and "next " or "",
-    m_rerolling and "re-" or "", topRoll, topRollersStr ), modules.get_group_chat_type() )
+  local message = function( rollers )
+    return string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
+      m_rerolling and "re-" or "", topRoll, rollers )
+  end
+
+  pretty_print( message( top_rollers_str_colored ) )
+  M.api().SendChatMessage( message( top_rollers_str ), modules.get_group_chat_type() )
+
   m_rolls = {}
   m_rollers = modules.map( topRollers, function( player_name ) return { name = player_name, rolls = 1 } end )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
-  ace_timer:ScheduleTimer( function() modules.api.SendChatMessage( string.format( "%s /roll for %s now.", topRollersStr, m_rolled_item.link ),
+  ace_timer:ScheduleTimer( function() M.api().SendChatMessage( string.format( "%s /roll for %s now.", top_rollers_str, m_rolled_item.link ),
       modules.get_group_chat_type() )
   end, 2.5 )
 end
@@ -281,7 +289,7 @@ local function print_winner( roll, players, is_offspec )
 
   pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, f ),
     m_rerolling and "re-" or "", not m_rerolling and m_winner_count > 0 and "next " or "", f( roll ), m_rolled_item.link, offspec ) )
-  modules.api.SendChatMessage( string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
+  M.api().SendChatMessage( string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
     m_rerolling and "re-" or "", not m_rerolling and m_winner_count > 0 and "next " or "", roll, m_rolled_item.link, offspec ),
     modules.get_group_chat_type() )
 end
@@ -332,7 +340,7 @@ local function announce_extra_rolls_left()
   end
 
   local message = modules.prettify_table( remaining_rollers, transform )
-  modules.api.SendChatMessage( string.format( "SR rolls remaining: %s", message ), modules.get_group_chat_type() )
+  M.api().SendChatMessage( string.format( "SR rolls remaining: %s", message ), modules.get_group_chat_type() )
 end
 
 local function was_there_a_tie( sorted_rolls )
@@ -394,7 +402,7 @@ local function finalize_rolling( forced )
   if mainspec_roll_count + offspec_roll_count == 0 then
     stop_rolling()
     pretty_print( string.format( "Nobody rolled for %s.", m_rolled_item.link ) )
-    modules.api.SendChatMessage( string.format( "Nobody rolled for %s.", m_rolled_item.link ), modules.get_group_chat_type() )
+    M.api().SendChatMessage( string.format( "Nobody rolled for %s.", m_rolled_item.link ), modules.get_group_chat_type() )
     print_rolling_complete()
     return
   end
@@ -420,9 +428,9 @@ local function on_timer()
   if m_seconds_left <= 0 then
     finalize_rolling()
   elseif m_seconds_left == 3 then
-    modules.api.SendChatMessage( "Stopping rolls in 3", modules.get_group_chat_type() )
+    M.api().SendChatMessage( "Stopping rolls in 3", modules.get_group_chat_type() )
   elseif m_seconds_left < 3 then
-    modules.api.SendChatMessage( m_seconds_left, modules.get_group_chat_type() )
+    M.api().SendChatMessage( m_seconds_left, modules.get_group_chat_type() )
   end
 end
 
@@ -491,7 +499,7 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
       modules.prettify_table( reservedBy, compose( name_with_rolls, hl ) ) ) )
 
-    modules.api.SendChatMessage( string.format( "%s is soft-ressed by %s.",
+    M.api().SendChatMessage( string.format( "%s is soft-ressed by %s.",
       softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
       modules.prettify_table( reservedBy, name_with_rolls ) ), get_roll_announcement_chat_type() )
 
@@ -521,7 +529,7 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
 
   if m_rolled_item_count > 1 then countInfo = string.format( ". %d top rolls win.", m_rolled_item_count ) end
 
-  modules.api.SendChatMessage( string.format( "Roll for %s%s:%s%s",
+  M.api().SendChatMessage( string.format( "Roll for %s%s:%s%s",
     m_rolled_item_count > 1 and string.format( "%dx", m_rolled_item_count ) or "", item.link,
     (not info or info == "") and "." or string.format( " %s", info ), countInfo ), get_roll_announcement_chat_type() )
   m_rerolling = false
@@ -530,11 +538,11 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
 end
 
 local function announce_hr( item )
-  modules.api.SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
+  M.api().SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
 end
 
 local function process_roll_for_slash_command( args, slashCommand, whoRolls )
-  if not modules.api.IsInGroup() then
+  if not M.api().IsInGroup() then
     pretty_print( "Not in a group." )
     return
   end
@@ -616,9 +624,6 @@ local function clear_storage()
   RollForDb.rollfor.softres_data = ""
   RollForDb.rollfor.awarded_items = {}
   RollForDb.rollfor.dropped_items = {}
-
-  M.dropped_loot = modules.DroppedLoot.new()
-  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
 end
 
 local function setup_storage()
@@ -629,25 +634,18 @@ local function setup_storage()
     RollForDb.rollfor.version = version
   end
 
-
   RollForDb.rollfor.softres_player_name_overrides = RollForDb.rollfor.softres_player_name_overrides or {}
   RollForDb.rollfor.softres_passing = RollForDb.rollfor.softres_passing or {}
   RollForDb.rollfor.softres_data = RollForDb.rollfor.softres_data or nil
   RollForDb.rollfor.awarded_items = RollForDb.rollfor.awarded_items or {}
-
   RollForDb.rollfor.dropped_items = RollForDb.rollfor.dropped_items or {}
-  M.dropped_loot = modules.DroppedLoot.new( RollForDb.rollfor.dropped_items )
-  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot )
-end
-
-function M.check_softres()
-  pretty_print( "TODO: Implement me!" )
 end
 
 local function process_softres_slash_command( args )
   if args == "init" then
     clear_storage()
-    M.awarded_loot = modules.AwardedLoot.new()
+    M.awarded_loot.clear()
+    M.dropped_loot.clear()
     pretty_print( "Soft-res data cleared." )
 
     return
@@ -717,8 +715,8 @@ function M.on_chat_msg_system( message )
   end
 end
 
-local function mock_table_function( _api, name, values )
-  _api[ name ] = function( key )
+local function mock_table_function( name, values )
+  M.api()[ name ] = function( key )
     local value = values[ key ]
 
     if type( value ) == "function" then
@@ -759,44 +757,49 @@ local function simulate_loot_dropped( args )
 
   modules.real_api = modules.api
   modules.api = modules.clone( modules.api )
-  modules.api[ "GetNumLootItems" ] = function() return #item_links end
-  modules.api[ "GetLootSourceInfo" ] = function() return tostring( modules.lua.time() ) end
-  mock_table_function( modules.api, "GetLootSlotLink", item_links )
-  mock_table_function( modules.api, "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
+  M.api()[ "GetNumLootItems" ] = function() return #item_links end
+  M.api()[ "GetLootSourceInfo" ] = function() return tostring( modules.lua.time() ) end
+  mock_table_function( "GetLootSlotLink", item_links )
+  mock_table_function( "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
 
-  M.on_loot_ready()
+  M.dropped_loot_announce.on_loot_ready()
+end
+
+local function setup_slash_commands()
+  -- Roll For commands
+  SLASH_RF1 = "/rf"
+  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf", include_reserved_rolls ) end
+  SLASH_ARF1 = "/arf"
+  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", get_all_players ) end
+  SLASH_CR1 = "/cr"
+  M.api().SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancell_roll_slash_command )
+  SLASH_FR1 = "/fr"
+  M.api().SlashCmdList[ "FR" ] = decorate_with_rolling_check( process_finish_roll_slash_command )
+
+  -- Soft Res commands
+  SLASH_SR1 = "/sr"
+  M.api().SlashCmdList[ "SR" ] = process_softres_slash_command
+  SLASH_SSR1 = "/ssr"
+  M.api().SlashCmdList[ "SSR" ] = process_show_sorted_rolls_slash_command
+  SLASH_SRS1 = "/srs"
+  M.api().SlashCmdList[ "SRS" ] = show_softres
+  SLASH_SRC1 = "/src"
+  M.api().SlashCmdList[ "SRC" ] = function() M.softres_check.check_softres() end
+
+  SLASH_DROPPED1 = "/DROPPED"
+  M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 end
 
 function M.on_first_enter_world()
   reset()
-
-  -- Roll For commands
-  SLASH_RF1 = "/rf"
-  modules.api.SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf", include_reserved_rolls ) end
-  SLASH_ARF1 = "/arf"
-  modules.api.SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", get_all_players ) end
-  SLASH_CR1 = "/cr"
-  modules.api.SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancell_roll_slash_command )
-  SLASH_FR1 = "/fr"
-  modules.api.SlashCmdList[ "FR" ] = decorate_with_rolling_check( process_finish_roll_slash_command )
-
-  -- Soft Res commands
-  SLASH_SR1 = "/sr"
-  modules.api.SlashCmdList[ "SR" ] = process_softres_slash_command
-  SLASH_SSR1 = "/ssr"
-  modules.api.SlashCmdList[ "SSR" ] = process_show_sorted_rolls_slash_command
-  SLASH_SRS1 = "/srs"
-  modules.api.SlashCmdList[ "SRS" ] = show_softres
-
-  SLASH_DROPPED1 = "/DROPPED"
-  modules.api.SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
-
   setup_storage()
+  create_components()
+  setup_slash_commands()
 
-  M.master_loot = modules.MasterLoot.new( M )
-  M.softres_gui = modules.SoftResGui.new( M )
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
   M.version_broadcast.broadcast()
+
+  M.dropped_loot.import( RollForDb.rollfor.dropped_items )
   M.update_softres_data( RollForDb.rollfor.softres_data )
   M.softres_gui.load( RollForDb.rollfor.softres_data )
 end
@@ -824,6 +827,10 @@ function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   --m_awarded_items = remove_from_awarded_items( player, item_id )
   --RollForDb.rollfor.awarded_items = m_awarded_items
   pretty_print( string.format( "%s returned %s.", hl( player ), item_link_or_colored_item_name ) )
+end
+
+function M.on_group_roster_update()
+  M.name_matcher.auto_match()
 end
 
 modules.EventHandler.handle_events( M )

@@ -36,7 +36,10 @@ function DroppedLootAnnounceSpec:should_create_item_details()
 end
 
 local function softres( softresses, hardresses )
-  return modules.SoftRes.new( { softreserves = softresses, hardreserves = hardresses } )
+  local result = modules.SoftRes.new()
+  result.import( { softreserves = softresses, hardreserves = hardresses } )
+
+  return result
 end
 
 local function sr( player_name, ... )

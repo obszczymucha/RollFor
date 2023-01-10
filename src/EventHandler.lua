@@ -41,6 +41,8 @@ function M.handle_events( origin )
       origin.trade_tracker.on_trade_accept_update( ... )
     elseif event == "TRADE_REQUEST_CANCEL" then
       origin.trade_tracker.on_trade_request_cancel()
+    elseif event == "GROUP_ROSTER_UPDATE" then
+      origin.on_group_roster_update()
     end
   end
 
@@ -61,6 +63,7 @@ function M.handle_events( origin )
   frame:RegisterEvent( "TRADE_CLOSED" )
   frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
+  frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
   frame:SetScript( "OnEvent", eventHandler )
 end
 

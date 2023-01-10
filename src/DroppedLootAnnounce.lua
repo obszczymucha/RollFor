@@ -160,7 +160,14 @@ function M.new( dropped_loot, softres )
   local announced_source_ids = {}
 
   local function on_loot_ready()
-    if not modules.is_player_master_looter() or announcing then return end
+    if not modules.is_player_master_looter() or announcing then
+      if modules.real_api then
+        modules.api = modules.real_api
+        modules.real_api = nil
+      end
+
+      return
+    end
 
     local source_guid, items, announcements = M.process_dropped_items( softres )
     local was_announced = announced_source_ids[ source_guid ]

@@ -3,6 +3,9 @@ if modules.NameMatcher then return end
 
 local M = {}
 
+local pretty_print = function( text ) modules.pretty_print( text, modules.orange ) end
+local hl = modules.highlight
+
 local function to_map( t )
   local result = {}
 
@@ -165,12 +168,13 @@ local function assign_predictions( predictions )
   return results, results_below_threshold
 end
 
-function M.new( group_roster )
+function M.new( group_roster, softres )
   local matched_names = {}
 
-  local function auto_match( softres_player_names )
+  local function auto_match()
     matched_names = {}
     local present_players = group_roster.get_all_players_in_my_group()
+    local softres_player_names = softres.get_all_softres_player_names()
 
     local present_players_who_did_not_softres = is_in_left_but_not_in_right( present_players, softres_player_names )
     if #present_players_who_did_not_softres == 0 then return end
@@ -230,10 +234,21 @@ function M.new( group_roster )
     return matched_names[ softres_name ] and matched_names[ softres_name ].matched_name or nil
   end
 
+  -- TODO: so I don't forget. We have to re-auto-match if someone joins the raid.
+  local function report()
+    if modules.count_elements( matched_names ) == 0 then return end
+
+    for softres_name, match in pairs( matched_names ) do
+      pretty_print( string.format( "Auto-matched %s with %s.", hl( softres_name ), hl( match.matched_name ) ) )
+    end
+
+  end
+
   return {
     auto_match = auto_match,
     get_softres_name = get_softres_name,
-    get_matched_name = get_matched_name
+    get_matched_name = get_matched_name,
+    report = report
   }
 end
 

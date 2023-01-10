@@ -3,8 +3,8 @@ if modules.DroppedLoot then return end
 
 local M = {}
 
-function M.new( items )
-  local dropped_items = items or {}
+function M.new()
+  local dropped_items = {}
 
   local function get_dropped_item_id( item_name )
     for _, item in pairs( dropped_items ) do
@@ -30,11 +30,21 @@ function M.new( items )
     RollForDb.rollfor.dropped_items = dropped_items
   end
 
+  local function import( items )
+    dropped_items = items or {}
+  end
+
+  local function clear()
+    dropped_items = {}
+  end
+
   return {
     get_dropped_item_id = get_dropped_item_id,
     get_dropped_item_name = get_dropped_item_name,
     add = add,
-    persist = persist
+    persist = persist,
+    import = import,
+    clear = clear
   }
 end
 

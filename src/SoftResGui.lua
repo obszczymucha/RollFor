@@ -4,7 +4,6 @@ if modules.SoftResGui then return end
 local M = {}
 
 local ace_gui = LibStub( "AceGUI-3.0" )
-local pretty_print = modules.pretty_print
 
 function M.new( origin )
   local softres_data
@@ -20,16 +19,11 @@ function M.new( origin )
     softres_frame:SetHeight( 300 )
     softres_frame:SetCallback( "OnClose",
       function( widget )
-        if not softres_data_dirty then
-          if not softres_data then
-            pretty_print( "Invalid or no soft-res data found." )
-          else
-            origin.check_softres()
-          end
-        else
-          origin.update_softres_data( softres_data )
+        if softres_data_dirty and softres_data then
           softres_data_dirty = false
-          origin.check_softres()
+          origin.update_softres_data( softres_data, function()
+            origin.softres_check.check_softres()
+          end )
         end
 
         ace_gui:Release( widget )

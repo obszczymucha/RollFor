@@ -3,25 +3,24 @@ if modules.SoftResAwardedLootDecorator then return end
 
 local M = {}
 
-function M.new( name_matcher, awarded_loot, softres )
-  local get = softres.get
-
-  softres.get = function( item_id )
+function M.new( awarded_loot, softres )
+  local function get( item_id )
     local result = {}
-    local softressers = get( item_id )
+    local softressers = softres.get( item_id )
 
     for _, v in pairs( softressers ) do
-      local name = name_matcher.get_matched_name( v.name ) or v.name -- TODO: test this (remove v.name from get_softres_name and tests still pass)
-      if not awarded_loot.has_item_been_awarded( name, item_id ) then
-        --table.insert( result, v ) -- TODO: test - this breaks things but tests still pass
-        table.insert( result, { name = name, rolls = v.rolls } )
+      if not awarded_loot.has_item_been_awarded( v.name, item_id ) then
+        table.insert( result, v )
       end
     end
 
     return result
   end
 
-  return softres
+  local decorator = modules.clone( softres )
+  decorator.get = get
+
+  return decorator
 end
 
 modules.SoftResAwardedLootDecorator = M

@@ -13,11 +13,26 @@ function M.highlight( word )
   return string.format( "|cffff9f69%s|r", word )
 end
 
---local red = function( word )
---return string.format( "|cffff2f2f%s|r", word )
---end
+local normal = function( word )
+  return string.format( "|cff209ff9%s|r", word )
+end
 
-function M.pretty_print( message ) M.api.ChatFrame1:AddMessage( string.format( "|cff209ff9RollFor|r: %s", message ) ) end
+M.white = function( word )
+  return string.format( "|cffffffff%s|r", word )
+end
+
+M.red = function( word )
+  return string.format( "|cffff2f2f%s|r", word )
+end
+
+M.orange = function( word )
+  return string.format( "|cffff8f2f%s|r", word )
+end
+
+function M.pretty_print( message, color_fn )
+  local c = color_fn or normal
+  M.api.ChatFrame1:AddMessage( string.format( "%s: %s", c( "RollFor" ), message ) )
+end
 
 function M.count_elements( t, f )
   local result = 0

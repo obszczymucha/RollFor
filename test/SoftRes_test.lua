@@ -8,7 +8,6 @@ require( "src/modules" )
 local mod = require( "src/SoftRes" )
 
 local sr = test_utils.soft_res_item
-local hr = test_utils.hard_res_item
 local data = test_utils.create_softres_data
 
 SoftResIntegrationSpec = {}
@@ -25,7 +24,8 @@ end
 
 function SoftResIntegrationSpec:should_create_a_proper_object_and_add_an_item()
   -- Given
-  local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
+  local soft_res = mod.new()
+  soft_res.import( data( sr( "Psikutas", 123 ) ) )
   local soft_res2 = mod.new()
 
   -- When
@@ -41,7 +41,8 @@ end
 
 function SoftResIntegrationSpec:should_return_nil_for_untracked_item()
   -- Given
-  local soft_res = mod.new( data( sr( "Psikutas", 123 ) ) )
+  local soft_res = mod.new()
+  soft_res.import( data( sr( "Psikutas", 123 ) ) )
 
   -- When
   local result = soft_res.get( "111" )
@@ -52,7 +53,8 @@ end
 
 function SoftResIntegrationSpec:should_add_multiple_players()
   -- Given
-  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) ) )
+  local soft_res = mod.new()
+  soft_res.import( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) ) )
 
   -- When
   local result = soft_res.get( 123 )
@@ -66,8 +68,9 @@ end
 
 function SoftResIntegrationSpec:should_accumulate_rolls()
   -- Given
-  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Psikutas", 123 ) ) )
-  --
+  local soft_res = mod.new()
+  soft_res.import( data( sr( "Psikutas", 123 ), sr( "Psikutas", 123 ) ) )
+
   -- When
   local result = soft_res.get( 123 )
 
@@ -79,7 +82,8 @@ end
 
 function SoftResIntegrationSpec:should_check_if_player_is_soft_ressing()
   -- When
-  local soft_res = mod.new( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 111 ) ) )
+  local soft_res = mod.new()
+  soft_res.import( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 111 ) ) )
 
   -- Expect
   lu.assertEquals( soft_res.is_player_softressing( "Psiktuas", 123 ), false )

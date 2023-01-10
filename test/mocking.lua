@@ -23,7 +23,7 @@ function M.mock_api( ... )
     end
   end
 
-  return result
+  return function() return result end
 end
 
 function M.mock( function_name, ... )

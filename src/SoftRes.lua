@@ -46,7 +46,7 @@ function M.decode( encoded_softres_data )
   return data
 end
 
-function M.new( softres_data )
+function M.new()
   local softres_items = {}
   local hardres_items = {}
 
@@ -112,7 +112,7 @@ function M.new( softres_data )
     end
   end
 
-  local function process_data()
+  local function import( softres_data)
     clear()
     if not softres_data then return end
     process_softres_items( softres_data.softreserves )
@@ -175,15 +175,14 @@ function M.new( softres_data )
     return result
   end
 
-  process_data()
-
   return {
     get = get,
     is_player_softressing = is_player_softressing,
     get_item_ids = get_item_ids,
     is_item_hardressed = is_item_hardressed,
     show = show,
-    get_all_softres_player_names = get_all_softres_player_names
+    get_all_softres_player_names = get_all_softres_player_names,
+    import = import
   }
 end
 

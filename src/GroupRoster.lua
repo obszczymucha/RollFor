@@ -3,35 +3,22 @@ if modules.GroupRoster then return end
 
 local M = {}
 
-local blizz_api = {
-  ---@diagnostic disable-next-line: undefined-global
-  IsInGroup = IsInGroup,
-  ---@diagnostic disable-next-line: undefined-global
-  IsInRaid = IsInRaid,
-  ---@diagnostic disable-next-line: undefined-global
-  UnitName = UnitName,
-  ---@diagnostic disable-next-line: undefined-global
-  GetRaidRosterInfo = GetRaidRosterInfo
-}
-
-function M.new( _api )
-  local api = _api or blizz_api
-
+function M.new( api )
   local function my_name()
-    return api.UnitName( "player" )
+    return api().UnitName( "player" )
   end
 
   local function get_all_players_in_my_group()
     local result = {}
 
-    if not api.IsInGroup() then
+    if not api().IsInGroup() then
       local name = my_name() -- This breaks in game if we dont assign it to the variable.
       table.insert( result, name )
       return result
     end
 
     for i = 1, 40 do
-      local player_name = api.GetRaidRosterInfo( i )
+      local player_name = api().GetRaidRosterInfo( i )
       if player_name then table.insert( result, player_name ) end
     end
 
@@ -49,15 +36,15 @@ function M.new( _api )
   end
 
   local function am_i_in_group()
-    return api.IsInGroup()
+    return api().IsInGroup()
   end
 
   local function am_i_in_party()
-    return api.IsInGroup() and not api.IsInRaid()
+    return api().IsInGroup() and not api().IsInRaid()
   end
 
   local function am_i_in_raid()
-    return api.IsInGroup() and api.IsInRaid()
+    return api().IsInGroup() and api().IsInRaid()
   end
 
   return {
