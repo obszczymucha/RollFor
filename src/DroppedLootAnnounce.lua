@@ -44,6 +44,138 @@ local function process_dropped_item( item_index )
   return M.item( item_id, item_name, link, quality )
 end
 
+local function commify( t, f )
+  local result = ""
+
+  if #t == 0 then
+    return result
+  end
+
+  if #t == 1 then
+    return (f and f( t[ 1 ] ) or t[ 1 ])
+  end
+
+  for i = 1, #t - 1 do
+    if result ~= "" then
+      result = result .. ", "
+    end
+
+    result = result .. (f and f( t[ i ] ) or t[ i ])
+  end
+
+  result = result .. " and " .. (f and f( t[ #t ] ) or t[ #t ])
+  return result
+end
+
+local function stringify( announcements )
+  local result = {}
+
+  local function p( player )
+    local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
+    return string.format( "%s%s", player.name, rolls )
+  end
+
+  for i = 1, #announcements do
+    local entry = announcements[ i ]
+
+    if entry.is_hardressed then
+      table.insert( result, string.format( "%s. %s (HR)", i, entry.item_link ) )
+    elseif entry.softres_count == 0 then
+      local count = entry.how_many_dropped
+      local prefix = count == 1 and "" or string.format( "%sx", count )
+      table.insert( result, string.format( "%s. %s%s", i, prefix, entry.item_link ) )
+    elseif entry.softres_count == 1 then
+      local count = entry.how_many_dropped
+      local prefix = count == 1 and "" or string.format( "%sx", count )
+      table.insert( result, string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, entry.softresser.name ) )
+    else
+      local count = entry.how_many_dropped
+      local prefix = count == 1 and "" or string.format( "%sx", count )
+      table.insert( result, string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, commify( entry.softressers, p ) ) )
+    end
+  end
+
+  return result
+end
+
+local function merge( result, next, ... )
+  if type( result ) ~= "table" then return {} end
+  if type( next ) ~= "table" then return result end
+
+  for i = 1, #next do
+    table.insert( result, next[ i ] )
+  end
+
+  return merge( result, ... )
+end
+
+local function sort( announcements )
+  local hr = {}
+  local sr = {}
+  local free_roll = {}
+
+  for _, v in pairs( announcements ) do
+    if v.is_hardressed then
+      table.insert( hr, v )
+    elseif v.softres_count > 0 then
+      table.insert( sr, v )
+    else
+      table.insert( free_roll, v )
+    end
+  end
+
+  table.sort( sr, function( left, right )
+    if left.softres_count == right.softres_count then
+      return left.softresser.name < right.softresser.name
+    else
+      return left.softres_count < right.softres_count
+    end
+  end )
+
+  return merge( {}, hr, sr, free_roll )
+end
+
+function M.create_item_announcements( summary )
+  local result = {}
+
+  for i = 1, #summary do
+    local entry = summary[ i ]
+    local softres_count = #entry.softressers
+
+    if entry.is_hardressed then
+      table.insert( result, {
+        item_link = entry.item.link,
+        is_hardressed = true,
+        softres_count = 0
+      } )
+    elseif softres_count == 0 then
+      table.insert( result, {
+        item_link = entry.item.link,
+        softres_count = 0,
+        how_many_dropped = entry.how_many_dropped
+      } )
+    elseif entry.how_many_dropped == softres_count then
+      for j = 1, softres_count do
+        table.insert( result, {
+          item_link = entry.item.link,
+          softres_count = 1,
+          how_many_dropped = 1,
+          softresser = entry.softressers[ j ]
+        } )
+      end
+    else
+      table.insert( result, {
+        item_link = entry.item.link,
+        softres_count = #entry.softressers,
+        how_many_dropped = entry.how_many_dropped,
+        softressers = entry.softressers
+      } )
+    end
+  end
+
+  return stringify( sort( result ) )
+end
+
 function M.process_dropped_items( softres )
   local source_guid = nil
   local items = {}
@@ -89,66 +221,6 @@ function M.create_item_summary( items, softres )
       table.insert( result, { item = item, how_many_dropped = item_count - softres_count, softressers = {}, is_hardressed = hardressed } )
     else
       table.insert( result, { item = item, how_many_dropped = item_count, softressers = softressers, is_hardressed = hardressed } )
-    end
-  end
-
-  return result
-end
-
-local function commify( t, f )
-  local result = ""
-
-  if #t == 0 then
-    return result
-  end
-
-  if #t == 1 then
-    return (f and f( t[ 1 ] ) or t[ 1 ])
-  end
-
-  for i = 1, #t - 1 do
-    if result ~= "" then
-      result = result .. ", "
-    end
-
-    result = result .. (f and f( t[ i ] ) or t[ i ])
-  end
-
-  result = result .. " and " .. (f and f( t[ #t ] ) or t[ #t ])
-  return result
-end
-
-function M.create_item_announcements( summary )
-  local result = {}
-  local index = 1
-
-  local function p( player )
-    local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.name, rolls )
-  end
-
-  for i = 1, #summary do
-    local entry = summary[ i ]
-    local softres_count = #entry.softressers
-
-    if entry.is_hardressed then
-      table.insert( result, string.format( "%s. %s (HR)", index, entry.item.link ) )
-      index = index + 1
-    elseif softres_count == 0 then
-      local count = entry.how_many_dropped
-      local prefix = count == 1 and "" or string.format( "%sx", count )
-      table.insert( result, string.format( "%s. %s%s", index, prefix, entry.item.link ) )
-      index = index + 1
-    elseif entry.how_many_dropped == softres_count then
-      for j = 1, softres_count do
-        table.insert( result, string.format( "%s. %s (SR by %s)", index, entry.item.link, p( entry.softressers[ j ] ) ) )
-        index = index + 1
-      end
-    else
-      local count = entry.how_many_dropped
-      local prefix = count == 1 and "" or string.format( "%sx", count )
-      table.insert( result, string.format( "%s. %s%s (SR by %s)", index, prefix, entry.item.link, commify( entry.softressers, p ) ) )
-      index = index + 1
     end
   end
 

@@ -206,10 +206,46 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two
   )
 end
 
+function DroppedLootAnnounceIntegrationSpec:should_show_hr_items_first()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  soft_res( hr( 1337 ) )
+
+  -- When
+  loot( item( "Wirt's Third Leg", 222 ), item( "Onyxia's Droppings", 1337 ) )
+
+  -- Then
+  assert_messages(
+    r( "2 items dropped:" ),
+    r( "1. [Onyxia's Droppings] (HR)" ),
+    r( "2. [Wirt's Third Leg]" )
+  )
+end
+
+function DroppedLootAnnounceIntegrationSpec:should_show_single_res_sr_items_alphabetically_after_hr_items()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Obszczymucha", 111 ), hr( 1337 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Wirt's Third Leg", 222 ), item( "Onyxia's Droppings", 1337 ), item( "Dick", 111 ) )
+
+  -- Then
+  assert_messages(
+    r( "4 items dropped:" ),
+    r( "1. [Onyxia's Droppings] (HR)" ),
+    r( "2. [Dick] (SR by Obszczymucha)" ),
+    r( "3. [Hearthstone] (SR by Psikutas)" ),
+    r( "4. [Wirt's Third Leg]" )
+  )
+end
+
 local runner = lu.LuaUnit.new()
 runner:setOutputType( "text" )
 
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-t", "should", "-v" ) )
+os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )

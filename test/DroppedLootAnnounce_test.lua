@@ -135,8 +135,8 @@ function ItemAnnouncementSpec:should_create_announcements_if_there_is_one_sr_hr_
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Psikutas)",
-    "2. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Psikutas)",
     "3. [Small mace]"
   } )
 end
@@ -170,9 +170,9 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha)",
-    "2. [Hearthstone] (SR by Psikutas)",
-    "3. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha)",
+    "3. [Hearthstone] (SR by Psikutas)",
     "4. [Small mace]"
   } )
 end
@@ -189,10 +189,10 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha)",
-    "2. [Hearthstone] (SR by Psikutas)",
-    "3. [Hearthstone]",
-    "4. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha)",
+    "3. [Hearthstone] (SR by Psikutas)",
+    "4. [Hearthstone]",
     "5. [Small mace]"
   } )
 end
@@ -209,10 +209,10 @@ function ItemAnnouncementSpec:should_create_announcements_if_the_number_if_items
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha)",
-    "2. [Hearthstone] (SR by Psikutas)",
-    "3. 2x[Hearthstone]",
-    "4. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha)",
+    "3. [Hearthstone] (SR by Psikutas)",
+    "4. 2x[Hearthstone]",
     "5. [Small mace]"
   } )
 end
@@ -230,10 +230,10 @@ function ItemAnnouncementSpec:should_group_items_that_are_not_soft_ressed()
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha)",
-    "2. [Hearthstone] (SR by Psikutas)",
-    "3. 2x[Hearthstone]",
-    "4. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha)",
+    "3. [Hearthstone] (SR by Psikutas)",
+    "4. 2x[Hearthstone]",
     "5. 2x[Small mace]"
   } )
 end
@@ -251,8 +251,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_only_one_sr_item_drop
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha and Psikutas)",
-    "2. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha and Psikutas)",
     "3. 2x[Small mace]"
   } )
 end
@@ -270,8 +270,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_only_one_sr_item_drop
 
   -- Then
   lu.assertEquals( result, {
-    "1. [Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)",
-    "2. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. [Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)",
     "3. 2x[Small mace]"
   } )
 end
@@ -289,8 +289,8 @@ function ItemAnnouncementSpec:should_group_soft_ressers_if_two_sr_items_dropped_
 
   -- Then
   lu.assertEquals( result, {
-    "1. 2x[Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)",
-    "2. [Big mace] (HR)",
+    "1. [Big mace] (HR)",
+    "2. 2x[Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)",
     "3. 2x[Small mace]"
   } )
 end
