@@ -59,7 +59,7 @@ function M.mock_wow_api()
       RegisterEvent = function() end,
       SetScript = function( _, name, callback )
         if frameName == "RollForFrame" and name == "OnEvent" then
-          M.debug( "Registered ModUi callback." )
+          M.debug( "Registered OnEvent callback." )
           m_event_callback = callback
         end
       end

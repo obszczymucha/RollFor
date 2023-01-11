@@ -3,7 +3,6 @@
     "Lua.diagnostics.globals": [
         "vim",
         "utf8",
-        "ModUiDb",
         "RollForDb"
     ],
     "Lua.workspace.checkThirdParty": false

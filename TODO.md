@@ -1,3 +1,2 @@
-* Fix name overriding.
-* Fix trades.
-* Decouple from ModUi.
+* Add softres check.
+* Add softres name manual overriding.

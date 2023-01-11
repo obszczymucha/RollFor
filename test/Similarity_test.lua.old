@@ -508,5 +508,3 @@ test( "Make sure LibStub is loaded", function()
   return lib_stub ~= nil
 end )
 
-local modui = require("ModUi")
-local m = require("RollFor")
