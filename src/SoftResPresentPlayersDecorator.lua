@@ -1,14 +1,13 @@
 local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResAbsentPlayersDecorator then return end
+if modules.SoftResPresentPlayersDecorator then return end
 
 local M = {}
 
 local filter = modules.filter
-local negate = modules.negate
 local clone = modules.clone
 
 function M.new( group_roster, softres )
-  local f = negate( group_roster.is_player_in_my_group )
+  local f = group_roster.is_player_in_my_group
 
   local function get( item_id )
     return filter( softres.get( item_id ), f, "name" )
@@ -25,5 +24,5 @@ function M.new( group_roster, softres )
   return decorator
 end
 
-modules.SoftResAbsentPlayersDecorator = M
+modules.SoftResPresentPlayersDecorator = M
 return M

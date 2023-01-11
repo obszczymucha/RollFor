@@ -3,17 +3,14 @@ if modules.SoftResMatchedNameDecorator then return end
 
 local M = {}
 
+local map = modules.map
+local no_nil = modules.no_nil
+
 function M.new( name_matcher, softres )
+  local f = no_nil( name_matcher.get_matched_name )
+
   local function get( item_id )
-    local result = {}
-    local softressers = softres.get( item_id )
-
-    for _, v in pairs( softressers ) do
-      local name = name_matcher.get_matched_name( v.name ) or v.name
-      table.insert( result, { name = name, rolls = v.rolls } )
-    end
-
-    return result
+    return map( softres.get( item_id ), f, "name" )
   end
 
   local function is_player_softressing( player_name, item_id )
@@ -21,9 +18,14 @@ function M.new( name_matcher, softres )
     return softres.is_player_softressing( name, item_id )
   end
 
+  local function get_all_softres_player_names()
+    return map( softres.get_all_softres_player_names(), f )
+  end
+
   local decorator = modules.clone( softres )
   decorator.get = get
   decorator.is_player_softressing = is_player_softressing
+  decorator.get_all_softres_player_names = get_all_softres_player_names
 
   return decorator
 end

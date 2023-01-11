@@ -29,6 +29,10 @@ M.orange = function( word )
   return string.format( "|cffff8f2f%s|r", word )
 end
 
+M.grey = function( word )
+  return string.format( "|cff9f9f9f%s|r", word )
+end
+
 function M.pretty_print( message, color_fn )
   local c = color_fn or normal
   M.api.ChatFrame1:AddMessage( string.format( "%s: %s", c( "RollFor" ), message ) )
@@ -130,14 +134,16 @@ function M.prettify_table( t, f )
   return result
 end
 
-function M.filter( t, f )
+function M.filter( t, f, extract_field )
   if not t then return nil end
   if type( f ) ~= "function" then return t end
 
   local result = {}
 
-  for k, v in pairs( t ) do
-    if f( k, v ) then result[ k ] = v end
+  for i = 1, #t do
+    local v = t[ i ]
+    local value = type( v ) == "table" and extract_field and v[ extract_field ] or v
+    if f( value ) then table.insert( result, v ) end
   end
 
   return result
@@ -166,16 +172,35 @@ function M.table_contains_value( t, value, f )
   return false
 end
 
-function M.map( t, f )
+function M.map( t, f, extract_field )
   if type( f ) ~= "function" then return t end
 
   local result = {}
 
   for k, v in pairs( t ) do
-    result[ k ] = f( v )
+    if type( v ) == "table" and extract_field then
+      local mapped_result = f( v[ extract_field ] )
+      local value = M.clone( v )
+      value[ extract_field ] = mapped_result
+      result[ k ] = value
+    else
+      result[ k ] = f( v )
+    end
   end
 
   return result
+end
+
+function M.negate( f )
+  return function( v )
+    return not f( v )
+  end
+end
+
+function M.no_nil( f )
+  return function( v )
+    return f( v ) or v
+  end
 end
 
 return M

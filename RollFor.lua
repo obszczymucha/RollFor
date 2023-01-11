@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 22
+local minor = 23
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -65,11 +65,10 @@ local function create_components()
   M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
   M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
 
-  local abstent_softres = function( softres )
-    return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres )
-  end
+  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
+  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
-  M.softres = abstent_softres( M.awarded_loot_softres )
+  M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = modules.DroppedLoot.new()
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
   M.softres_check = modules.SoftResCheck.new( M.unfiltered_softres, M.name_matcher )
@@ -116,7 +115,7 @@ local function show_softres()
   local needs_refetch = false
   local softressed_item_ids = M.matched_name_softres.get_item_ids()
   local items = {}
-  local p = function( text ) modules.pretty_print( text, modules.normal ) end
+  local p = modules.pretty_print
 
   for _, item_id in pairs( softressed_item_ids ) do
     local players = M.matched_name_softres.get( item_id )
@@ -130,10 +129,12 @@ local function show_softres()
   end
 
   if needs_refetch then
-    p( "Not all items were fetched. Retrying..." )
+    p( "Fetching soft-ressed items details from the server...", modules.grey )
     ace_timer:ScheduleTimer( show_softres, 1 )
     return
   end
+
+  local absent_softres_players = M.absent_softres( M.matched_name_softres ).get_all_softres_player_names()
 
   if modules.count_elements( items ) == 0 then
     p( "No soft-res items found." )
@@ -141,7 +142,7 @@ local function show_softres()
   end
 
   M.name_matcher.report()
-  p( "Soft-ressed items (red players are not in your group):" )
+  p( string.format( "Soft-ressed items%s:", #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", modules.red( "red" ) ) or "" ) )
 
   local colorize = function( player )
     local c = M.group_roster.is_player_in_my_group( player.name ) and modules.white or modules.red
@@ -171,21 +172,21 @@ function M.update_softres_data( data, data_loaded_callback )
   if data_loaded_callback then data_loaded_callback() end
 end
 
-local function there_was_a_tie( topRoll, topRollers )
-  table.sort( topRollers )
-  local top_rollers_str = modules.prettify_table( topRollers )
-  local top_rollers_str_colored = modules.prettify_table( topRollers, hl )
+local function there_was_a_tie( top_roll, top_rollers )
+  table.sort( top_rollers )
+  local top_rollers_str = modules.prettify_table( top_rollers )
+  local top_rollers_str_colored = modules.prettify_table( top_rollers, hl )
 
   local message = function( rollers )
     return string.format( "The %shighest %sroll was %d by %s.", not m_rerolling and m_winner_count > 0 and "next " or "",
-      m_rerolling and "re-" or "", topRoll, rollers )
+      m_rerolling and "re-" or "", top_roll, rollers )
   end
 
   pretty_print( message( top_rollers_str_colored ) )
   M.api().SendChatMessage( message( top_rollers_str ), modules.get_group_chat_type() )
 
   m_rolls = {}
-  m_rollers = modules.map( topRollers, function( player_name ) return { name = player_name, rolls = 1 } end )
+  m_rollers = modules.map( top_rollers, function( player_name ) return { name = player_name, rolls = 1 } end )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
@@ -332,7 +333,7 @@ local function reindex( t )
 end
 
 local function announce_extra_rolls_left()
-  local remaining_rollers = reindex( modules.filter( m_rollers, function( _, roller ) return roller.rolls > 0 end ) )
+  local remaining_rollers = reindex( modules.filter( m_rollers, function( roller ) return roller.rolls > 0 end ) )
 
   local transform = function( player )
     local rolls = player.rolls == 1 and "1 roll" or string.format( "%s rolls", player.rolls )

@@ -14,6 +14,7 @@ src\TradeTracker.lua
 src\SoftRes.lua
 src\SoftResAwardedLootDecorator.lua
 src\SoftResAbsentPlayersDecorator.lua
+src\SoftResPresentPlayersDecorator.lua
 src\SoftResMatchedNameDecorator.lua
 src\Json.lua
 src\AwardedLoot.lua

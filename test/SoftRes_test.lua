@@ -61,8 +61,8 @@ function SoftResIntegrationSpec:should_add_multiple_players()
 
   -- Then
   lu.assertEquals( result, {
-    { name = "Psikutas", rolls = 1 },
-    { name = "Obszczymucha", rolls = 1 }
+    { name = "Obszczymucha", rolls = 1 },
+    { name = "Psikutas", rolls = 1 }
   } )
 end
 

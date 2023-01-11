@@ -87,6 +87,12 @@ function M.new()
     return false
   end
 
+  local function sort_softres_items()
+    for _, players in pairs( softres_items ) do
+      table.sort( players, function( left, right ) return left.name < right.name end )
+    end
+  end
+
   local function process_softres_items( entries )
     if not entries then return end
 
@@ -100,6 +106,8 @@ function M.new()
         add( item_id, entry.name )
       end
     end
+
+    sort_softres_items()
   end
 
   local function process_hardres_items( entries )
@@ -112,7 +120,7 @@ function M.new()
     end
   end
 
-  local function import( softres_data)
+  local function import( softres_data )
     clear()
     if not softres_data then return end
     process_softres_items( softres_data.softreserves )
