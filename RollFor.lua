@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 23
+local minor = 24
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -111,6 +111,10 @@ local function include_reserved_rolls( item_id )
   return rollers, reservedByPlayers, reserving_player_count
 end
 
+local function players_who_did_not_softres()
+  return modules.filter( M.group_roster.get_all_players_in_my_group(), modules.negate( M.matched_name_softres.is_player_softressing ) )
+end
+
 local function show_softres()
   local needs_refetch = false
   local softressed_item_ids = M.matched_name_softres.get_item_ids()
@@ -153,6 +157,15 @@ local function show_softres()
     if modules.count_elements( players ) > 0 then
       p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
     end
+  end
+
+  local not_softressing = players_who_did_not_softres()
+  if #not_softressing == 0 then return end
+
+  p( "Players who did not soft-res:" )
+
+  for _, player in pairs( not_softressing ) do
+    p( player )
   end
 end
 

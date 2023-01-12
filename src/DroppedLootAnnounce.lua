@@ -125,7 +125,7 @@ local function sort( announcements )
   end
 
   table.sort( sr, function( left, right )
-    if left.softres_count == right.softres_count then
+    if left.softres_count == 1 and left.softres_count == right.softres_count then
       return left.softresser.name < right.softresser.name
     else
       return left.softres_count < right.softres_count

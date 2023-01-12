@@ -242,6 +242,44 @@ function DroppedLootAnnounceIntegrationSpec:should_show_single_res_sr_items_alph
   )
 end
 
+function DroppedLootAnnounceIntegrationSpec:should_show_not_sort_items_items_with_the_same_amount_of_softressers_if_there_is_more_than_one_softresser()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ), sr( "Psikutas", 111 ), sr( "Obszczymucha", 111 ), hr( 1337 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Wirt's Third Leg", 222 ), item( "Onyxia's Droppings", 1337 ), item( "Dick", 111 ) )
+
+  -- Then
+  assert_messages(
+    r( "4 items dropped:" ),
+    r( "1. [Onyxia's Droppings] (HR)" ),
+    r( "2. [Hearthstone] (SR by Obszczymucha and Psikutas)" ),
+    r( "3. [Dick] (SR by Obszczymucha and Psikutas)" ),
+    r( "4. [Wirt's Third Leg]" )
+  )
+end
+
+function DroppedLootAnnounceIntegrationSpec:should_show_sort_softres_player_counts_ascending()
+  -- Given
+  master_looter( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ), sr( "Psikutas", 111 ), sr( "Obszczymucha", 111 ), sr( "Ponpon", 111 ), hr( 1337 ) )
+
+  -- When
+  loot( item( "Hearthstone", 123 ), item( "Wirt's Third Leg", 222 ), item( "Onyxia's Droppings", 1337 ), item( "Dick", 111 ) )
+
+  -- Then
+  assert_messages(
+    r( "4 items dropped:" ),
+    r( "1. [Onyxia's Droppings] (HR)" ),
+    r( "2. [Hearthstone] (SR by Obszczymucha and Psikutas)" ),
+    r( "3. [Dick] (SR by Obszczymucha, Ponpon and Psikutas)" ),
+    r( "4. [Wirt's Third Leg]" )
+  )
+end
+
 local runner = lu.LuaUnit.new()
 runner:setOutputType( "text" )
 

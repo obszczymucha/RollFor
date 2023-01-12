@@ -80,8 +80,16 @@ function M.new()
   local function is_player_softressing( player_name, item_id )
     if not softres_items[ item_id ] then return false end
 
-    for _, v in pairs( softres_items[ item_id ] ) do
-      if v.name == player_name then return true end
+    if item_id then
+      for _, player in pairs( softres_items[ item_id ] ) do
+        if player.name == player_name then return true end
+      end
+    else
+      for _, players in pairs( softres_items ) do
+        for _, player in pairs( players ) do
+          if player.name == player_name then return true end
+        end
+      end
     end
 
     return false
