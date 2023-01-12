@@ -5,14 +5,11 @@ local minor = 26
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
-local version = string.format( "%s.%s", major, minor )
-
 M.ace_timer = lib_stub( "AceTimer-3.0" )
-local modules = lib_stub( "RollFor-Modules" )
-M.version_broadcast = modules.VersionBroadcast.new( version )
-
 M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
+local version = string.format( "%s.%s", major, minor )
+local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
 local hl = modules.colors.highlight
 
@@ -30,57 +27,6 @@ local m_offspec_rollers = {}
 local m_winner_count = 0
 local m_cancelled = false
 
-M.item_utils = modules.ItemUtils
-
-M.trade_tracker = modules.TradeTracker.new(
-  function( recipient, items_given, items_received )
-    for i = 1, #items_given do
-      local item = items_given[ i ]
-      local item_id = M.item_utils.get_item_id( item.link )
-      local item_name = M.dropped_loot.get_dropped_item_name( item_id )
-
-      if item_name then
-        M.award_item( recipient, item_id, item_name, item.link )
-      end
-    end
-
-    for i = 1, #items_received do
-      local item = items_received[ i ]
-      local item_id = M.item_utils.get_item_id( item.link )
-
-      if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
-        M.unaward_item( recipient, item_id, item.link )
-      end
-    end
-  end
-)
-
-local function create_components()
-  M.api = function() return modules.api end
-
-  M.awarded_loot = modules.AwardedLoot.new()
-  M.group_roster = modules.GroupRoster.new( M.api )
-  M.unfiltered_softres = modules.SoftRes.new()
-  M.name_matcher = modules.NameMatcher.new( M.group_roster, M.unfiltered_softres )
-  M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
-  M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
-
-  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
-  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
-
-  M.softres = M.present_softres( M.awarded_loot_softres )
-  M.dropped_loot = modules.DroppedLoot.new()
-  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
-  M.softres_check = modules.SoftResCheck.new( M )
-  M.master_loot = modules.MasterLoot.new( M )
-  M.softres_gui = modules.SoftResGui.new( M )
-end
-
-function M.import_softres_data( softres_data )
-  M.unfiltered_softres.import( softres_data )
-  M.name_matcher.auto_match()
-end
-
 local function reset()
   m_timer = nil
   m_seconds_left = nil
@@ -97,6 +43,57 @@ local function reset()
   m_cancelled = false
 end
 
+local function create_components()
+  M.api = function() return modules.api end
+
+  M.item_utils = modules.ItemUtils
+  M.version_broadcast = modules.VersionBroadcast.new( version )
+  M.awarded_loot = modules.AwardedLoot.new()
+  M.group_roster = modules.GroupRoster.new( M.api )
+  M.unfiltered_softres = modules.SoftRes.new()
+  M.name_matcher = modules.NameMatcher.new( M.group_roster, M.unfiltered_softres )
+  M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
+  M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
+
+  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
+  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
+
+  M.softres = M.present_softres( M.awarded_loot_softres )
+  M.dropped_loot = modules.DroppedLoot.new()
+  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
+  M.softres_check = modules.SoftResCheck.new( M )
+  M.master_loot = modules.MasterLoot.new( M )
+  M.softres_gui = modules.SoftResGui.new( M )
+
+  M.trade_tracker = modules.TradeTracker.new(
+    function( recipient, items_given, items_received )
+      for i = 1, #items_given do
+        local item = items_given[ i ]
+        local item_id = M.item_utils.get_item_id( item.link )
+        local item_name = M.dropped_loot.get_dropped_item_name( item_id )
+
+        if item_name then
+          M.award_item( recipient, item_id, item_name, item.link )
+        end
+      end
+
+      for i = 1, #items_received do
+        local item = items_received[ i ]
+        local item_id = M.item_utils.get_item_id( item.link )
+
+        if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
+          M.unaward_item( recipient, item_id, item.link )
+        end
+      end
+    end
+  )
+end
+
+function M.import_softres_data( softres_data )
+  M.unfiltered_softres.import( softres_data )
+  M.name_matcher.auto_match()
+end
+
 local function get_all_players()
   return modules.map( M.group_roster.get_all_players_in_my_group(), function( player )
     return { name = player, rolls = 1 }
@@ -104,11 +101,11 @@ local function get_all_players()
 end
 
 local function include_reserved_rolls( item_id )
-  local reservedByPlayers = M.softres.get( item_id )
-  local reserving_player_count = #reservedByPlayers
-  local rollers = reservedByPlayers and reserving_player_count > 0 and reservedByPlayers or get_all_players()
-  table.sort( reservedByPlayers, function( l, r ) return l.name < r.name end )
-  return rollers, reservedByPlayers, reserving_player_count
+  local softressing_players = M.softres.get( item_id )
+  local softressing_player_count = #softressing_players
+  local rollers = softressing_players and softressing_player_count > 0 and softressing_players or get_all_players()
+  table.sort( softressing_players, function( l, r ) return l.name < r.name end )
+  return rollers, softressing_players, softressing_player_count
 end
 
 function M.update_softres_data( data, data_loaded_callback )
@@ -439,34 +436,34 @@ local function copy_rollers( t )
   return result
 end
 
-local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
-  m_rollers = whoCanRoll
+local function roll_for( who_can_roll, count, item, seconds, info, reservedBy )
+  m_rollers = who_can_roll
   m_rolled_item = item
   m_rolled_item_count = count
-  local softResCount = #reservedBy
-  m_rolled_item_reserved = softResCount > 0
+  local softres_count = #reservedBy
+  m_rolled_item_reserved = softres_count > 0
 
   local name_with_rolls = function( player )
-    if softResCount == count then return player.name end
+    if softres_count == count then return player.name end
     local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
     return string.format( "%s%s", player.name, rolls )
   end
 
-  if m_rolled_item_reserved and softResCount <= count then
+  if m_rolled_item_reserved and softres_count <= count then
     pretty_print( string.format( "%s is soft-ressed by %s.",
-      softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
+      softres_count < count and string.format( "%dx%s out of %d", softres_count, item.link, count ) or item.link,
       modules.prettify_table( reservedBy, compose( name_with_rolls, hl ) ) ) )
 
     M.api().SendChatMessage( string.format( "%s is soft-ressed by %s.",
-      softResCount < count and string.format( "%dx%s out of %d", softResCount, item.link, count ) or item.link,
+      softres_count < count and string.format( "%dx%s out of %d", softres_count, item.link, count ) or item.link,
       modules.prettify_table( reservedBy, name_with_rolls ) ), get_roll_announcement_chat_type() )
 
-    m_rolled_item_count = count - softResCount
+    m_rolled_item_count = count - softres_count
     info = string.format( "(everyone except %s can roll). /roll (MS) or /roll 99 (OS)",
       modules.prettify_table( reservedBy, function( player ) return player.name end ) )
     m_rollers = subtract( M.group_roster.get_all_players_in_my_group(), reservedBy )
     m_offspec_rollers = {}
-  elseif softResCount > 0 then
+  elseif softres_count > 0 then
     info = get_softres_info( reservedBy, name_with_rolls )
   else
     if not info or info == "" then info = "/roll (MS) or /roll 99 (OS)" end
