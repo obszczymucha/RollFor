@@ -54,9 +54,14 @@ function M.new( origin )
     softres_data = data
   end
 
+  local function clear()
+    softres_data = nil
+  end
+
   return {
     show = show,
-    load = load
+    load = load,
+    clear = clear
   }
 end
 

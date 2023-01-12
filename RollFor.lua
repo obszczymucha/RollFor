@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 24
+local minor = 25
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -173,9 +173,11 @@ function M.update_softres_data( data, data_loaded_callback )
   RollForDb.rollfor.softres_data = data
   local softres_data = modules.SoftRes.decode( data )
 
-  if not softres_data then
+  if not softres_data and data and #data > 0 then
     pretty_print( "Could not load soft-res data!", modules.red )
     M.import_softres_data( { softreserves = {}, hardreserves = {} } )
+    return
+  elseif not softres_data then
     return
   end
 
@@ -660,6 +662,7 @@ local function process_softres_slash_command( args )
     clear_storage()
     M.awarded_loot.clear()
     M.dropped_loot.clear()
+    M.softres_gui.clear()
     pretty_print( "Soft-res data cleared." )
 
     return
