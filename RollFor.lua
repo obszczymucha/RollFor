@@ -1,20 +1,20 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 25
+local minor = 26
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
 local version = string.format( "%s.%s", major, minor )
 
-local ace_timer = lib_stub( "AceTimer-3.0" )
+M.ace_timer = lib_stub( "AceTimer-3.0" )
 local modules = lib_stub( "RollFor-Modules" )
 M.version_broadcast = modules.VersionBroadcast.new( version )
 
 M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
 local pretty_print = modules.pretty_print
-local hl = modules.highlight
+local hl = modules.colors.highlight
 
 local m_timer = nil
 local m_seconds_left = nil
@@ -71,7 +71,7 @@ local function create_components()
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = modules.DroppedLoot.new()
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
-  M.softres_check = modules.SoftResCheck.new( M.unfiltered_softres, M.name_matcher )
+  M.softres_check = modules.SoftResCheck.new( M )
   M.master_loot = modules.MasterLoot.new( M )
   M.softres_gui = modules.SoftResGui.new( M )
 end
@@ -111,70 +111,12 @@ local function include_reserved_rolls( item_id )
   return rollers, reservedByPlayers, reserving_player_count
 end
 
-local function players_who_did_not_softres()
-  return modules.filter( M.group_roster.get_all_players_in_my_group(), modules.negate( M.matched_name_softres.is_player_softressing ) )
-end
-
-local function show_softres()
-  local needs_refetch = false
-  local softressed_item_ids = M.matched_name_softres.get_item_ids()
-  local items = {}
-  local p = modules.pretty_print
-
-  for _, item_id in pairs( softressed_item_ids ) do
-    local players = M.matched_name_softres.get( item_id )
-    local item_link = modules.fetch_item_link( item_id )
-
-    if not item_link then
-      needs_refetch = true
-    else
-      items[ item_link ] = players
-    end
-  end
-
-  if needs_refetch then
-    p( "Fetching soft-ressed items details from the server...", modules.grey )
-    ace_timer:ScheduleTimer( show_softres, 1 )
-    return
-  end
-
-  local absent_softres_players = M.absent_softres( M.matched_name_softres ).get_all_softres_player_names()
-
-  if modules.count_elements( items ) == 0 then
-    p( "No soft-res items found." )
-    return
-  end
-
-  M.name_matcher.report()
-  p( string.format( "Soft-ressed items%s:", #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", modules.red( "red" ) ) or "" ) )
-
-  local colorize = function( player )
-    local c = M.group_roster.is_player_in_my_group( player.name ) and modules.white or modules.red
-    return player.rolls > 1 and string.format( "%s (%s)", c( player.name ), player.rolls ) or string.format( "%s", c( player.name ) )
-  end
-
-  for item_link, players in pairs( items ) do
-    if modules.count_elements( players ) > 0 then
-      p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
-    end
-  end
-
-  local not_softressing = players_who_did_not_softres()
-  if #not_softressing == 0 then return end
-
-  p( "Players who did not soft-res:" )
-
-  for _, player in pairs( not_softressing ) do
-    p( player )
-  end
-end
-
 function M.update_softres_data( data, data_loaded_callback )
   RollForDb.rollfor.softres_data = data
   local softres_data = modules.SoftRes.decode( data )
 
   if not softres_data and data and #data > 0 then
-    pretty_print( "Could not load soft-res data!", modules.red )
+    pretty_print( "Could not load soft-res data!", modules.colors.red )
     M.import_softres_data( { softreserves = {}, hardreserves = {} } )
     return
   elseif not softres_data then
@@ -205,13 +147,13 @@ local function there_was_a_tie( top_roll, top_rollers )
   m_offspec_rollers = {}
   m_rerolling = true
   m_rolling = true
-  ace_timer:ScheduleTimer( function() M.api().SendChatMessage( string.format( "%s /roll for %s now.", top_rollers_str, m_rolled_item.link ),
+  M.ace_timer:ScheduleTimer( function() M.api().SendChatMessage( string.format( "%s /roll for %s now.", top_rollers_str, m_rolled_item.link ),
       modules.get_group_chat_type() )
   end, 2.5 )
 end
 
 local function cancel_rolling_timer()
-  ace_timer:CancelTimer( m_timer )
+  M.ace_timer:CancelTimer( m_timer )
   m_timer = nil
 end
 
@@ -550,7 +492,7 @@ local function roll_for( whoCanRoll, count, item, seconds, info, reservedBy )
     (not info or info == "") and "." or string.format( " %s", info ), countInfo ), get_roll_announcement_chat_type() )
   m_rerolling = false
   m_rolling = true
-  m_timer = ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
+  m_timer = M.ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
 end
 
 local function announce_hr( item )
@@ -663,6 +605,7 @@ local function process_softres_slash_command( args )
     M.awarded_loot.clear()
     M.dropped_loot.clear()
     M.softres_gui.clear()
+    M.softres.clear()
     pretty_print( "Soft-res data cleared." )
 
     return
@@ -799,7 +742,7 @@ local function setup_slash_commands()
   SLASH_SSR1 = "/ssr"
   M.api().SlashCmdList[ "SSR" ] = process_show_sorted_rolls_slash_command
   SLASH_SRS1 = "/srs"
-  M.api().SlashCmdList[ "SRS" ] = show_softres
+  M.api().SlashCmdList[ "SRS" ] = function() M.softres_check.show_softres() end
   SLASH_SRC1 = "/src"
   M.api().SlashCmdList[ "SRC" ] = function() M.softres_check.check_softres() end
 

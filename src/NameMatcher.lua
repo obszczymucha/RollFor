@@ -3,8 +3,8 @@ if modules.NameMatcher then return end
 
 local M = {}
 
-local pretty_print = function( text ) modules.pretty_print( text, modules.orange ) end
-local hl = modules.highlight
+local pretty_print = function( text ) modules.pretty_print( text, modules.colors.name_checker ) end
+local hl = modules.colors.highlight
 
 local function to_map( t )
   local result = {}

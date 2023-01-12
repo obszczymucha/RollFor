@@ -9,32 +9,35 @@ M.lua = {
   strmatch = strmatch
 }
 
-function M.highlight( word )
-  return string.format( "|cffff9f69%s|r", word )
-end
+M.colors = {
+  highlight = function( word )
+    return string.format( "|cffff9f69%s|r", word )
+  end,
+  blue = function( word )
+    return string.format( "|cff209ff9%s|r", word )
+  end,
+  white = function( word )
+    return string.format( "|cffffffff%s|r", word )
+  end,
+  red = function( word )
+    return string.format( "|cffff2f2f%s|r", word )
+  end,
+  orange = function( word )
+    return string.format( "|cffff8f2f%s|r", word )
+  end,
+  grey = function( word )
+    return string.format( "|cff9f9f9f%s|r", word )
+  end,
+  green = function( word )
+    return string.format( "|cff2fff5f%s|r", word )
+  end
+}
 
-local normal = function( word )
-  return string.format( "|cff209ff9%s|r", word )
-end
-
-M.white = function( word )
-  return string.format( "|cffffffff%s|r", word )
-end
-
-M.red = function( word )
-  return string.format( "|cffff2f2f%s|r", word )
-end
-
-M.orange = function( word )
-  return string.format( "|cffff8f2f%s|r", word )
-end
-
-M.grey = function( word )
-  return string.format( "|cff9f9f9f%s|r", word )
-end
+M.colors.softres = M.colors.blue
+M.colors.name_checker = M.colors.blue
 
 function M.pretty_print( message, color_fn )
-  local c = color_fn or normal
+  local c = color_fn or M.colors.blue
   M.api.ChatFrame1:AddMessage( string.format( "%s: %s", c( "RollFor" ), message ) )
 end
 

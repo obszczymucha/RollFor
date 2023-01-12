@@ -78,7 +78,7 @@ function M.new()
   end
 
   local function is_player_softressing( player_name, item_id )
-    if not softres_items[ item_id ] then return false end
+    if item_id and not softres_items[ item_id ] then return false end
 
     if item_id then
       for _, player in pairs( softres_items[ item_id ] ) do
@@ -198,7 +198,8 @@ function M.new()
     is_item_hardressed = is_item_hardressed,
     show = show,
     get_all_softres_player_names = get_all_softres_player_names,
-    import = import
+    import = import,
+    clear = clear
   }
 end
 
