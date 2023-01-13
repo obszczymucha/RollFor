@@ -35,6 +35,7 @@ M.colors = {
 
 M.colors.softres = M.colors.blue
 M.colors.name_checker = M.colors.blue
+M.colors.hl = M.colors.highlight
 
 function M.pretty_print( message, color_fn )
   local c = color_fn or M.colors.blue

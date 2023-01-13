@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 26
+local minor = 27
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -576,7 +576,7 @@ local function clear_storage()
   RollForDb.rollfor.hardres_items = {}
   RollForDb.rollfor.softres_player_name_overrides = {}
   RollForDb.rollfor.softres_passing = {}
-  RollForDb.rollfor.softres_data = ""
+  RollForDb.rollfor.softres_data = nil
   RollForDb.rollfor.awarded_items = {}
   RollForDb.rollfor.dropped_items = {}
 end

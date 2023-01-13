@@ -3,8 +3,10 @@ if modules.NameMatcher then return end
 
 local M = {}
 
-local pretty_print = function( text ) modules.pretty_print( text, modules.colors.name_checker ) end
-local hl = modules.colors.highlight
+local colors = modules.colors
+local count = modules.count_elements
+local pretty_print = function( text ) modules.pretty_print( text, colors.name_checker ) end
+local hl = colors.highlight
 
 local function to_map( t )
   local result = {}
@@ -170,9 +172,12 @@ end
 
 function M.new( group_roster, softres )
   local matched_names = {}
+  local matched_names_below_threshold = {}
 
   local function auto_match()
     matched_names = {}
+    matched_names_below_threshold = {}
+
     local present_players = group_roster.get_all_players_in_my_group()
     local softres_player_names = softres.get_all_softres_player_names()
 
@@ -180,28 +185,22 @@ function M.new( group_roster, softres )
     if #present_players_who_did_not_softres == 0 then return end
 
     local absent_players_who_did_softres = is_in_left_but_not_in_right( softres_player_names, present_players )
-    if #absent_players_who_did_softres == 0 then
-      -- TODO
-      --M:ScheduleTimer( function()
-      --CreateSoftResPassOptions()
-      --ShowSoftResPassOptions()
-      --end, 1 )
-      return
-    end
+    if #absent_players_who_did_softres == 0 then return end
 
     local predictions = get_similarity_predictions( present_players_who_did_not_softres, absent_players_who_did_softres, improved_descending )
-    ---@diagnostic disable-next-line: unused-local
     local matched, matched_below_threshold = assign_predictions( predictions )
 
     for player, match_result in pairs( matched ) do
       local matched_name = match_result[ "matched_name" ]
       local similarity = match_result[ "similarity" ]
-      --M:PrettyPrint( string.format( "Auto-matched %s to %s (%s similarity).", highlight( player ), highlight( matched_name )
-      --,
-      --similarity ) )
       matched_names[ matched_name ] = { [ "matched_name" ] = player, [ "similarity" ] = similarity }
     end
 
+    for player, match_result in pairs( matched_below_threshold ) do
+      local matched_name = match_result[ "matched_name" ]
+      local similarity = match_result[ "similarity" ]
+      matched_names_below_threshold[ matched_name ] = { [ "matched_name" ] = player, [ "similarity" ] = similarity }
+    end
     --if M:CountElements( belowThresholdOverrides ) > 0 then
     -----@diagnostic disable-next-line: param-type-mismatch
     --for player, _ in pairs( belowThresholdOverrides ) do
@@ -230,18 +229,20 @@ function M.new( group_roster, softres )
   end
 
   local function get_matched_name( softres_name )
-    --modules.pretty_print( modules.dump( matched_names ) )
     return matched_names[ softres_name ] and matched_names[ softres_name ].matched_name or nil
   end
 
-  -- TODO: so I don't forget. We have to re-auto-match if someone joins the raid.
   local function report()
-    if modules.count_elements( matched_names ) == 0 then return end
+    if count( matched_names ) == 0 and count( matched_names_below_threshold ) == 0 then return end
 
     for softres_name, match in pairs( matched_names ) do
       pretty_print( string.format( "Auto-matched %s with %s.", hl( softres_name ), hl( match.matched_name ) ) )
     end
 
+    for softres_name, match in pairs( matched_names_below_threshold ) do
+      modules.pretty_print( string.format( "Couldn't auto-match %s. The closest match: %s.", hl( softres_name ), hl( match.matched_name ) ),
+        colors.red )
+    end
   end
 
   return {

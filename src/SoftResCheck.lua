@@ -25,7 +25,7 @@ function M.new( origin )
     p( "Players who did not soft-res:" )
 
     for _, player in pairs( not_softressing ) do
-      p( player )
+      p( colors.hl( player ) )
     end
   end
 
