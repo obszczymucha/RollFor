@@ -207,4 +207,27 @@ function M.no_nil( f )
   end
 end
 
+function M.merge( result, next, ... )
+  if type( result ) ~= "table" then return {} end
+  if type( next ) ~= "table" then return result end
+
+  for i = 1, #next do
+    table.insert( result, next[ i ] )
+  end
+
+  return M.merge( result, ... )
+end
+
+function M.keys( t )
+  if type( t ) ~= "table" then return {} end
+
+  local result = {}
+
+  for k, _ in pairs( t ) do
+    table.insert( result, k )
+  end
+
+  return result
+end
+
 return M

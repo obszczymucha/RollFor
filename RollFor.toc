@@ -25,5 +25,6 @@ src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
 src\SoftResCheck.lua
+src\NameOverride.lua
 RollFor.lua
 settings.lua

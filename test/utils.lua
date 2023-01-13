@@ -399,6 +399,7 @@ function M.load_real_stuff()
   require( "src/VersionBroadcast" )
   require( "src/MasterLoot" )
   require( "src/SoftResCheck" )
+  require( "src/NameOverride" )
   require( "RollFor" )
 end
 

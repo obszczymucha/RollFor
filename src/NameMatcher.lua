@@ -245,10 +245,15 @@ function M.new( group_roster, softres )
     end
   end
 
+  local function is_matched( softres_name )
+    return get_matched_name( softres_name ) or false
+  end
+
   return {
     auto_match = auto_match,
     get_softres_name = get_softres_name,
     get_matched_name = get_matched_name,
+    is_matched = is_matched,
     report = report
   }
 end

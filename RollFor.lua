@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 27
+local minor = 28
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -45,19 +45,17 @@ end
 
 local function create_components()
   M.api = function() return modules.api end
+  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
+  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
   M.item_utils = modules.ItemUtils
   M.version_broadcast = modules.VersionBroadcast.new( version )
   M.awarded_loot = modules.AwardedLoot.new()
   M.group_roster = modules.GroupRoster.new( M.api )
   M.unfiltered_softres = modules.SoftRes.new()
-  M.name_matcher = modules.NameMatcher.new( M.group_roster, M.unfiltered_softres )
+  M.name_matcher = modules.NameOverride.new( M.api, M.absent_softres( M.unfiltered_softres ), modules.NameMatcher.new( M.group_roster, M.unfiltered_softres ) )
   M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
   M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
-
-  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
-  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
-
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = modules.DroppedLoot.new()
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
@@ -742,6 +740,8 @@ local function setup_slash_commands()
   M.api().SlashCmdList[ "SRS" ] = function() M.softres_check.show_softres() end
   SLASH_SRC1 = "/src"
   M.api().SlashCmdList[ "SRC" ] = function() M.softres_check.check_softres() end
+  SLASH_SRO1 = "/sro"
+  M.api().SlashCmdList[ "SRO" ] = function( ... ) M.name_matcher.override( ... ) end
 
   SLASH_DROPPED1 = "/DROPPED"
   M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped

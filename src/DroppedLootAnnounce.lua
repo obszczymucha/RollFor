@@ -98,17 +98,6 @@ local function stringify( announcements )
   return result
 end
 
-local function merge( result, next, ... )
-  if type( result ) ~= "table" then return {} end
-  if type( next ) ~= "table" then return result end
-
-  for i = 1, #next do
-    table.insert( result, next[ i ] )
-  end
-
-  return merge( result, ... )
-end
-
 local function sort( announcements )
   local hr = {}
   local sr = {}
@@ -132,7 +121,7 @@ local function sort( announcements )
     end
   end )
 
-  return merge( {}, hr, sr, free_roll )
+  return modules.merge( {}, hr, sr, free_roll )
 end
 
 function M.create_item_announcements( summary )

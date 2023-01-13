@@ -1,2 +1,2 @@
-* Add softres name manual overriding.
+* Persist manual name overrides.
 
