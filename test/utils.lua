@@ -373,7 +373,11 @@ function M.mock_libraries()
   } )
   M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
   M.mock_library( "AceGUI-3.0" )
-  M.mock_library( "AceDB-3.0", { New = function( _, name ) _G[ name ] = {} end } )
+  M.mock_library( "AceDB-3.0", { New = function( _, _ ) return {
+      global = {},
+      char = {}
+    }
+  end } )
 end
 
 function M.load_real_stuff()
@@ -744,7 +748,7 @@ end
 
 function M.clear_dropped_items_db()
   local rollfor = M.load_roll_for()
-  rollfor.db.dropped_items = {}
+  rollfor.db.char.dropped_items = {}
 end
 
 return M

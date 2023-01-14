@@ -16,12 +16,12 @@ function M.new( db, version )
   local was_in_group = false
 
   local function version_recently_reminded()
-    if not db.last_new_version_reminder_timestamp then return false end
+    if not db.char.last_new_version_reminder_timestamp then return false end
 
     local time = modules.lua.time()
 
     -- Only remind once a day
-    if time - db.last_new_version_reminder_timestamp > 3600 * 24 then
+    if time - db.char.last_new_version_reminder_timestamp > 3600 * 24 then
       return false
     else
       return true
@@ -72,7 +72,7 @@ function M.new( db, version )
     local cmd, value = modules.lua.strmatch( message, "^(.*)::(.*)$" )
 
     if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
-      db.last_new_version_reminder_timestamp = modules.lua.time()
+      db.char.last_new_version_reminder_timestamp = modules.lua.time()
       modules.pretty_print( string.format( "New version (%s) is available!", modules.highlight( string.format( "v%s", value ) ) ) )
     end
   end

@@ -1,12 +1,11 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 30
+local minor = 32
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
 M.ace_timer = lib_stub( "AceTimer-3.0" )
-M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
 local version = string.format( "%s.%s", major, minor )
 local modules = lib_stub( "RollFor-Modules" )
@@ -109,7 +108,6 @@ local function include_reserved_rolls( item_id )
 end
 
 function M.update_softres_data( data, data_loaded_callback )
-  M.db.softres_data = data
   local softres_data = modules.SoftRes.decode( data )
 
   if not softres_data and data and #data > 0 then
@@ -571,17 +569,16 @@ local function process_finish_roll_slash_command()
 end
 
 local function setup_storage()
-  M.db = M.db or {}
+  M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
-  -- Future-proof the data if we need to do the migration.
-  if not M.db.version then
-    M.db.version = version
+  if not M.db.global.version then
+    M.db.global.version = version
   end
 
-  M.db.softres_data = M.db.softres_data or nil
-  M.db.dropped_items = M.db.dropped_items or {}
-  M.db.awarded_items = M.db.awarded_items or {}
-  M.db.manual_matches = M.db.manual_matches or {}
+  M.db.char.softres_data = M.db.char.softres_data or nil
+  M.db.char.dropped_items = M.db.char.dropped_items or {}
+  M.db.char.awarded_items = M.db.char.awarded_items or {}
+  M.db.char.manual_matches = M.db.char.manual_matches or {}
 end
 
 local function process_softres_slash_command( args )
@@ -745,9 +742,9 @@ function M.on_first_enter_world()
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
   M.version_broadcast.broadcast()
 
-  M.dropped_loot.import( M.db.dropped_items )
-  M.update_softres_data( M.db.softres_data )
-  M.softres_gui.load( M.db.softres_data )
+  M.dropped_loot.import( M.db.char.dropped_items )
+  M.update_softres_data( M.db.char.softres_data )
+  M.softres_gui.load( M.db.char.softres_data )
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function

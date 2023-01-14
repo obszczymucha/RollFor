@@ -44,7 +44,7 @@ local p = modules.pretty_print
 --end
 
 function M.new( db, api, absent_unfiltered_softres, name_matcher )
-  local manual_matches = db.manual_matches
+  local manual_matches = db.char.manual_matches
   local manual_match_options = nil
 
   local function show_manual_matches( matches, absent_players )
@@ -94,7 +94,7 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
   end
 
   local function persist()
-    db.manual_matches = manual_matches
+    db.char.manual_matches = manual_matches
   end
 
   local function manual_match( args )

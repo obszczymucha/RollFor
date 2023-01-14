@@ -4,10 +4,10 @@ if modules.AwardedLoot then return end
 local M = {}
 
 function M.new( db )
-  local awarded_items = db.awarded_items or {} -- TODO: This breaks tests.
+  local awarded_items = db.char.awarded_items or {} -- TODO: This breaks tests.
 
   local function persist()
-    db.awarded_items = awarded_items
+    db.char.awarded_items = awarded_items
   end
 
   local function award( player, item_id )

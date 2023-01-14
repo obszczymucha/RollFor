@@ -34,27 +34,41 @@ local function decode_base64( data )
   end ))
 end
 
-function M.decode( encoded_softres_data )
-  local data = decode_base64( encoded_softres_data )
-  if not data then return nil end
-
-  data = libStub( "LibDeflate" ):DecompressZlib( data )
-  if not data then return nil end
-
-  data = libStub( "Json-0.1.2" ).decode( data )
-
-  return data
-end
-
 function M.new( db )
   local softres_items = {}
   local hardres_items = {}
+
+  local function persist( data )
+    db.char.softres_data = data
+  end
+
+  function M.decode( encoded_softres_data )
+    local data = decode_base64( encoded_softres_data )
+
+    if not data then
+      persist( nil )
+      return nil
+    end
+
+    data = libStub( "LibDeflate" ):DecompressZlib( data )
+
+    if not data then
+      persist( nil )
+      return nil
+    end
+
+
+    data = libStub( "Json-0.1.2" ).decode( data )
+    persist( encoded_softres_data )
+
+    return data
+  end
 
   local function clear( report )
     if modules.count_elements( softres_items ) == 0 and modules.count_elements( hardres_items ) == 0 then return end
     softres_items = {}
     hardres_items = {}
-    db.softres_data = nil
+    persist( nil )
     if report then modules.pretty_print( "Cleared soft-res data." ) end
   end
 

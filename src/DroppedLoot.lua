@@ -27,7 +27,7 @@ function M.new( db )
   end
 
   local function persist()
-    db.dropped_items = dropped_items
+    db.char.dropped_items = dropped_items
   end
 
   local function import( items )
