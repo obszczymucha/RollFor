@@ -34,8 +34,11 @@ function M.new( db )
     dropped_items = items or {}
   end
 
-  local function clear()
+  local function clear( report )
+    if #dropped_items == 0 then return end
     dropped_items = {}
+    persist()
+    if report then modules.pretty_print( "Cleared dropped loot data." ) end
   end
 
   return {

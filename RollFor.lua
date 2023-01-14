@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 28
+local minor = 29
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -44,27 +44,28 @@ local function reset()
 end
 
 local function create_components()
-  M.api = function() return modules.api end
-  M.present_softres = function( softres ) return modules.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
-  M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
+  local m = modules
 
-  M.item_utils = modules.ItemUtils
-  M.version_broadcast = modules.VersionBroadcast.new( M.db, version )
-  M.awarded_loot = modules.AwardedLoot.new()
-  M.group_roster = modules.GroupRoster.new( M.api )
-  M.unfiltered_softres = modules.SoftRes.new()
-  M.name_matcher = modules.NameManualMatcher.new( M.api, M.absent_softres( M.unfiltered_softres ),
-    modules.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres ) )
-  M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
-  M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
+  M.api = function() return m.api end
+  M.present_softres = function( softres ) return m.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
+  M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
+
+  M.item_utils = m.ItemUtils
+  M.version_broadcast = m.VersionBroadcast.new( M.db, version )
+  M.awarded_loot = m.AwardedLoot.new( M.db )
+  M.group_roster = m.GroupRoster.new( M.api )
+  M.unfiltered_softres = m.SoftRes.new( M.db )
+  M.name_matcher = m.NameManualMatcher.new( M.db, M.api, M.absent_softres( M.unfiltered_softres ), m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres ) )
+  M.matched_name_softres = m.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
+  M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
   M.softres = M.present_softres( M.awarded_loot_softres )
-  M.dropped_loot = modules.DroppedLoot.new( M.db )
-  M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
-  M.softres_check = modules.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer, M.absent_softres )
-  M.master_loot = modules.MasterLoot.new( M.dropped_loot, M.award_item )
-  M.softres_gui = modules.SoftResGui.new( M.update_softres_data, M.softres_check )
+  M.dropped_loot = m.DroppedLoot.new( M.db )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
+  M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer, M.absent_softres )
+  M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item )
+  M.softres_gui = m.SoftResGui.new( M.update_softres_data, M.softres_check )
 
-  M.trade_tracker = modules.TradeTracker.new(
+  M.trade_tracker = m.TradeTracker.new(
     function( recipient, items_given, items_received )
       for i = 1, #items_given do
         local item = items_given[ i ]
@@ -569,13 +570,6 @@ local function process_finish_roll_slash_command()
   finalize_rolling( true )
 end
 
-local function clear_storage()
-  M.db.softres_data = nil
-  M.db.dropped_items = {}
-  M.db.awarded_items = {}
-  M.db.manual_matches = {}
-end
-
 local function setup_storage()
   M.db = M.db or {}
 
@@ -592,12 +586,11 @@ end
 
 local function process_softres_slash_command( args )
   if args == "init" then
-    clear_storage()
-    M.awarded_loot.clear()
-    M.dropped_loot.clear()
+    M.dropped_loot.clear( true )
+    M.awarded_loot.clear( true )
     M.softres_gui.clear()
-    M.softres.clear()
-    pretty_print( "Soft-res data cleared." )
+    M.name_matcher.clear( true )
+    M.softres.clear( true )
 
     return
   end

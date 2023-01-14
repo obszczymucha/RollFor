@@ -6,6 +6,7 @@ local player = utils.player
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
 local r = utils.raid_message
+local c = utils.console_message
 local cr = utils.console_and_raid_message
 local rw = utils.raid_warning
 local rolling_finished = utils.rolling_finished

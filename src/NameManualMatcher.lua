@@ -43,8 +43,8 @@ local p = modules.pretty_print
 --end
 --end
 
-function M.new( api, absent_unfiltered_softres, name_matcher )
-  local manual_matches = {}
+function M.new( db, api, absent_unfiltered_softres, name_matcher )
+  local manual_matches = db.manual_matches
   local manual_match_options = nil
 
   local function show_manual_matches( matches, absent_players )
@@ -93,6 +93,10 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
     show_manual_matches( manually_matched, absent_players )
   end
 
+  local function persist()
+    db.manual_matches = manual_matches
+  end
+
   local function manual_match( args )
     if not manual_match_options or not args or args == "" then
       create_matches_and_show()
@@ -118,6 +122,7 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
       create_matches_and_show()
     elseif target and not already_matched_name then
       manual_matches[ softres_name ] = target
+      persist()
       p( string.format( "|cffff9f69%s|r is now soft-ressing as |cffff9f69%s|r.", target, softres_name ) )
       manual_match_options = nil
     elseif not target and already_matched_name then
@@ -142,11 +147,19 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
     return name_matcher.get_softres_name( matched_name )
   end
 
+  local function clear( report )
+    if not manual_matches or modules.count_elements( manual_matches ) == 0 then return end
+    manual_matches = nil
+    persist()
+    if report then p( "Cleared manual matches." ) end
+  end
+
   local decorator = clone( name_matcher )
   decorator.manual_match = manual_match
   decorator.is_matched = is_matched
   decorator.get_matched_name = get_matched_name
   decorator.get_softres_name = get_softres_name
+  decorator.clear = clear
 
   return decorator
 end

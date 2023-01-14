@@ -3,18 +3,16 @@ if modules.AwardedLoot then return end
 
 local M = {}
 
-local function persist( items )
-  if not RollForDb then RollForDb = {} end
-  if not RollForDb.rollfor then RollForDb.rollfor = {} end
-  RollForDb.rollfor.awarded_items = items
-end
+function M.new( db )
+  local awarded_items = db.awarded_items or {} -- TODO: This breaks tests.
 
-function M.new()
-  local awarded_items = RollForDb and RollForDb.rollfor and RollForDb.rollfor.awarded_items or {} -- TODO: This breaks tests.
+  local function persist()
+    db.awarded_items = awarded_items
+  end
 
   local function award( player, item_id )
     table.insert( awarded_items, { player = player, item_id = item_id } )
-    persist( awarded_items )
+    persist()
   end
 
   local function has_item_been_awarded( player, item_id )
@@ -25,9 +23,10 @@ function M.new()
     return false
   end
 
-  local function clear()
+  local function clear( report )
     awarded_items = {}
-    persist( {} )
+    persist()
+    if report then modules.pretty_print( "Cleared awarded loot data." ) end
   end
 
   return {

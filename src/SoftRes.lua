@@ -46,13 +46,16 @@ function M.decode( encoded_softres_data )
   return data
 end
 
-function M.new()
+function M.new( db )
   local softres_items = {}
   local hardres_items = {}
 
-  local function clear()
+  local function clear( report )
+    if modules.count_elements( softres_items ) == 0 and modules.count_elements( hardres_items ) == 0 then return end
     softres_items = {}
     hardres_items = {}
+    db.softres_data = nil
+    if report then modules.pretty_print( "Cleared soft-res data." ) end
   end
 
   local function add( item_id, player_name )
