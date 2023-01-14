@@ -19,12 +19,12 @@ src\SoftResMatchedNameDecorator.lua
 src\Json.lua
 src\AwardedLoot.lua
 src\GroupRoster.lua
-src\NameMatcher.lua
+src\NameAutoMatcher.lua
+src\NameManualMatcher.lua
 src\EventHandler.lua
 src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
 src\SoftResCheck.lua
-src\NameOverride.lua
 RollFor.lua
 settings.lua

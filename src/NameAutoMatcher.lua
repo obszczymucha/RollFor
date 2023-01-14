@@ -1,11 +1,11 @@
 local modules = LibStub( "RollFor-Modules" )
-if modules.NameMatcher then return end
+if modules.NameAutoMatcher then return end
 
 local M = {}
 
 local colors = modules.colors
 local count = modules.count_elements
-local pretty_print = function( text ) modules.pretty_print( text, colors.name_checker ) end
+local pretty_print = function( text ) modules.pretty_print( text, colors.name_matcher ) end
 local hl = colors.highlight
 
 local function to_map( t )
@@ -201,23 +201,6 @@ function M.new( group_roster, softres )
       local similarity = match_result[ "similarity" ]
       matched_names_below_threshold[ matched_name ] = { [ "matched_name" ] = player, [ "similarity" ] = similarity }
     end
-    --if M:CountElements( belowThresholdOverrides ) > 0 then
-    -----@diagnostic disable-next-line: param-type-mismatch
-    --for player, _ in pairs( belowThresholdOverrides ) do
-    --M:PrettyPrint( string.format( "%s Could not find soft-ressed item for %s.", red( "Warning!" ), highlight( player ) ) )
-    --end
-
-    --M:PrettyPrint( string.format( "Show soft-ressed items with %s command.", highlight( "/srs" ) ) )
-    --M:PrettyPrint( string.format( "Did they misspell their nickname? Check and fix it with %s command.",
-    --highlight( "/sro" ) ) )
-    --M:PrettyPrint( string.format( "If they don't want to soft-res, mark them with %s command.", highlight( "/srp" ) ) )
-    --end
-
-    --local count = GetPlayersWhoDidNotSoftRes()
-
-    --if #count == 0 then
-    --ReportSoftResReady()
-    --end
   end
 
   local function get_softres_name( matched_name )
@@ -258,5 +241,5 @@ function M.new( group_roster, softres )
   }
 end
 
-modules.NameMatcher = M
+modules.NameAutoMatcher = M
 return M

@@ -7,26 +7,26 @@ local M = {}
 local ace_comm = lib_stub( "AceComm-3.0" )
 local comm_prefix = "RollFor"
 
-local function version_recently_reminded()
-  if not RollForDb.rollfor.last_new_version_reminder_timestamp then return false end
-
-  local time = modules.lua.time()
-
-  -- Only remind once a day
-  if time - RollForDb.rollfor.last_new_version_reminder_timestamp > 3600 * 24 then
-    return false
-  else
-    return true
-  end
-end
-
 local function strip_dots( v )
   local result, _ = v:gsub( "%.", "" )
   return result
 end
 
-function M.new( version )
+function M.new( db, version )
   local was_in_group = false
+
+  local function version_recently_reminded()
+    if not db.last_new_version_reminder_timestamp then return false end
+
+    local time = modules.lua.time()
+
+    -- Only remind once a day
+    if time - db.last_new_version_reminder_timestamp > 3600 * 24 then
+      return false
+    else
+      return true
+    end
+  end
 
   local function update_group_status()
     was_in_group = modules.api.IsInGroup() or modules.api.IsInRaid()
@@ -72,7 +72,7 @@ function M.new( version )
     local cmd, value = modules.lua.strmatch( message, "^(.*)::(.*)$" )
 
     if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
-      RollForDb.rollfor.last_new_version_reminder_timestamp = modules.lua.time()
+      db.last_new_version_reminder_timestamp = modules.lua.time()
       modules.pretty_print( string.format( "New version (%s) is available!", modules.highlight( string.format( "v%s", value ) ) ) )
     end
   end

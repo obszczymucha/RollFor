@@ -44,7 +44,7 @@ local function find_loot_confirmation_details()
   return nil
 end
 
-function M.new( origin )
+function M.new( dropped_loot, award_item )
   local item_to_be_awarded
   local item_award_confirmed
 
@@ -83,10 +83,10 @@ function M.new( origin )
   local function on_loot_slot_cleared()
     if item_to_be_awarded and item_award_confirmed then
       local item_name = modules.decolorize( item_to_be_awarded.colored_item_name )
-      local item_id = origin.dropped_loot.get_dropped_item_id( item_name )
+      local item_id = dropped_loot.get_dropped_item_id( item_name )
 
       if item_id then
-        origin.award_item( item_to_be_awarded.player, item_id, item_name, item_to_be_awarded.colored_item_name )
+        award_item( item_to_be_awarded.player, item_id, item_name, item_to_be_awarded.colored_item_name )
       else
         pretty_print( string.format( "Cannot determine item id for %s.", item_to_be_awarded.colored_item_name ) )
       end

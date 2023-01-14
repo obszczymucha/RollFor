@@ -49,19 +49,20 @@ local function create_components()
   M.absent_softres = function( softres ) return modules.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
   M.item_utils = modules.ItemUtils
-  M.version_broadcast = modules.VersionBroadcast.new( version )
+  M.version_broadcast = modules.VersionBroadcast.new( M.db, version )
   M.awarded_loot = modules.AwardedLoot.new()
   M.group_roster = modules.GroupRoster.new( M.api )
   M.unfiltered_softres = modules.SoftRes.new()
-  M.name_matcher = modules.NameOverride.new( M.api, M.absent_softres( M.unfiltered_softres ), modules.NameMatcher.new( M.group_roster, M.unfiltered_softres ) )
+  M.name_matcher = modules.NameManualMatcher.new( M.api, M.absent_softres( M.unfiltered_softres ),
+    modules.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres ) )
   M.matched_name_softres = modules.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
   M.awarded_loot_softres = modules.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
   M.softres = M.present_softres( M.awarded_loot_softres )
-  M.dropped_loot = modules.DroppedLoot.new()
+  M.dropped_loot = modules.DroppedLoot.new( M.db )
   M.dropped_loot_announce = modules.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
-  M.softres_check = modules.SoftResCheck.new( M )
-  M.master_loot = modules.MasterLoot.new( M )
-  M.softres_gui = modules.SoftResGui.new( M )
+  M.softres_check = modules.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer, M.absent_softres )
+  M.master_loot = modules.MasterLoot.new( M.dropped_loot, M.award_item )
+  M.softres_gui = modules.SoftResGui.new( M.update_softres_data, M.softres_check )
 
   M.trade_tracker = modules.TradeTracker.new(
     function( recipient, items_given, items_received )
@@ -107,7 +108,7 @@ local function include_reserved_rolls( item_id )
 end
 
 function M.update_softres_data( data, data_loaded_callback )
-  RollForDb.rollfor.softres_data = data
+  M.db.softres_data = data
   local softres_data = modules.SoftRes.decode( data )
 
   if not softres_data and data and #data > 0 then
@@ -569,29 +570,24 @@ local function process_finish_roll_slash_command()
 end
 
 local function clear_storage()
-  RollForDb.rollfor = {}
-  RollForDb.rollfor.softres_items = {}
-  RollForDb.rollfor.hardres_items = {}
-  RollForDb.rollfor.softres_player_name_overrides = {}
-  RollForDb.rollfor.softres_passing = {}
-  RollForDb.rollfor.softres_data = nil
-  RollForDb.rollfor.awarded_items = {}
-  RollForDb.rollfor.dropped_items = {}
+  M.db.softres_data = nil
+  M.db.dropped_items = {}
+  M.db.awarded_items = {}
+  M.db.manual_matches = {}
 end
 
 local function setup_storage()
-  RollForDb.rollfor = RollForDb.rollfor or {}
+  M.db = M.db or {}
 
   -- Future-proof the data if we need to do the migration.
-  if not RollForDb.rollfor.version then
-    RollForDb.rollfor.version = version
+  if not M.db.version then
+    M.db.version = version
   end
 
-  RollForDb.rollfor.softres_player_name_overrides = RollForDb.rollfor.softres_player_name_overrides or {}
-  RollForDb.rollfor.softres_passing = RollForDb.rollfor.softres_passing or {}
-  RollForDb.rollfor.softres_data = RollForDb.rollfor.softres_data or nil
-  RollForDb.rollfor.awarded_items = RollForDb.rollfor.awarded_items or {}
-  RollForDb.rollfor.dropped_items = RollForDb.rollfor.dropped_items or {}
+  M.db.softres_data = M.db.softres_data or nil
+  M.db.dropped_items = M.db.dropped_items or {}
+  M.db.awarded_items = M.db.awarded_items or {}
+  M.db.manual_matches = M.db.manual_matches or {}
 end
 
 local function process_softres_slash_command( args )
@@ -741,7 +737,7 @@ local function setup_slash_commands()
   SLASH_SRC1 = "/src"
   M.api().SlashCmdList[ "SRC" ] = function() M.softres_check.check_softres() end
   SLASH_SRO1 = "/sro"
-  M.api().SlashCmdList[ "SRO" ] = function( ... ) M.name_matcher.override( ... ) end
+  M.api().SlashCmdList[ "SRO" ] = function( ... ) M.name_matcher.manual_match( ... ) end
 
   SLASH_DROPPED1 = "/DROPPED"
   M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
@@ -756,9 +752,9 @@ function M.on_first_enter_world()
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
   M.version_broadcast.broadcast()
 
-  M.dropped_loot.import( RollForDb.rollfor.dropped_items )
-  M.update_softres_data( RollForDb.rollfor.softres_data )
-  M.softres_gui.load( RollForDb.rollfor.softres_data )
+  M.dropped_loot.import( M.db.dropped_items )
+  M.update_softres_data( M.db.softres_data )
+  M.softres_gui.load( M.db.softres_data )
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function
@@ -782,7 +778,7 @@ end
 function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   --TODO: Think if we want to do this.
   --m_awarded_items = remove_from_awarded_items( player, item_id )
-  --RollForDb.rollfor.awarded_items = m_awarded_items
+  --M.db.awarded_items = m_awarded_items
   pretty_print( string.format( "%s returned %s.", hl( player ), item_link_or_colored_item_name ) )
 end
 

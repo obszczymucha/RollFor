@@ -3,7 +3,7 @@ if modules.DroppedLoot then return end
 
 local M = {}
 
-function M.new()
+function M.new( db )
   local dropped_items = {}
 
   local function get_dropped_item_id( item_name )
@@ -27,7 +27,7 @@ function M.new()
   end
 
   local function persist()
-    RollForDb.rollfor.dropped_items = dropped_items
+    db.dropped_items = dropped_items
   end
 
   local function import( items )

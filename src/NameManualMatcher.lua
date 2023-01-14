@@ -1,5 +1,5 @@
 local modules = LibStub( "RollFor-Modules" )
-if modules.NameOverride then return end
+if modules.NameManualMatcher then return end
 
 local M = {}
 
@@ -93,7 +93,7 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
     show_manual_matches( manually_matched, absent_players )
   end
 
-  local function override( args )
+  local function manual_match( args )
     if not manual_match_options or not args or args == "" then
       create_matches_and_show()
       return
@@ -143,7 +143,7 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
   end
 
   local decorator = clone( name_matcher )
-  decorator.override = override
+  decorator.manual_match = manual_match
   decorator.is_matched = is_matched
   decorator.get_matched_name = get_matched_name
   decorator.get_softres_name = get_softres_name
@@ -151,5 +151,5 @@ function M.new( api, absent_unfiltered_softres, name_matcher )
   return decorator
 end
 
-modules.NameOverride = M
+modules.NameManualMatcher = M
 return M

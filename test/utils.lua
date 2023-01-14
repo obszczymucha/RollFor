@@ -394,12 +394,12 @@ function M.load_real_stuff()
   require( "src/SoftResAbsentPlayersDecorator" )
   require( "src/SoftResMatchedNameDecorator" )
   require( "src/GroupRoster" )
-  require( "src/NameMatcher" )
+  require( "src/NameAutoMatcher" )
+  require( "src/NameManualMatcher" )
   require( "src/EventHandler" )
   require( "src/VersionBroadcast" )
   require( "src/MasterLoot" )
   require( "src/SoftResCheck" )
-  require( "src/NameOverride" )
   require( "RollFor" )
 end
 
@@ -740,6 +740,11 @@ end
 
 function M.cancel_master_looting()
   M.modules().api.StaticPopup1Button2.fire_event( "OnClick" )
+end
+
+function M.clear_dropped_items_db()
+  local rollfor = M.load_roll_for()
+  rollfor.db.dropped_items = {}
 end
 
 return M

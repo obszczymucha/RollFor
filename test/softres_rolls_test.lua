@@ -29,6 +29,7 @@ local trade_items = utils.trade_items
 local trade_complete = utils.trade_complete
 local master_loot = utils.master_loot
 local confirm_master_looting = utils.confirm_master_looting
+local clear_dropped_items_db = utils.clear_dropped_items_db
 
 SoftResIntegrationSpec = {}
 
@@ -253,7 +254,7 @@ end
 
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
   -- Given
-  RollForDb.rollfor.dropped_items = {}
+  clear_dropped_items_db()
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
   soft_res( sr( "Obszczymucha", 123 ) )
