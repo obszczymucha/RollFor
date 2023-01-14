@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 33
+local minor = 34
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -588,8 +588,6 @@ local function process_softres_slash_command( args )
     M.softres_gui.clear()
     M.name_matcher.clear( true )
     M.softres.clear( true )
-
-    return
   end
 
   M.softres_gui.show()
