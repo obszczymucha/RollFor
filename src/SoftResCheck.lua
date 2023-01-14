@@ -29,7 +29,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
     local softres_players = softres.get_all_softres_player_names()
 
     if #softres_players == 0 then
-      pretty_print( "Nobody has soft-ressed." )
+      pretty_print( "No soft-res items found." )
       return
     end
 
