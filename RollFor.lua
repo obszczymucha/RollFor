@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 32
+local minor = 33
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -96,7 +96,7 @@ end
 local function get_all_players()
   return modules.map( M.group_roster.get_all_players_in_my_group(), function( player )
     return { name = player, rolls = 1 }
-  end )
+  end ), {}
 end
 
 local function include_reserved_rolls( item_id )
@@ -434,11 +434,11 @@ local function copy_rollers( t )
   return result
 end
 
-local function roll_for( who_can_roll, count, item, seconds, info, reservedBy )
+local function roll_for( who_can_roll, count, item, seconds, info, reserved_by )
   m_rollers = who_can_roll
   m_rolled_item = item
   m_rolled_item_count = count
-  local softres_count = #reservedBy
+  local softres_count = #reserved_by
   m_rolled_item_reserved = softres_count > 0
 
   local name_with_rolls = function( player )
@@ -450,19 +450,19 @@ local function roll_for( who_can_roll, count, item, seconds, info, reservedBy )
   if m_rolled_item_reserved and softres_count <= count then
     pretty_print( string.format( "%s is soft-ressed by %s.",
       softres_count < count and string.format( "%dx%s out of %d", softres_count, item.link, count ) or item.link,
-      modules.prettify_table( reservedBy, compose( name_with_rolls, hl ) ) ) )
+      modules.prettify_table( reserved_by, compose( name_with_rolls, hl ) ) ) )
 
     M.api().SendChatMessage( string.format( "%s is soft-ressed by %s.",
       softres_count < count and string.format( "%dx%s out of %d", softres_count, item.link, count ) or item.link,
-      modules.prettify_table( reservedBy, name_with_rolls ) ), get_roll_announcement_chat_type() )
+      modules.prettify_table( reserved_by, name_with_rolls ) ), get_roll_announcement_chat_type() )
 
     m_rolled_item_count = count - softres_count
     info = string.format( "(everyone except %s can roll). /roll (MS) or /roll 99 (OS)",
-      modules.prettify_table( reservedBy, function( player ) return player.name end ) )
-    m_rollers = subtract( M.group_roster.get_all_players_in_my_group(), reservedBy )
+      modules.prettify_table( reserved_by, function( player ) return player.name end ) )
+    m_rollers = subtract( M.group_roster.get_all_players_in_my_group(), reserved_by )
     m_offspec_rollers = {}
   elseif softres_count > 0 then
-    info = get_softres_info( reservedBy, name_with_rolls )
+    info = get_softres_info( reserved_by, name_with_rolls )
   else
     if not info or info == "" then info = "/roll (MS) or /roll 99 (OS)" end
     m_offspec_rollers = copy_rollers( m_rollers )
@@ -494,7 +494,7 @@ local function announce_hr( item )
   M.api().SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
 end
 
-local function process_roll_for_slash_command( args, slashCommand, whoRolls )
+local function process_roll_for_slash_command( args, slashCommand, who_rolls )
   if not M.api().IsInGroup() then
     pretty_print( "Not in a group." )
     return
@@ -508,7 +508,7 @@ local function process_roll_for_slash_command( args, slashCommand, whoRolls )
 
     local count = (not itemCount or itemCount == "") and 1 or tonumber( itemCount )
     local item_id = M.item_utils.get_item_id( item_link )
-    local rollers, reservedByPlayers = whoRolls( item_id )
+    local rollers, reservedByPlayers = who_rolls( item_id )
     local item = { link = item_link, id = item_id }
 
     if M.softres.is_item_hardressed( item_id ) then
