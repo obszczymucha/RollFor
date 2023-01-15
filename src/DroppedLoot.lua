@@ -30,8 +30,8 @@ function M.new( db )
     db.char.dropped_items = dropped_items
   end
 
-  local function import( items )
-    dropped_items = items or {}
+  local function load_from_db()
+    dropped_items = db.char.dropped_items or {}
   end
 
   local function clear( report )
@@ -46,7 +46,7 @@ function M.new( db )
     get_dropped_item_name = get_dropped_item_name,
     add = add,
     persist = persist,
-    import = import,
+    load_from_db = load_from_db,
     clear = clear
   }
 end

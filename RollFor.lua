@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 38
+local minor = 40
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -739,7 +739,8 @@ function M.on_first_enter_world()
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
   M.version_broadcast.broadcast()
 
-  M.dropped_loot.import( M.db.char.dropped_items )
+  M.name_matcher.load_from_db()
+  M.dropped_loot.load_from_db()
   M.update_softres_data( M.db.char.softres_data )
   M.softres_gui.load( M.db.char.softres_data )
 end

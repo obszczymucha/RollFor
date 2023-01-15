@@ -43,9 +43,12 @@ function M.new( db )
   end
 
   function M.decode( encoded_softres_data )
+    if not encoded_softres_data then return nil end
+
     local data = decode_base64( encoded_softres_data )
 
     if not data then
+      modules.pretty_print( "Couldn't decode softres data!", modules.colors.red )
       persist( nil )
       return nil
     end
@@ -53,6 +56,7 @@ function M.new( db )
     data = libStub( "LibDeflate" ):DecompressZlib( data )
 
     if not data then
+      modules.pretty_print( "Couldn't decompress softres data!", modules.colors.red )
       persist( nil )
       return nil
     end
