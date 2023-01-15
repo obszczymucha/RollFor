@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 37
+local minor = 38
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -578,11 +578,6 @@ local function setup_storage()
   if not M.db.global.version then
     M.db.global.version = version
   end
-
-  M.db.char.softres_data = M.db.char.softres_data or nil
-  M.db.char.dropped_items = M.db.char.dropped_items or {}
-  M.db.char.awarded_items = M.db.char.awarded_items or {}
-  M.db.char.manual_matches = M.db.char.manual_matches or {}
 end
 
 local function process_softres_slash_command( args )

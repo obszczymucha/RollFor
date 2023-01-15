@@ -73,7 +73,7 @@ function M.new( db, version )
 
     if cmd == "VERSION" and is_new_version( value ) and not version_recently_reminded() then
       db.char.last_new_version_reminder_timestamp = modules.lua.time()
-      modules.pretty_print( string.format( "New version (%s) is available!", modules.highlight( string.format( "v%s", value ) ) ) )
+      modules.pretty_print( string.format( "New version (%s) is available!", modules.colors.highlight( string.format( "v%s", value ) ) ) )
     end
   end
 

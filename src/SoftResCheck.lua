@@ -78,7 +78,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
     end
 
     if needs_refetch then
-      modules.pretty_print( "Fetching soft-ressed items details from the server...", modules.grey )
+      modules.pretty_print( "Fetching soft-ressed items details from the server...", colors.grey )
       ace_timer:ScheduleTimer( show_softres, 1 )
       return
     end
