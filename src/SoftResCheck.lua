@@ -33,7 +33,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
       return
     end
 
-    name_matcher.report()
+    modules.NameMatchReport.report( name_matcher )
     show_who_is_not_softressing()
   end
 
@@ -67,7 +67,8 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
       return
     end
 
-    name_matcher.report()
+    modules.NameMatchReport.report( name_matcher )
+
     p( string.format( "Soft-ressed items%s:",
       #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
 

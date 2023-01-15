@@ -3,10 +3,7 @@ if modules.NameAutoMatcher then return end
 
 local M = {}
 
-local colors = modules.colors
 local count = modules.count_elements
-local pretty_print = function( text ) modules.pretty_print( text, colors.name_matcher ) end
-local hl = colors.highlight
 
 local function to_map( t )
   local result = {}
@@ -215,17 +212,21 @@ function M.new( group_roster, softres )
     return matched_names[ softres_name ] and matched_names[ softres_name ].matched_name or nil
   end
 
-  local function report()
-    if count( matched_names ) == 0 and count( matched_names_below_threshold ) == 0 then return end
+  local function get_matches()
+    if count( matched_names ) == 0 and count( matched_names_below_threshold ) == 0 then return {}, {} end
+
+    local matches = {}
+    local not_matches = {}
 
     for softres_name, match in pairs( matched_names ) do
-      pretty_print( string.format( "Auto-matched %s with %s.", hl( softres_name ), hl( match.matched_name ) ) )
+      table.insert( matches, { softres_name = softres_name, matched_name = match.matched_name } )
     end
 
     for softres_name, match in pairs( matched_names_below_threshold ) do
-      modules.pretty_print( string.format( "Couldn't auto-match %s. The closest match: %s.", hl( softres_name ), hl( match.matched_name ) ),
-        colors.red )
+      table.insert( not_matches, { softres_name = softres_name, matched_name = match.matched_name } )
     end
+
+    return matches, not_matches
   end
 
   local function is_matched( softres_name )
@@ -237,7 +238,7 @@ function M.new( group_roster, softres )
     get_softres_name = get_softres_name,
     get_matched_name = get_matched_name,
     is_matched = is_matched,
-    report = report
+    get_matches = get_matches
   }
 end
 

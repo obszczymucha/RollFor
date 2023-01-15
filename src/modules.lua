@@ -230,4 +230,15 @@ function M.keys( t )
   return result
 end
 
+function M.find( value, t, extract_field )
+  if type( t ) ~= "table" or #t == 0 then return nil end
+
+  for _, v in pairs( t ) do
+    local val = extract_field and v[ extract_field ] or v
+    if val == value then return v end
+  end
+
+  return nil
+end
+
 return M

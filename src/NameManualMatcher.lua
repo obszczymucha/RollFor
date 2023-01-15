@@ -154,12 +154,36 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
     if report then p( "Cleared manual matches." ) end
   end
 
+  local function remove_duplicates( source, duplicates )
+    local result = {}
+
+    for _, v in pairs( source ) do
+      if not modules.find( v.softres_name, duplicates, "softres_name" ) then
+        table.insert( result, v )
+      end
+    end
+
+    return result
+  end
+
+  local function get_matches()
+    local matches = {}
+
+    for softres_name, match in pairs( manual_matches ) do
+      table.insert( matches, { softres_name = softres_name, matched_name = match } )
+    end
+
+    local auto_matches, auto_not_matches = name_matcher.get_matches()
+    return remove_duplicates( auto_matches, matches ), remove_duplicates( auto_not_matches, matches ), matches
+  end
+
   local decorator = clone( name_matcher )
   decorator.manual_match = manual_match
   decorator.is_matched = is_matched
   decorator.get_matched_name = get_matched_name
   decorator.get_softres_name = get_softres_name
   decorator.clear = clear
+  decorator.get_matches = get_matches
 
   return decorator
 end
