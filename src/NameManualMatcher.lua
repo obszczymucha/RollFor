@@ -11,38 +11,6 @@ local merge = modules.merge
 local colors = modules.colors
 local p = modules.pretty_print
 
--- This might get handy if I ever wanted to safe-guard the length of chat messages.
---local function show_manual_matches( players )
---if #players == 0 then
---p( "There are no players that can be manually matched." )
---return
---end
-
---p( string.format( "Target a player and type: |cffff9f69%s|r.", "/sro <number>" ) )
---local buffer = ""
-
---for i = 1, #players do
---local separator = ""
-
---if buffer ~= "" then
---separator = separator .. ", "
---end
-
---local next = string.format( "[|cffff9f69%d|r]:|cffff2f2f%s|r", i, players[ i ] )
-
---if string.len( buffer .. separator .. next ) > 255 then
---p( buffer )
---buffer = next
---else
---buffer = buffer .. separator .. next
---end
---end
-
---if buffer ~= "" then
---p( buffer )
---end
---end
-
 function M.new( db, api, absent_unfiltered_softres, name_matcher )
   local manual_matches = db.char.manual_matches
   local manual_match_options = nil
