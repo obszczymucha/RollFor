@@ -142,7 +142,7 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
     end
 
     local auto_matches, auto_not_matches = name_matcher.get_matches()
-    return remove_duplicates( auto_matches, matches ), remove_duplicates( auto_not_matches, matches ), matches
+    return remove_duplicates( auto_matches, matches ), remove_duplicates( remove_duplicates( auto_not_matches, matches ), auto_matches ), matches
   end
 
   local decorator = clone( name_matcher )

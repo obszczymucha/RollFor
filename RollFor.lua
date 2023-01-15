@@ -1,7 +1,7 @@
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
-local minor = 36
+local minor = 37
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -25,6 +25,7 @@ local m_rollers = {}
 local m_offspec_rollers = {}
 local m_winner_count = 0
 local m_cancelled = false
+local m_all_rolling = false
 
 local function reset()
   m_timer = nil
@@ -459,8 +460,10 @@ local function roll_for( who_can_roll, count, item, seconds, info, reserved_by )
     m_rolled_item_count = count - softres_count
     info = string.format( "(everyone except %s can roll). /roll (MS) or /roll 99 (OS)",
       modules.prettify_table( reserved_by, function( player ) return player.name end ) )
-    m_rollers = subtract( M.group_roster.get_all_players_in_my_group(), reserved_by )
+    m_rollers = modules.map( subtract( M.group_roster.get_all_players_in_my_group(), reserved_by ),
+      function( player_name ) return { name = player_name, rolls = 1 } end )
     m_offspec_rollers = {}
+    m_all_rolling = true
   elseif softres_count > 0 then
     info = get_softres_info( reserved_by, name_with_rolls )
   else
@@ -494,7 +497,7 @@ local function announce_hr( item )
   M.api().SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
 end
 
-local function process_roll_for_slash_command( args, slashCommand, who_rolls )
+local function process_roll_for_slash_command( args, slashCommand, who_rolls, all_rolling )
   if not M.api().IsInGroup() then
     pretty_print( "Not in a group." )
     return
@@ -510,6 +513,7 @@ local function process_roll_for_slash_command( args, slashCommand, who_rolls )
     local item_id = M.item_utils.get_item_id( item_link )
     local rollers, reservedByPlayers = who_rolls( item_id )
     local item = { link = item_link, id = item_id }
+    m_all_rolling = all_rolling
 
     if M.softres.is_item_hardressed( item_id ) then
       announce_hr( item_link )
@@ -631,10 +635,10 @@ local function on_roll( player, roll, min, max )
   local soft_ressed = #M.softres.get( m_rolled_item.id ) > 0
   local soft_ressed_by_player = M.softres.is_player_softressing( player, m_rolled_item.id )
 
-  if soft_ressed and not soft_ressed_by_player then
+  if not m_all_rolling and soft_ressed and not soft_ressed_by_player then
     pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
     return
-  elseif soft_ressed and soft_ressed_by_player and offspec_roll then
+  elseif not m_all_rolling and soft_ressed and soft_ressed_by_player and offspec_roll then
     pretty_print( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
     return
   elseif not has_rolls_left( player, offspec_roll ) then
@@ -707,9 +711,9 @@ end
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = "/rf"
-  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf", include_reserved_rolls ) end
+  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf", include_reserved_rolls, false ) end
   SLASH_ARF1 = "/arf"
-  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", get_all_players ) end
+  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", get_all_players, true ) end
   SLASH_CR1 = "/cr"
   M.api().SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancell_roll_slash_command )
   SLASH_FR1 = "/fr"
