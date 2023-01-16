@@ -98,7 +98,4 @@ function SoftResIntegrationSpec:should_check_if_player_is_soft_ressing()
   lu.assertEquals( soft_res.is_player_softressing( "Ponpon", 333 ), false )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
-os.exit( runner:runSuite( "-m", "should", "-T", "Spec", "-v" ) )
+os.exit( lu.LuaUnit.run() )

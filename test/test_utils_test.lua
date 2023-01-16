@@ -39,7 +39,4 @@ function TestUtilsSpec:should_flatten_a_table_into_another_table()
   lu.assertEquals( result, { "a", { "b", "d" }, { "e" }, "f", "c" } )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

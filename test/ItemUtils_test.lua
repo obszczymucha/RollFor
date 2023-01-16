@@ -103,7 +103,4 @@ function ParseAllLinksSpec:should_return_multiple_items_if_multiple_links_are_pr
   } )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
-os.exit( runner:runSuite( "-m", "should", "-T", "Spec", "-v" ) )
+os.exit( lu.LuaUnit.run() )

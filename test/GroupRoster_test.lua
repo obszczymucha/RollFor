@@ -234,7 +234,4 @@ function AmIInGroupSpec:should_return_true_if_in_raid()
   lu.assertEquals( mod.am_i_in_raid(), true )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
-os.exit( runner:runSuite( "-m", "should", "-T", "Spec", "-v" ) )
+os.exit( lu.LuaUnit.run() )

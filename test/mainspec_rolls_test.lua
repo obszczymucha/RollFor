@@ -169,10 +169,7 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
   )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

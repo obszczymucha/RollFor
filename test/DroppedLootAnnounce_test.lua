@@ -529,7 +529,4 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_poor_quali
   } )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

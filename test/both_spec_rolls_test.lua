@@ -6,7 +6,6 @@ local player = utils.player
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
 local r = utils.raid_message
-local c = utils.console_message
 local cr = utils.console_and_raid_message
 local rw = utils.raid_warning
 local rolling_finished = utils.rolling_finished
@@ -262,10 +261,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_rollers_if_item_count_is_le
   )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

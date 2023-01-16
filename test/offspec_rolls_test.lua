@@ -104,11 +104,8 @@ function OffspecRollsSpec:should_detect_and_ignore_double_rolls()
   )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
 utils.load_libstub()
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

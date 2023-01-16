@@ -113,10 +113,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
   } )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

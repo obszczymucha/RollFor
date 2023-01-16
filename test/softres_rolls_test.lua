@@ -305,10 +305,7 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
   )
 end
 
-local runner = lu.LuaUnit.new()
-runner:setOutputType( "text" )
-
 utils.mock_libraries()
 utils.load_real_stuff()
 
-os.exit( runner:runSuite( "-T", "Spec", "-m", "should", "-v" ) )
+os.exit( lu.LuaUnit.run() )

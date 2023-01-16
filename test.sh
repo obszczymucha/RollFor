@@ -22,7 +22,7 @@ run_test() {
   dir=$(dirname "$full_file")
   
   pushd "$dir" > /dev/null || return
-  lua "$file" -v | awk '{ gsub("^OK$", "\033[1;32m&\033[0m");
+  lua "$file" -v -T Spec -m should -o text | awk '{ gsub("^OK$", "\033[1;32m&\033[0m");
                           gsub("Ok$", "\033[1;32m&\033[0m");
                           gsub("^Failed tests:$", "\033[1;31m&\033[0m");
                           gsub("FAIL$", "\033[1;31m&\033[0m");
