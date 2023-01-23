@@ -503,13 +503,13 @@ local function process_roll_for_slash_command( args, slashCommand, who_rolls, al
     return
   end
 
-  for itemCount, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
+  for item_count, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
     if m_rolling then
       pretty_print( "Rolling already in progress." )
       return
     end
 
-    local count = (not itemCount or itemCount == "") and 1 or tonumber( itemCount )
+    local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
     local item_id = M.item_utils.get_item_id( item_link )
     local rollers, reservedByPlayers = who_rolls( item_id )
     local item = { link = item_link, id = item_id }
