@@ -2,7 +2,12 @@
     "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
     "Lua.diagnostics.globals": [
         "vim",
-        "utf8"
+        "utf8",
+        "LibStub"
     ],
-    "Lua.workspace.checkThirdParty": false
+    "Lua.workspace.checkThirdParty": false,
+    "workspace.checkThirdParty": false,
+    "workspace.ignoreDir": [
+      "Libs"
+    ]
 }

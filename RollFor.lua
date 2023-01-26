@@ -1,4 +1,3 @@
----@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 local major = 1
 local minor = 41

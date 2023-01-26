@@ -536,7 +536,6 @@ function M.load_libstub()
   strmatch = string.match
   require( "LibStub" )
 
-  ---@diagnostic disable-next-line: lowercase-global
   return LibStub
 end
 
