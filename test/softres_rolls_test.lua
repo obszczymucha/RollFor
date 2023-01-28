@@ -7,7 +7,6 @@ local master_looter = utils.master_looter
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
 local rw = utils.raid_warning
-local crw = utils.console_and_raid_warning
 local cr = utils.console_and_raid_message
 local c = utils.console_message
 local r = utils.raid_message
@@ -48,7 +47,7 @@ function SoftResIntegrationSpec:should_announce_sr_and_ignore_all_rolls_if_item_
 
   -- Then
   assert_messages(
-    crw( "[Hearthstone] is soft-ressed by Psikutas." ),
+    rw( "[Hearthstone] is soft-ressed by Psikutas." ),
     rolling_not_in_progress()
   )
 end
@@ -213,7 +212,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   -- Then
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Psikutas)", "2. [Hearthstone]" ),
-    crw( "[Hearthstone] is soft-ressed by Psikutas." ),
+    rw( "[Hearthstone] is soft-ressed by Psikutas." ),
     c( "RollFor: Psikutas received [Hearthstone]." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
@@ -241,7 +240,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   -- Then
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
-    crw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
+    rw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
     c( "RollFor: Started trading with Obszczymucha." ),
     c( "RollFor: Trading with Obszczymucha complete." ),
     c( "RollFor: Obszczymucha received [Hearthstone]." ),
@@ -271,7 +270,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   -- Then
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
-    crw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
+    rw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
     c( "RollFor: Attempting to award Obszczymucha with Hearthstone." ),
     c( "RollFor: Obszczymucha received Hearthstone." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
@@ -301,6 +300,25 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
     rw( "Roll for [Hearthstone]: (SR by Ponpon, Psikutas and Sälvatrucha)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Sälvatrucha rolled the highest (69) for [Hearthstone]." ),
+    rolling_finished()
+  )
+end
+
+function SoftResIntegrationSpec:should_stop_rolling_if_player_who_won_still_has_extra_rolls()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Psikutas", 123 ) )
+
+  -- When
+  roll_for( "Hearthstone", 1, 123 )
+  roll( "Psikutas", 69 )
+  roll( "Ponpon", 42 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas [2 rolls])" ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
   )
 end

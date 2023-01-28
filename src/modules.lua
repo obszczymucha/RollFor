@@ -153,6 +153,19 @@ function M.filter( t, f, extract_field )
   return result
 end
 
+function M.take( t, n )
+  if n == 0 then return {} end
+
+  local result = {}
+
+  for i = 1, #t do
+    if i > n then return result end
+    table.insert( result, t[ i ] )
+  end
+
+  return result
+end
+
 function M.my_raid_rank()
   for i = 1, 40 do
     local name, rank = M.api.GetRaidRosterInfo( i )

@@ -156,7 +156,7 @@ function M.run_command( command, args )
 end
 
 function M.roll_for( item_name, count, item_id )
-  M.run_command( "RF", string.format( "%s%s", count or "", M.item_link( item_name, item_id ) ) )
+  M.run_command( "RF", string.format( "%s%s", count and string.format( "%sx", count ) or "", M.item_link( item_name, item_id ) ) )
   m_rolling_item_name = item_name
 end
 
@@ -404,6 +404,9 @@ function M.load_real_stuff()
   require( "src/VersionBroadcast" )
   require( "src/MasterLoot" )
   require( "src/SoftResCheck" )
+  require( "src/NonSoftResRollingLogic" )
+  require( "src/SoftResRollingLogic" )
+  require( "src/TieRollingLogic" )
   require( "RollFor" )
 end
 

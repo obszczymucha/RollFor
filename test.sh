@@ -46,9 +46,9 @@ run_all_tests() {
     echo "Testing $file..."
     run_test "$file" "$@"
 
-    if [[ $TEST_FAILED -ne 0 ]]; then
-      return
-    fi
+    #if [[ $TEST_FAILED -ne 0 ]]; then
+      #return
+    #fi
   }; done
 
   return $?

@@ -4,6 +4,7 @@ local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 utils.load_libstub()
 local mod = require( "src/modules" )
+local eq = lu.assertEquals
 
 MapSpec = {}
 
@@ -13,8 +14,8 @@ function MapSpec:should_map_simple_array()
   local f = string.upper
 
   -- Expect
-  lu.assertEquals( map( { "abc", "def" }, f ), { "ABC", "DEF" } )
-  lu.assertEquals( map( {}, f ), {} )
+  eq( map( { "abc", "def" }, f ), { "ABC", "DEF" } )
+  eq( map( {}, f ), {} )
 end
 
 function MapSpec:should_map_an_array_of_objects()
@@ -23,7 +24,7 @@ function MapSpec:should_map_an_array_of_objects()
   local f = string.upper
 
   -- Expect
-  lu.assertEquals( map( {
+  eq( map( {
     { name = "abc", roll = 69 },
     { name = "def", roll = 100 }
   }, f, "name" ), {
@@ -40,8 +41,8 @@ function FilterSpec:should_filter_simple_array()
   local f = function( x ) return x > 3 end
 
   -- Expect
-  lu.assertEquals( filter( { 1, 2, 3, 4, 5, 6 }, f ), { 4, 5, 6 } )
-  lu.assertEquals( filter( {}, f ), {} )
+  eq( filter( { 1, 2, 3, 4, 5, 6 }, f ), { 4, 5, 6 } )
+  eq( filter( {}, f ), {} )
 end
 
 function FilterSpec:should_filter_an_array_of_objects()
@@ -50,7 +51,7 @@ function FilterSpec:should_filter_an_array_of_objects()
   local f = function( x ) return x > 70 end
 
   -- Expect
-  lu.assertEquals( filter( {
+  eq( filter( {
     { name = "abc", roll = 69 },
     { name = "def", roll = 100 },
     { name = "ghi", roll = 88 }
@@ -58,6 +59,28 @@ function FilterSpec:should_filter_an_array_of_objects()
     { name = "def", roll = 100 },
     { name = "ghi", roll = 88 }
   } )
+end
+
+MergeSpec = {}
+
+function MergeSpec:should_merge_tables()
+  eq( mod.merge( {}, {} ), {} )
+  eq( mod.merge( {}, {}, {} ), {} )
+  eq( mod.merge( {}, { "a" }, {} ), { "a" } )
+  eq( mod.merge( {}, {}, { "a" } ), { "a" } )
+  eq( mod.merge( {}, { "a" }, { "b" } ), { "a", "b" } )
+  eq( mod.merge( { "a" }, { "b" }, { "c" } ), { "a", "b", "c" } )
+end
+
+TakeSpec = {}
+
+function TakeSpec:should_take_n_elements_from_a_table()
+  eq( mod.take( { "a", "b", "c" }, 0 ), {} )
+  eq( mod.take( { "a", "b", "c" }, 1 ), { "a" } )
+  eq( mod.take( { "a", "b", "c" }, 2 ), { "a", "b" } )
+  eq( mod.take( { "a", "b", "c" }, 3 ), { "a", "b", "c" } )
+  eq( mod.take( { "a", "b", "c" }, 4 ), { "a", "b", "c" } )
+  eq( mod.take( { "a", "b", "c" }, -1 ), {} )
 end
 
 os.exit( lu.LuaUnit.run() )

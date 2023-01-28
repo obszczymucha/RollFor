@@ -27,5 +27,8 @@ src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
 src\SoftResCheck.lua
+src\SoftResRollingLogic.lua
+src\NonSoftResRollingLogic.lua
+src\TieRollingLogic.lua
 RollFor.lua
 settings.lua
