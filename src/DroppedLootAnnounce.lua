@@ -70,9 +70,11 @@ end
 local function stringify( announcements )
   local result = {}
 
-  local function p( player )
-    local rolls = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.name, rolls )
+  local function print_player( show_rolls )
+    return function( player )
+      local rolls = show_rolls and player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
+      return string.format( "%s%s", player.name, rolls )
+    end
   end
 
   for i = 1, #announcements do
@@ -80,18 +82,15 @@ local function stringify( announcements )
 
     if entry.is_hardressed then
       table.insert( result, string.format( "%s. %s (HR)", i, entry.item_link ) )
-    elseif entry.softres_count == 0 then
+    elseif entry.softres_count > 0 then
       local count = entry.how_many_dropped
       local prefix = count == 1 and "" or string.format( "%sx", count )
-      table.insert( result, string.format( "%s. %s%s", i, prefix, entry.item_link ) )
-    elseif entry.softres_count == 1 then
-      local count = entry.how_many_dropped
-      local prefix = count == 1 and "" or string.format( "%sx", count )
-      table.insert( result, string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, entry.softresser.name ) )
+      local f = print_player( entry.softres_count > 1 )
+      table.insert( result, string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, commify( entry.softressers, f ) ) )
     else
       local count = entry.how_many_dropped
       local prefix = count == 1 and "" or string.format( "%sx", count )
-      table.insert( result, string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, commify( entry.softressers, p ) ) )
+      table.insert( result, string.format( "%s. %s%s", i, prefix, entry.item_link ) )
     end
   end
 
@@ -115,7 +114,7 @@ local function sort( announcements )
 
   table.sort( sr, function( left, right )
     if left.softres_count == 1 and left.softres_count == right.softres_count then
-      return left.softresser.name < right.softresser.name
+      return left.softressers[ 1 ].name < right.softressers[ 1 ].name
     else
       return left.softres_count < right.softres_count
     end
@@ -149,7 +148,7 @@ function M.create_item_announcements( summary )
           item_link = entry.item.link,
           softres_count = 1,
           how_many_dropped = 1,
-          softresser = entry.softressers[ j ]
+          softressers = { entry.softressers[ j ] }
         } )
       end
     else
