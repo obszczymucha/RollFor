@@ -1,6 +1,6 @@
 local lib_stub = LibStub
 local major = 1
-local minor = 42
+local minor = 43
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -125,22 +125,6 @@ function M.update_softres_data( data, data_loaded_callback )
   if data_loaded_callback then data_loaded_callback() end
 end
 
--- Make sure to recognize this scenario:
--- 3 items dropped:
--- Psikutas rolls 69
--- Obszczymucha rolls 42
--- Ponpon rolls 42
--- Chuj rolls 13
--- Winners: Psikutas, Obszczymucha and Ponpon
-
--- Make sure to recognize this scenario (this should be covered):
--- 2 items dropped:
--- Psikutas rolls 69
--- Obszczymucha rolls 42
--- Ponpon rolls 42
--- Chuj rolls 13
--- Winners: Psikutas, there was a tie - the winner of a reroll between Obszczymucha and Ponpon
-
 function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
   local players = winners.players
   table.sort( players )
@@ -199,13 +183,13 @@ local function get_roll_announcement_chat_type()
   end
 end
 
--- consider scenario: 2 items dropped and 3 players tied
 function M.on_rolling_finished( item, count, winners, rerolling )
   cancel_rolling_timer()
 
   local announce_winners = function( v, top_roll )
     local roll = v.roll
     local players = v.players
+    table.sort( players )
     local os = v.offspec and " (OS)" or ""
 
     pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, hl ),
@@ -229,7 +213,13 @@ function M.on_rolling_finished( item, count, winners, rerolling )
   local items_left = count
 
   for i = 1, #winners do
-    if items_left == 0 then return end
+    if items_left == 0 then
+      if not m_rolling_logic.is_rolling() then
+        pretty_print( string.format( "Rolling for %s has finished.", item.link ) )
+      end
+
+      return
+    end
 
     local v = winners[ i ]
     local player_count = #v.players
@@ -358,27 +348,9 @@ local function process_softres_slash_command( args )
 end
 
 local function on_roll( player, roll, min, max )
-  if m_rolling_logic and m_rolling_logic.is_rolling() then m_rolling_logic.on_roll( player, roll, min, max ) end
-
-  --local offspec_roll = max == 99
-  --local soft_ressed = #M.softres.get( m_rolled_item.id ) > 0
-  --local soft_ressed_by_player = M.softres.is_player_softressing( player, m_rolled_item.id )
-
-  --if not m_all_rolling and soft_ressed and not soft_ressed_by_player then
-  --pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
-  --return
-  --elseif not m_all_rolling and soft_ressed and soft_ressed_by_player and offspec_roll then
-  --pretty_print( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player, m_rolled_item.link, roll ) )
-  --return
-  --elseif not has_rolls_left( player, offspec_roll ) then
-  --pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player, roll ) )
-  --return
-  --end
-
-  --subtract_roll( player, offspec_roll )
-  --record_roll( player, roll, offspec_roll )
-
-  --if have_all_rolls_been_exhausted() then finalize_rolling() end
+  if m_rolling_logic and m_rolling_logic.is_rolling() then
+    m_rolling_logic.on_roll( player, roll, min, max )
+  end
 end
 
 function M.on_chat_msg_system( message )

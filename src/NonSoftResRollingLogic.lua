@@ -130,11 +130,7 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
       return true
     end
 
-    for _, v in pairs( mainspec_rollers ) do
-      if v.rolls > 0 then return false end
-    end
-
-    return true
+    return have_all_players_rolled( mainspec_rollers )
   end
 
   local function find_winner()
