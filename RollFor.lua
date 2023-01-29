@@ -1,6 +1,6 @@
 local lib_stub = LibStub
 local major = 1
-local minor = 45
+local minor = 46
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -33,7 +33,11 @@ local function create_components()
   M.awarded_loot = m.AwardedLoot.new( M.db )
   M.group_roster = m.GroupRoster.new( M.api )
   M.unfiltered_softres = m.SoftRes.new( M.db )
-  M.name_matcher = m.NameManualMatcher.new( M.db, M.api, M.absent_softres( M.unfiltered_softres ), m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres ) )
+  M.name_matcher = m.NameManualMatcher.new(
+    M.db, M.api,
+    M.absent_softres( M.unfiltered_softres ),
+    m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres, 0.57, 0.4 )
+  )
   M.matched_name_softres = m.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
   M.softres = M.present_softres( M.awarded_loot_softres )
@@ -41,7 +45,7 @@ local function create_components()
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer, M.absent_softres )
   M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item )
-  M.softres_gui = m.SoftResGui.new( M.update_softres_data, M.softres_check )
+  M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
 
   M.trade_tracker = m.TradeTracker.new(
     function( recipient, items_given, items_received )
@@ -108,7 +112,7 @@ local function soft_res_rolling_logic( item, count, info, on_rolling_finished )
   return modules.SoftResRollingLogic.new( softressing_players, item, count, on_rolling_finished, on_softres_rolls_available )
 end
 
-function M.update_softres_data( data, data_loaded_callback )
+function M.import_encoded_softres_data( data, data_loaded_callback )
   local softres_data = modules.SoftRes.decode( data )
 
   if not softres_data and data and #data > 0 then
@@ -445,7 +449,7 @@ function M.on_first_enter_world()
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
 
   M.version_broadcast.broadcast()
-  M.update_softres_data( M.db.char.softres_data )
+  M.import_encoded_softres_data( M.db.char.softres_data )
   M.softres_gui.load( M.db.char.softres_data )
 end
 

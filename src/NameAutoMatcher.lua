@@ -123,10 +123,12 @@ local function improved_descending( l, r )
       l[ "levenshtein" ] == r[ "levenshtein" ] and l[ "similarity" ] > r[ "similarity" ]
 end
 
+---@diagnostic disable-next-line: unused-function
 local function ends_with( str, ending )
   return ending == "" or str:sub( - #ending ) == ending
 end
 
+---@diagnostic disable-next-line: unused-function, unused-local
 local function format_percent( value )
   local result = string.format( "%.2f", value * 100 )
 
@@ -145,7 +147,9 @@ local function format_percent( value )
   return string.format( "%s%%", result )
 end
 
-local function assign_predictions( predictions )
+local function assign_predictions( predictions, top_threshold, bottom_threshold )
+  local function format_4( value ) return string.format( "%.4f", value ) end
+
   local results = {}
   local results_below_threshold = {}
 
@@ -154,12 +158,12 @@ local function assign_predictions( predictions )
     local similarity = top_candidate[ "similarity" ]
     local levenshtein = top_candidate[ "levenshtein" ]
 
-    local match = { [ "matched_name" ] = top_candidate[ "candidate" ], [ "similarity" ] = format_percent( similarity ),
+    local match = { [ "matched_name" ] = top_candidate[ "candidate" ], [ "similarity" ] = format_4( similarity ),
       [ "levenshtein" ] = levenshtein }
 
-    if similarity >= 0.57 then
+    if similarity >= (top_threshold or 0.57) then
       results[ player ] = match
-    else
+    elseif similarity >= (bottom_threshold or 0.4) then
       results_below_threshold[ player ] = match
     end
   end
@@ -167,7 +171,7 @@ local function assign_predictions( predictions )
   return results, results_below_threshold
 end
 
-function M.new( group_roster, softres )
+function M.new( group_roster, softres, top_threshold, bottom_threshold )
   local matched_names = {}
   local matched_names_below_threshold = {}
 
@@ -185,7 +189,7 @@ function M.new( group_roster, softres )
     if #absent_players_who_did_softres == 0 then return end
 
     local predictions = get_similarity_predictions( present_players_who_did_not_softres, absent_players_who_did_softres, improved_descending )
-    local matched, matched_below_threshold = assign_predictions( predictions )
+    local matched, matched_below_threshold = assign_predictions( predictions, top_threshold, bottom_threshold )
 
     for player, match_result in pairs( matched ) do
       local matched_name = match_result[ "matched_name" ]
@@ -219,11 +223,11 @@ function M.new( group_roster, softres )
     local not_matches = {}
 
     for softres_name, match in pairs( matched_names ) do
-      table.insert( matches, { softres_name = softres_name, matched_name = match.matched_name } )
+      table.insert( matches, { softres_name = softres_name, matched_name = match.matched_name, similarity = match.similarity } )
     end
 
     for softres_name, match in pairs( matched_names_below_threshold ) do
-      table.insert( not_matches, { softres_name = softres_name, matched_name = match.matched_name } )
+      table.insert( not_matches, { softres_name = softres_name, matched_name = match.matched_name, similarity = match.similarity } )
     end
 
     return matches, not_matches

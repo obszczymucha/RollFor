@@ -5,7 +5,7 @@ local M = {}
 
 local ace_gui = LibStub( "AceGUI-3.0" )
 
-function M.new( update_softres_data, softres_check )
+function M.new( import_encoded_softres_data, softres_check )
   local softres_data
   local softres_data_dirty = false
   local softres_frame = nil
@@ -21,7 +21,7 @@ function M.new( update_softres_data, softres_check )
       function( widget )
         if softres_data_dirty and softres_data then
           softres_data_dirty = false
-          update_softres_data( softres_data, function()
+          import_encoded_softres_data( softres_data, function()
             softres_check.check_softres()
           end )
         end
