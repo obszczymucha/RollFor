@@ -12,7 +12,7 @@ local colors = modules.colors
 local p = modules.pretty_print
 
 function M.new( db, api, absent_unfiltered_softres, name_matcher )
-  local manual_matches = {}
+  local manual_matches = db.char.manual_matches or {}
   local manual_match_options = nil
 
   local function show_manual_matches( matches, absent_players )
@@ -145,10 +145,6 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
     return remove_duplicates( auto_matches, matches ), remove_duplicates( remove_duplicates( auto_not_matches, matches ), auto_matches ), matches
   end
 
-  local function load_from_db()
-    manual_matches = db.char.manual_matches or {}
-  end
-
   local decorator = clone( name_matcher )
   decorator.manual_match = manual_match
   decorator.is_matched = is_matched
@@ -156,7 +152,6 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
   decorator.get_softres_name = get_softres_name
   decorator.clear = clear
   decorator.get_matches = get_matches
-  decorator.load_from_db = load_from_db
 
   return decorator
 end

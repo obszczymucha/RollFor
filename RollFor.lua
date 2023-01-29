@@ -1,6 +1,6 @@
 local lib_stub = LibStub
 local major = 1
-local minor = 44
+local minor = 45
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -443,10 +443,8 @@ function M.on_first_enter_world()
   setup_slash_commands()
 
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
-  M.version_broadcast.broadcast()
 
-  M.name_matcher.load_from_db()
-  M.dropped_loot.load_from_db()
+  M.version_broadcast.broadcast()
   M.update_softres_data( M.db.char.softres_data )
   M.softres_gui.load( M.db.char.softres_data )
 end

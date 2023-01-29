@@ -4,7 +4,7 @@ if modules.DroppedLoot then return end
 local M = {}
 
 function M.new( db )
-  local dropped_items = {}
+  local dropped_items = db.char.dropped_items or {}
 
   local function get_dropped_item_id( item_name )
     for _, item in pairs( dropped_items ) do
@@ -30,10 +30,6 @@ function M.new( db )
     db.char.dropped_items = dropped_items
   end
 
-  local function load_from_db()
-    dropped_items = db.char.dropped_items or {}
-  end
-
   local function clear( report )
     if #dropped_items == 0 then return end
     dropped_items = {}
@@ -46,7 +42,6 @@ function M.new( db )
     get_dropped_item_name = get_dropped_item_name,
     add = add,
     persist = persist,
-    load_from_db = load_from_db,
     clear = clear
   }
 end

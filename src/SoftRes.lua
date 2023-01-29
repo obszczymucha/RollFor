@@ -13,8 +13,7 @@ local libStub = LibStub
 
 --return o
 --end
---
---
+
 local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
 
 local function decode_base64( data )

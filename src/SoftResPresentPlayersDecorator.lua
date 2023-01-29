@@ -6,6 +6,8 @@ local M = {}
 local filter = modules.filter
 local clone = modules.clone
 
+--- I decorate given softres class with present players logic.
+-- Example: "give me all players who soft-ressed and are in the group".
 function M.new( group_roster, softres )
   local f = group_roster.is_player_in_my_group
 

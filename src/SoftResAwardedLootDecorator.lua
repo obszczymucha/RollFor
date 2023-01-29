@@ -5,6 +5,8 @@ local M = {}
 
 local filter = modules.filter
 
+--- I decorate given softres class with awarded loot logic.
+-- Example: "give me players who soft-ressed, but didn't receive the loot yet".
 function M.new( awarded_loot, softres )
   local function get( item_id )
     return filter( softres.get( item_id ), function( v )
