@@ -1,3 +1,6 @@
 .watch.lock
 .watch.log
 .watch.pid
+RollFor/.luarc.json
+RollFor/.editorconfig
+
