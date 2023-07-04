@@ -1,5 +1,5 @@
 # Roll For
-A World of Warcraft Classic (WotLK) addon that automates rolling for items.  
+A World of Warcraft (2.4.3) addon that automates rolling for items.  
 Includes integration with https://softres.it/ using `Gargul Export` feature.
 
 The aim of the addon is simplicity. There is no GUI, because you don't really
@@ -72,16 +72,6 @@ Example:
 
 Example:  
 ![](docs/two-top-rolls.gif)
-
----
-
-### Raid-roll
-```
-/rr <item>
-```
-
-Example:  
-![](docs/raid-roll.gif)
 
 ---
 
@@ -165,5 +155,5 @@ Do this if you're starting a new raid.
 ## Need more help?
 
 Feel free to hit me up in-game if you need more help.  
-Psikutas or Obszczymucha on AU Arugal (Horde).
+Ohhaimark or Obszczymucha on Netherwing (Horde).
 

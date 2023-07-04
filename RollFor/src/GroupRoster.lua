@@ -17,9 +17,19 @@ function M.new( api )
       return result
     end
 
-    for i = 1, 40 do
-      local player_name = api().GetRaidRosterInfo( i )
-      if player_name then table.insert( result, player_name ) end
+    if api().IsInRaid() then
+      for i = 1, 40 do
+        local player_name = api().GetRaidRosterInfo( i )
+        if player_name then table.insert( result, player_name ) end
+      end
+    else
+      local name = my_name()
+      table.insert( result, name )
+
+      for i = 1, 4 do
+        local player_name = api().UnitName( "party" .. i )
+        if player_name then table.insert( result, player_name ) end
+      end
     end
 
     return result

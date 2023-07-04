@@ -17,6 +17,7 @@ function M.new( import_encoded_softres_data, softres_check )
     softres_frame:SetLayout( "Fill" )
     softres_frame:SetWidth( 565 )
     softres_frame:SetHeight( 300 )
+    softres_frame.statusbg:Hide()
     softres_frame:SetCallback( "OnClose",
       function( widget )
         if softres_data_dirty and softres_data then
@@ -35,7 +36,7 @@ function M.new( import_encoded_softres_data, softres_check )
     local importEditBox = ace_gui:Create( "MultiLineEditBox" )
     importEditBox:SetFullWidth( true )
     importEditBox:SetFullHeight( true )
-    importEditBox:DisableButton( true )
+    importEditBox:ShowButton( false )
     importEditBox:SetLabel( "SoftRes.it data" )
 
     if softres_data then

@@ -1,6 +1,6 @@
 local lib_stub = LibStub
-local major = 1
-local minor = 46
+local major = 2
+local minor = 0
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
@@ -43,7 +43,8 @@ local function create_components()
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = m.DroppedLoot.new( M.db )
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
-  M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer, M.absent_softres )
+  M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
+    M.absent_softres )
   M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item )
   M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
 
@@ -109,7 +110,8 @@ local function soft_res_rolling_logic( item, count, info, on_rolling_finished )
     return non_softres_rolling_logic( item, count, info, on_rolling_finished )
   end
 
-  return modules.SoftResRollingLogic.new( softressing_players, item, count, on_rolling_finished, on_softres_rolls_available )
+  return modules.SoftResRollingLogic.new( softressing_players, item, count, on_rolling_finished,
+    on_softres_rolls_available )
 end
 
 function M.import_encoded_softres_data( data, data_loaded_callback )
@@ -146,9 +148,11 @@ function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
   local prefix = count > 1 and string.format( "%sx", count ) or ""
   local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
 
-  M.ace_timer:ScheduleTimer( function() M.api().SendChatMessage( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ),
-      modules.get_group_chat_type() )
-  end, 2.5 )
+  M.ace_timer:ScheduleTimer(
+    function()
+      M.api().SendChatMessage( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ),
+        modules.get_group_chat_type() )
+    end, 2.5 )
   m_rolling_logic = modules.TieRollingLogic.new( players, item, count, M.on_rolling_finished )
 end
 
@@ -198,8 +202,9 @@ function M.on_rolling_finished( item, count, winners, rerolling )
 
     pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, hl ),
       rerolling and "re-" or "", top_roll and "" or "next ", hl( roll ), item.link, os ) )
-    M.api().SendChatMessage( string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
-      rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, os ),
+    M.api().SendChatMessage(
+      string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
+        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, os ),
       modules.get_group_chat_type() )
   end
 
