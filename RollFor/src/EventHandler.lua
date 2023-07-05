@@ -23,7 +23,7 @@ function M.handle_events( main )
       main.version_broadcast.on_left_group()
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( ... )
-    elseif event == "LOOT_READY" then
+    elseif event == "LOOT_OPENED" then
       main.dropped_loot_announce.on_loot_ready()
     elseif event == "OPEN_MASTER_LOOT_LIST" then
       main.master_loot.on_open_master_loot_list()
@@ -54,7 +54,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_LEFT" )
   frame:RegisterEvent( "GROUP_FORMED" )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
-  frame:RegisterEvent( "LOOT_READY" )
+  frame:RegisterEvent( "LOOT_OPENED" )
   frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
   frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
   frame:RegisterEvent( "TRADE_SHOW" )

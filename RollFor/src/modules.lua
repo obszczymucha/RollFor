@@ -67,15 +67,19 @@ function M.clone( t )
 end
 
 function M.is_player_master_looter()
-  for i = 1, 40 do
-    local name, _, _, _, _, _, _, _, _, _, isMasterLooter = M.api.GetRaidRosterInfo( i )
+  if M.api.IsInRaid() then
+    for i = 1, 40 do
+      local name, _, _, _, _, _, _, _, _, _, isMasterLooter = M.api.GetRaidRosterInfo( i )
 
-    if name and name == M.MyName() then
-      return isMasterLooter
+      if name and name == M.MyName() then
+        return isMasterLooter
+      end
     end
+
+    return false
   end
 
-  return false
+  return M.api.GetLootMethod() == "master" and M.api.UnitIsPartyLeader( "player" )
 end
 
 function M.MyName()

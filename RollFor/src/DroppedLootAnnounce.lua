@@ -35,7 +35,7 @@ local function process_dropped_item( item_index )
   local link = modules.api.GetLootSlotLink( item_index )
   if not link then return nil end
 
-  local quality = select( 5, modules.api.GetLootSlotInfo( item_index ) ) or 0
+  local quality = select( 4, modules.api.GetLootSlotInfo( item_index ) ) or 0
   if quality < RollFor.settings.announce_loot_quality_threshold then return nil end
 
   local item_id = item_utils.get_item_id( link )
@@ -165,12 +165,11 @@ function M.create_item_announcements( summary )
 end
 
 function M.process_dropped_items( softres )
-  local source_guid = nil
+  local source_guid = modules.api.UnitGUID( "target" )
   local items = {}
   local item_count = modules.api.GetNumLootItems()
 
   for i = 1, item_count do
-    source_guid = source_guid or modules.api.GetLootSourceInfo( i )
     local item = process_dropped_item( i )
 
     if item then table.insert( items, item ) end
