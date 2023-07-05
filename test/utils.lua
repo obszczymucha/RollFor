@@ -297,7 +297,7 @@ end
 
 function M.load_roll_for()
   local libStub = M.load_libstub()
-  return libStub( "RollFor-1" )
+  return libStub( "RollFor-2" )
 end
 
 function M.player( name )
@@ -373,11 +373,14 @@ function M.mock_libraries()
   } )
   M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
   M.mock_library( "AceGUI-3.0" )
-  M.mock_library( "AceDB-3.0", { New = function( _, _ ) return {
-      global = {},
-      char = {}
-    }
-  end } )
+  M.mock_library( "AceDB-3.0", {
+    New = function( _, _ )
+      return {
+        global = {},
+        char = {}
+      }
+    end
+  } )
 end
 
 function M.load_real_stuff()
@@ -532,7 +535,7 @@ function M.epic_threshold()
 end
 
 function M.loot_quality_threshold( quality )
-  RollFor.settings.lootQualityThreshold = quality
+  RollFor.settings.announce_loot_quality_threshold = quality
 end
 
 function M.load_libstub()
@@ -546,6 +549,8 @@ end
 function M.trade_with( recipient, trade_tracker )
   RollFor.settings.tradeTrackerDebug = true
   M.mock_object( "TradeFrameRecipientNameText", { GetText = function() return recipient end } )
+  M.mock_table_function( "GetTradePlayerItemInfo", { [ "1" ] = nil } )
+  M.mock_table_function( "GetTradePlayerItemLink", { [ "1" ] = nil } )
 
   if trade_tracker then
     trade_tracker.on_trade_show()

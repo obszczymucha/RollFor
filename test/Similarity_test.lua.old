@@ -1,3 +1,4 @@
+---@diagnostic disable: unused-local, unused-function
 local function dump_table( o )
   local entries = 0
 
@@ -89,12 +90,13 @@ function StringSimilarity( s1, s2 )
 end
 
 --local function utf8sub(s, i, j)
-  --return utf8.char(utf8.codepoint(s,i,j))
+--return utf8.char(utf8.codepoint(s,i,j))
 --end
-function utf8sub(s,i,j)
-    i=utf8.offset(s,i)
-    j=utf8.offset(s,j+1)-1
-    return string.sub(s,i,j)
+---@diagnostic disable-next-line: lowercase-global
+function utf8sub( s, i, j )
+  i = utf8.offset( s, i )
+  j = utf8.offset( s, j + 1 ) - 1
+  return string.sub( s, i, j )
 end
 
 local function Levenshtein2( s1, s2 )
@@ -118,7 +120,7 @@ local function Levenshtein2( s1, s2 )
       local insertionCost = v1[ j ] + 1
       local substitutionCost
 
-      if utf8sub(str1, i, i) == utf8sub(str2, j, j) then
+      if utf8sub( str1, i, i ) == utf8sub( str2, j, j ) then
         substitutionCost = v0[ j ]
       else
         substitutionCost = v0[ j ] + 1
@@ -144,20 +146,20 @@ local function wrap( f )
 end
 
 --test( "Should test Levenshtein2", function()
-  --local f = wrap( Levenshtein2 )
-  --return eq2( f( "", "" ), 0 ) and
-      --eq2( f( "a", "a" ), 0 ) and
-      --eq2( f( "a", "b" ), 1 ) and
-      --eq2( f( "a", "aa" ), 1 ) and
-      --eq2( f( "aa", "a" ), 1 ) and
-      --eq2( f( "aa", "aa" ), 0 ) and
-      --eq2( f( "ab", "aa" ), 1 ) and
-      --eq2( f( "aa", "ab" ), 1 ) and
-      --eq2( f( "bb", "aa" ), 2 ) and
-      --eq2( f( "Vtank", "Vivo" ), 4 ) and
-      --eq2( f( "Vivo", "Vtank" ), 4 ) and
-      --eq2( f( "Cykablyat", "Cyakblayt" ), 4 ) and
-      --eq2( f( "Hørde", "Horde" ), 1 )
+--local f = wrap( Levenshtein2 )
+--return eq2( f( "", "" ), 0 ) and
+--eq2( f( "a", "a" ), 0 ) and
+--eq2( f( "a", "b" ), 1 ) and
+--eq2( f( "a", "aa" ), 1 ) and
+--eq2( f( "aa", "a" ), 1 ) and
+--eq2( f( "aa", "aa" ), 0 ) and
+--eq2( f( "ab", "aa" ), 1 ) and
+--eq2( f( "aa", "ab" ), 1 ) and
+--eq2( f( "bb", "aa" ), 2 ) and
+--eq2( f( "Vtank", "Vivo" ), 4 ) and
+--eq2( f( "Vivo", "Vtank" ), 4 ) and
+--eq2( f( "Cykablyat", "Cyakblayt" ), 4 ) and
+--eq2( f( "Hørde", "Horde" ), 1 )
 --end )
 
 local function Levenshtein( s1, s2 )
@@ -207,7 +209,8 @@ end
 -- Creates a 2D matrix
 local function matrix( row, col )
   local m = {}
-  for i = 1, row do m[ i ] = {}
+  for i = 1, row do
+    m[ i ] = {}
     for j = 1, col do m[ i ][ j ] = 0 end
   end
   return m
@@ -223,8 +226,10 @@ local function lev_iter_based( strA, strB )
   for j = 1, col do M[ 1 ][ j ] = j - 1 end
   for i = 2, row do
     for j = 2, col do
-      if (strA:sub( i - 1, i - 1 ) == strB:sub( j - 1, j - 1 )) then cost = 0
-      else cost = 1
+      if (strA:sub( i - 1, i - 1 ) == strB:sub( j - 1, j - 1 )) then
+        cost = 0
+      else
+        cost = 1
       end
       M[ i ][ j ] = min( M[ i - 1 ][ j ] + 1, M[ i ][ j - 1 ] + 1, M[ i - 1 ][ j - 1 ] + cost )
     end
@@ -239,8 +244,11 @@ local function GetSimilarityPredictions( playersInGroupWhoDidNotSoftRes, players
     local predictions = {}
 
     for _, candidate in pairs( playersNotInGroupWhoSoftRessed ) do
-      local prediction = { [ "candidate" ] = candidate, [ "similarity" ] = StringSimilarity( player, candidate ),
-        [ "levenshtein" ] = Levenshtein( player, candidate ) }
+      local prediction = {
+        [ "candidate" ] = candidate,
+        [ "similarity" ] = StringSimilarity( player, candidate ),
+        [ "levenshtein" ] = Levenshtein( player, candidate )
+      }
       table.insert( predictions, prediction )
     end
 
@@ -280,8 +288,10 @@ function AssignPredictions( predictions, threshold )
     local topCandidate = prediction[ 1 ]
 
     if topCandidate[ "similarity" ] >= threshold then
-      results[ player ] = { [ "override" ] = topCandidate[ "candidate" ],
-        [ "similarity" ] = formatPercent( topCandidate[ "similarity" ] ) }
+      results[ player ] = {
+        [ "override" ] = topCandidate[ "candidate" ],
+        [ "similarity" ] = formatPercent( topCandidate[ "similarity" ] )
+      }
     end
   end
 
@@ -502,9 +512,8 @@ end )
 
 ---
 
-local lib_stub = require("LibStub")
+local lib_stub = require( "LibStub" )
 
 test( "Make sure LibStub is loaded", function()
   return lib_stub ~= nil
 end )
-

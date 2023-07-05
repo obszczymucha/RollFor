@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -22,7 +22,7 @@ GenericSpec = {}
 
 function GenericSpec:should_load_roll_for()
   -- When
-  local result = LibStub( "RollFor-1" )
+  local result = LibStub( "RollFor-2" )
 
   -- Expect
   lu.assertNotNil( result )

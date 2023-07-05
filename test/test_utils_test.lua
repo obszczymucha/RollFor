@@ -1,7 +1,10 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../Libs/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
+utils.load_libstub()
+local modules = require( "src/modules" )
+local map = modules.map
 
 TestUtilsSpec = {}
 
@@ -37,6 +40,20 @@ function TestUtilsSpec:should_flatten_a_table_into_another_table()
 
   -- Then
   lu.assertEquals( result, { "a", { "b", "d" }, { "e" }, "f", "c" } )
+end
+
+function TestUtilsSpec:should_map_a_table()
+  -- Given
+  local input = {
+    { name = "Princess", id = 1 },
+    { name = "Kenny",    id = 2 }
+  }
+
+  -- When
+  local result = map( input, function( v ) return v.id end )
+
+  -- Then
+  lu.assertEquals( result, { 1, 2 } )
 end
 
 os.exit( lu.LuaUnit.run() )

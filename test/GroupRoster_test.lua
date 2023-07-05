@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../src/?.lua;../Libs/?.lua;../Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local mocking = require( "test/mocking" )
@@ -12,7 +12,8 @@ local gr = require( "src/GroupRoster" )
 -- mock_api() checks if the type is a function and then ungroups the result.
 -- This allows us adding multiple entries.
 local function player( name )
-  return function() return {
+  return function()
+    return {
       mock( "UnitName", { [ "player" ] = name } ),
       mock( "IsInGroup", false )
     }
@@ -24,7 +25,13 @@ local function group( _player, is_in_raid, ... )
 
   return function()
     return {
-      mock( "UnitName", { [ "player" ] = _player } ),
+      mock( "UnitName", {
+        [ "player" ] = _player,
+        [ "party1" ] = args[ 1 ],
+        [ "party2" ] = args[ 2 ],
+        [ "party3" ] = args[ 3 ],
+        [ "party4" ] = args[ 4 ]
+      } ),
       mock( "IsInGroup", true ),
       mock( "IsInRaid", is_in_raid ),
       ---@diagnostic disable-next-line: deprecated
