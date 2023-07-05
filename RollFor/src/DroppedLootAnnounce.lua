@@ -36,7 +36,7 @@ local function process_dropped_item( item_index )
   if not link then return nil end
 
   local quality = select( 5, modules.api.GetLootSlotInfo( item_index ) ) or 0
-  if quality < RollFor.settings.lootQualityThreshold then return nil end
+  if quality < RollFor.settings.announce_loot_quality_threshold then return nil end
 
   local item_id = item_utils.get_item_id( link )
   local item_name = item_utils.get_item_name( link )

@@ -49,6 +49,7 @@ local function create_components()
   M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
 
   M.trade_tracker = m.TradeTracker.new(
+    M.ace_timer,
     function( recipient, items_given, items_received )
       for i = 1, #items_given do
         local item = items_given[ i ]
