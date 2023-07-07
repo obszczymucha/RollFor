@@ -434,7 +434,7 @@ local function make_loot_slot_info( items )
 
   for i = 1, #items do
     local item = items[ i ]
-    table.insert( result, function() return nil, nil, nil, nil, item.quality or 4 end )
+    table.insert( result, function() return nil, nil, nil, item.quality or 4 end )
   end
 
   return result
@@ -446,12 +446,12 @@ function M.loot( ... )
   M.mock( "GetNumLootItems", count )
 
   if count > 0 then
-    M.mock( "GetLootSourceInfo", items[ 1 ].source_id )
+    M.mock( "UnitGUID", items[ 1 ].source_id )
     M.mock_table_function( "GetLootSlotLink", make_loot_slot_links( items ) )
     M.mock_table_function( "GetLootSlotInfo", make_loot_slot_info( items ) )
   end
 
-  M.fire_event( "LOOT_READY" )
+  M.fire_event( "LOOT_OPENED" )
 end
 
 function M.item( name, id, quality )

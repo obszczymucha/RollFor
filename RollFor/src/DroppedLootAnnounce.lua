@@ -172,7 +172,7 @@ function M.process_dropped_items( softres )
   for i = 1, item_count do
     local item = process_dropped_item( i )
 
-    if item then table.insert( items, item ) end
+    if item and item.id ~= 29434 then table.insert( items, item ) end
   end
 
   local summary = M.create_item_summary( items, softres )

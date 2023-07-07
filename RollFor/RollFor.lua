@@ -412,7 +412,7 @@ local function simulate_loot_dropped( args )
   modules.real_api = modules.api
   modules.api = modules.clone( modules.api )
   M.api()[ "GetNumLootItems" ] = function() return #item_links end
-  M.api()[ "GetLootSourceInfo" ] = function() return tostring( modules.lua.time() ) end
+  M.api()[ "UnitGUID" ] = function() return tostring( modules.lua.time() ) end
   mock_table_function( "GetLootSlotLink", item_links )
   mock_table_function( "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
 
