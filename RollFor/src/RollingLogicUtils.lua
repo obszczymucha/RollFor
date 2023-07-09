@@ -51,7 +51,8 @@ function M.one_roll( player_name )
 end
 
 function M.all_present_players( group_roster )
-  return map( group_roster.get_all_players_in_my_group(), M.one_roll )
+  local player_names = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
+  return map( player_names, M.one_roll )
 end
 
 function M.have_all_players_rolled( rollers )

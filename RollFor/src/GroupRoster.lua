@@ -13,22 +13,22 @@ function M.new( api )
 
     if not api().IsInGroup() then
       local name = my_name() -- This breaks in game if we dont assign it to the variable.
-      table.insert( result, name )
+      local class = api().UnitClass( "player" )
+      table.insert( result, { name = name, class = class } )
       return result
     end
 
     if api().IsInRaid() then
       for i = 1, 40 do
-        local player_name = api().GetRaidRosterInfo( i )
-        if player_name then table.insert( result, player_name ) end
+        local name, _, _, _, class = api().GetRaidRosterInfo( i )
+        if name then table.insert( result, { name = name, class = class } ) end
       end
     else
-      local name = my_name()
-      table.insert( result, name )
-
-      for i = 1, 4 do
-        local player_name = api().UnitName( "party" .. i )
-        if player_name then table.insert( result, player_name ) end
+      local party = { "player", "party1", "party2", "party3", "party4" }
+      for _, v in ipairs( party ) do
+        local name = api().UnitName( v )
+        local class = api().UnitClass( v )
+        if name and class then table.insert( result, { name = name, class = class } ) end
       end
     end
 
@@ -36,10 +36,10 @@ function M.new( api )
   end
 
   local function is_player_in_my_group( player_name )
-    local player_names = get_all_players_in_my_group()
+    local players = get_all_players_in_my_group()
 
-    for _, player in pairs( player_names ) do
-      if string.lower( player ) == string.lower( player_name ) then return true end
+    for _, player in pairs( players ) do
+      if string.lower( player.name ) == string.lower( player_name ) then return true end
     end
 
     return false

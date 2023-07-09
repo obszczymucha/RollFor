@@ -26,5 +26,9 @@ function M.parse_all_links( item_links )
   return result
 end
 
+function M.make_item( id, name, link, quality )
+  return { id = id, name = name, link = link, quality = quality }
+end
+
 modules.ItemUtils = M
 return M

@@ -42,10 +42,12 @@ local function create_components()
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = m.DroppedLoot.new( M.db )
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.softres )
+  M.master_loot_tracker = m.MasterLootTracker.new()
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.master_loot_tracker, M.softres )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres )
-  M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item )
+  M.master_loot_frame = m.MasterLootFrame.new( M.group_roster )
+  M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
   M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
 
   M.trade_tracker = m.TradeTracker.new(
@@ -398,9 +400,6 @@ local function make_loot_slot_info( count, quality )
   return result
 end
 
-function M.on_loot_ready()
-end
-
 local function simulate_loot_dropped( args )
   local item_links = M.item_utils.parse_all_links( args )
 
@@ -416,7 +415,16 @@ local function simulate_loot_dropped( args )
   mock_table_function( "GetLootSlotLink", item_links )
   mock_table_function( "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
 
-  M.dropped_loot_announce.on_loot_ready()
+  M.dropped_loot_announce.on_loot_opened()
+end
+
+function M.on_loot_opened()
+  M.dropped_loot_announce.on_loot_opened()
+  M.master_loot.on_loot_opened()
+end
+
+function M.on_loot_closed()
+  M.master_loot.on_loot_closed()
 end
 
 local function setup_slash_commands()

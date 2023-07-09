@@ -10,26 +10,26 @@ M.lua = {
 }
 
 M.colors = {
-  highlight = function( word )
-    return string.format( "|cffff9f69%s|r", word )
+  highlight = function( text )
+    return string.format( "|cffff9f69%s|r", text )
   end,
-  blue = function( word )
-    return string.format( "|cff209ff9%s|r", word )
+  blue = function( text )
+    return string.format( "|cff209ff9%s|r", text )
   end,
-  white = function( word )
-    return string.format( "|cffffffff%s|r", word )
+  white = function( text )
+    return string.format( "|cffffffff%s|r", text )
   end,
-  red = function( word )
-    return string.format( "|cffff2f2f%s|r", word )
+  red = function( text )
+    return string.format( "|cffff2f2f%s|r", text )
   end,
-  orange = function( word )
-    return string.format( "|cffff8f2f%s|r", word )
+  orange = function( text )
+    return string.format( "|cffff8f2f%s|r", text )
   end,
-  grey = function( word )
-    return string.format( "|cff9f9f9f%s|r", word )
+  grey = function( text )
+    return string.format( "|cff9f9f9f%s|r", text )
   end,
-  green = function( word )
-    return string.format( "|cff2fff5f%s|r", word )
+  green = function( text )
+    return string.format( "|cff2fff5f%s|r", text )
   end
 }
 
@@ -38,7 +38,7 @@ M.colors.name_matcher = M.colors.blue
 M.colors.hl = M.colors.highlight
 
 function M.pretty_print( message, color_fn )
-  local c = color_fn or M.colors.blue
+  local c = color_fn and type( color_fn ) == "function" and color_fn or color_fn and type( color_fn ) == "string" and M.colors[ color_fn ] or M.colors.blue
   M.api.ChatFrame1:AddMessage( string.format( "%s: %s", c( "RollFor" ), message ) )
 end
 
@@ -91,7 +91,7 @@ function M.get_group_chat_type()
 end
 
 function M.decolorize( input )
-  return string.gsub( input, "|c%x%x%x%x%x%x%x%x([^|]+)|r", "%1" )
+  return input and string.gsub( input, "|c%x%x%x%x%x%x%x%x([^|]+)|r", "%1" )
 end
 
 function M.dump( o )
@@ -258,4 +258,30 @@ function M.find( value, t, extract_field )
   return nil
 end
 
+function M.idempotent_hookscript( frame, event, callback )
+  if not frame.RollForHookScript then
+    frame.RollForHookScript = frame.HookScript
+
+    frame.HookScript = function( self, _event, f )
+      if _event:find( "RollForIdempotent", 1, true ) == 1 then
+        if not frame[ _event ] then
+          local real_event = _event:gsub( "RollForIdempotent", "" )
+          frame.RollForHookScript( self, real_event, f )
+          frame[ _event ] = true
+        end
+      else
+        frame.RollForHookScript( self, _event, f )
+      end
+    end
+  end
+
+  frame:HookScript( "RollForIdempotent" .. event, callback )
+end
+
+function M.colorize_item_by_quality( item_name, item_quality )
+  local color = M.api.ITEM_QUALITY_COLORS[ item_quality ].hex
+  return color .. item_name .. M.api.FONT_COLOR_CODE_CLOSE
+end
+
+RollFor.pretty_print = M.pretty_print
 return M

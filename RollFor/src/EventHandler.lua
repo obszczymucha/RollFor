@@ -24,11 +24,11 @@ function M.handle_events( main )
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( ... )
     elseif event == "LOOT_OPENED" then
-      main.dropped_loot_announce.on_loot_ready()
-    elseif event == "OPEN_MASTER_LOOT_LIST" then
-      main.master_loot.on_open_master_loot_list()
+      main.on_loot_opened()
+    elseif event == "LOOT_CLOSED" then
+      main.on_loot_closed()
     elseif event == "LOOT_SLOT_CLEARED" then
-      main.master_loot.on_loot_slot_cleared()
+      main.master_loot.on_loot_slot_cleared( ... )
     elseif event == "TRADE_SHOW" then
       main.trade_tracker.on_trade_show()
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
@@ -43,6 +43,11 @@ function M.handle_events( main )
       main.trade_tracker.on_trade_request_cancel()
     elseif event == "GROUP_ROSTER_UPDATE" then
       main.on_group_roster_update()
+    elseif event == "UI_ERROR_MESSAGE" then
+      local message = unpack( { ... } )
+      if message == "That player's inventory is full" then
+        main.master_loot.on_recipient_inventory_full()
+      end
     end
   end
 
@@ -55,6 +60,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_FORMED" )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
   frame:RegisterEvent( "LOOT_OPENED" )
+  frame:RegisterEvent( "LOOT_CLOSED" )
   frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
   frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
   frame:RegisterEvent( "TRADE_SHOW" )
@@ -64,6 +70,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
   frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
+  frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:SetScript( "OnEvent", eventHandler )
 end
 

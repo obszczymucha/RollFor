@@ -7,6 +7,7 @@
 
 Libs\Libs.xml
 src\Backport.lua
+settings.lua
 src\modules.lua
 src\ItemUtils.lua
 src\RollingLogicUtils.lua
@@ -28,9 +29,10 @@ src\EventHandler.lua
 src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
+src\MasterLootFrame.lua
 src\SoftResCheck.lua
 src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua
 src\TieRollingLogic.lua
+src\MasterLootTracker.lua
 RollFor.lua
-settings.lua

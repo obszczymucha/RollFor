@@ -4,6 +4,7 @@ if modules.NameAutoMatcher then return end
 local M = {}
 
 local count = modules.count_elements
+local map = modules.map
 
 local function to_map( t )
   local result = {}
@@ -106,8 +107,11 @@ local function get_similarity_predictions( present_players_who_did_not_softres, 
     local predictions = {}
 
     for _, candidate in pairs( absent_players_who_did_softres ) do
-      local prediction = { [ "candidate" ] = candidate, [ "similarity" ] = string_similarity( player, candidate ),
-        [ "levenshtein" ] = get_levenshtein( player, candidate ) }
+      local prediction = {
+        [ "candidate" ] = candidate,
+        [ "similarity" ] = string_similarity( player, candidate ),
+        [ "levenshtein" ] = get_levenshtein( player, candidate )
+      }
       table.insert( predictions, prediction )
     end
 
@@ -158,8 +162,11 @@ local function assign_predictions( predictions, top_threshold, bottom_threshold 
     local similarity = top_candidate[ "similarity" ]
     local levenshtein = top_candidate[ "levenshtein" ]
 
-    local match = { [ "matched_name" ] = top_candidate[ "candidate" ], [ "similarity" ] = format_4( similarity ),
-      [ "levenshtein" ] = levenshtein }
+    local match = {
+      [ "matched_name" ] = top_candidate[ "candidate" ],
+      [ "similarity" ] = format_4( similarity ),
+      [ "levenshtein" ] = levenshtein
+    }
 
     if similarity >= (top_threshold or 0.57) then
       results[ player ] = match
@@ -179,7 +186,7 @@ function M.new( group_roster, softres, top_threshold, bottom_threshold )
     matched_names = {}
     matched_names_below_threshold = {}
 
-    local present_players = group_roster.get_all_players_in_my_group()
+    local present_players = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
     local softres_player_names = softres.get_all_softres_player_names()
 
     local present_players_who_did_not_softres = is_in_left_but_not_in_right( present_players, softres_player_names )

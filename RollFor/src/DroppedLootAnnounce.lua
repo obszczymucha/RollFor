@@ -4,10 +4,7 @@ if modules.DroppedLootAnnounce then return end
 
 local M = {}
 local item_utils = modules.ItemUtils
-
-M.item = function( id, name, link, quality )
-  return { id = id, name = name, link = link, quality = quality }
-end
+local make_item = item_utils.make_item
 
 local function distinct( items )
   local result = {}
@@ -31,17 +28,17 @@ local function distinct( items )
   return result
 end
 
-local function process_dropped_item( item_index )
-  local link = modules.api.GetLootSlotLink( item_index )
+local function process_dropped_item( slot )
+  local link = modules.api.GetLootSlotLink( slot )
   if not link then return nil end
 
-  local quality = select( 4, modules.api.GetLootSlotInfo( item_index ) ) or 0
-  if quality < RollFor.settings.announce_loot_quality_threshold then return nil end
+  local quality = select( 4, modules.api.GetLootSlotInfo( slot ) ) or 0
+  if quality < modules.api.GetLootThreshold() then return nil end
 
   local item_id = item_utils.get_item_id( link )
   local item_name = item_utils.get_item_name( link )
 
-  return M.item( item_id, item_name, link, quality )
+  return make_item( item_id, item_name, link, quality )
 end
 
 local function commify( t, f )
@@ -164,15 +161,18 @@ function M.create_item_announcements( summary )
   return stringify( sort( result ) )
 end
 
-function M.process_dropped_items( softres )
+function M.process_dropped_items( master_loot_tracker, softres )
   local source_guid = modules.api.UnitGUID( "target" )
   local items = {}
   local item_count = modules.api.GetNumLootItems()
 
-  for i = 1, item_count do
-    local item = process_dropped_item( i )
+  for slot = 1, item_count do
+    local item = process_dropped_item( slot )
 
-    if item and item.id ~= 29434 then table.insert( items, item ) end
+    if item and item.id ~= 29434 then
+      table.insert( items, item )
+      master_loot_tracker.add( slot, item )
+    end
   end
 
   local summary = M.create_item_summary( items, softres )
@@ -214,11 +214,11 @@ function M.create_item_summary( items, softres )
   return result
 end
 
-function M.new( dropped_loot, softres )
+function M.new( dropped_loot, master_loot_tracker, softres )
   local announcing = false
   local announced_source_ids = {}
 
-  local function on_loot_ready()
+  local function on_loot_opened()
     if not modules.is_player_master_looter() or announcing then
       if modules.real_api then
         modules.api = modules.real_api
@@ -228,7 +228,8 @@ function M.new( dropped_loot, softres )
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( softres )
+    master_loot_tracker.clear()
+    local source_guid, items, announcements = M.process_dropped_items( master_loot_tracker, softres )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 
@@ -236,10 +237,12 @@ function M.new( dropped_loot, softres )
     local item_count = #items
 
     local target = modules.api.UnitName( "target" )
-    local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( " by %s", target ) or ""
+    local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( "%s dropped ", target ) or ""
 
     if item_count > 0 then
-      modules.api.SendChatMessage( string.format( "%s item%s dropped%s:", item_count, item_count > 1 and "s" or "", target_msg ), modules.get_group_chat_type() )
+      modules.api.SendChatMessage(
+      string.format( "%s%s item%s%s", target_msg, item_count, item_count > 1 and "s" or "", target_msg == "" and " dropped:" or ":" ),
+        modules.get_group_chat_type() )
 
       for i = 1, item_count do
         local item = items[ i ]
@@ -258,7 +261,7 @@ function M.new( dropped_loot, softres )
   end
 
   return {
-    on_loot_ready = on_loot_ready
+    on_loot_opened = on_loot_opened
   }
 end
 

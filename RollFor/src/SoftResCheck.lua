@@ -4,6 +4,7 @@ if modules.SoftResCheck then return end
 local M = {}
 
 local filter = modules.filter
+local map = modules.map
 local negate = modules.negate
 local colors = modules.colors
 local pretty_print = function( text ) modules.pretty_print( text, colors.softres ) end
@@ -38,7 +39,8 @@ end
 
 function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
   local function show_who_is_not_softressing()
-    local not_softressing = filter( group_roster.get_all_players_in_my_group(), negate( softres.is_player_softressing ) )
+    local player_names = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
+    local not_softressing = filter( player_names, negate( softres.is_player_softressing ) )
 
     if #not_softressing == 0 then
       modules.pretty_print( "All players in the group are soft-ressing.", colors.green )

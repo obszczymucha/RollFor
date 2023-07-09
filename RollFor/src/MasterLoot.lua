@@ -3,102 +3,155 @@ local modules = libStub( "RollFor-Modules" )
 if modules.MasterLoot then return end
 
 local M = {}
-
 local pretty_print = modules.pretty_print
+local hl = modules.colors.hl
 
-local function idempotent_hookscript( frame, event, callback )
-  if not frame.RollForHookScript then
-    frame.RollForHookScript = frame.HookScript
+function M.new( dropped_loot, award_item, master_loot_frame, master_loot_tracker )
+  local m_receiving_player_name
+  local m_confirmed_slot
 
-    frame.HookScript = function( self, _event, f )
-      if _event:find( "RollForIdempotent", 1, true ) == 1 then
-        if not frame[ _event ] then
-          local real_event = _event:gsub( "RollForIdempotent", "" )
-          frame.RollForHookScript( self, real_event, f )
-          frame[ _event ] = true
-        end
-      else
-        frame.RollForHookScript( self, _event, f )
-      end
-    end
-  end
-
-  frame:HookScript( "RollForIdempotent" .. event, callback )
-end
-
-local function find_loot_confirmation_details()
-  local frames = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
-
-  for i = 1, #frames do
-    local base_frame_name = frames[ i ]
-    local frame = _G[ base_frame_name .. "Text" ]
-
-    if frame and frame:IsVisible() and frame.text_arg1 and frame.text_arg2 then
-      local yes_button = _G[ base_frame_name .. "Button1" ]
-      local no_button = _G[ base_frame_name .. "Button2" ]
-
-      return base_frame_name, yes_button, no_button
-    end
-  end
-
-  return nil
-end
-
-function M.new( dropped_loot, award_item )
-  local item_to_be_awarded
-  local item_award_confirmed
-
-  local function hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
-    idempotent_hookscript( yes_button, "OnClick", function()
-      local text_frame = _G[ base_frame_name .. "Text" ]
-      local player = text_frame and text_frame.text_arg2
-      local colored_item_name = text_frame and text_frame.text_arg1
-
-      if player and colored_item_name then
-        item_to_be_awarded = { player = player, colored_item_name = colored_item_name }
-        item_award_confirmed = true
-        pretty_print( string.format( "Attempting to award %s with %s.", item_to_be_awarded.player, item_to_be_awarded.colored_item_name ) )
-      end
-    end )
-
-    idempotent_hookscript( no_button, "OnClick", function()
-      item_award_confirmed = false
-      item_to_be_awarded = nil
-    end )
-  end
-
-  local function on_open_master_loot_list()
-    for k, frame in pairs( modules.api.MasterLooterFrame ) do
-      if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
-        idempotent_hookscript( frame, "OnClick", function()
-          local base_frame_name, yes_button, no_button = find_loot_confirmation_details()
-          if base_frame_name and yes_button and no_button then
-            hook_loot_confirmation_events( base_frame_name, yes_button, no_button )
-          end
-        end )
-      end
-    end
-  end
-
-  local function on_loot_slot_cleared()
-    if item_to_be_awarded and item_award_confirmed then
-      local item_name = modules.decolorize( item_to_be_awarded.colored_item_name )
+  local function on_loot_slot_cleared( slot )
+    if m_receiving_player_name and m_confirmed_slot then
+      local item_name = modules.api.LootFrame.selectedItemName
+      local item_quality = modules.api.LootFrame.selectedQuality
       local item_id = dropped_loot.get_dropped_item_id( item_name )
+      local item = master_loot_tracker.get( slot )
+      local colored_item_name = modules.colorize_item_by_quality( item_name, item_quality )
 
       if item_id then
-        award_item( item_to_be_awarded.player, item_id, item_name, item_to_be_awarded.colored_item_name )
+        award_item( m_receiving_player_name, item_id, item_name, item.link )
+        master_loot_tracker.remove( slot )
       else
-        pretty_print( string.format( "Cannot determine item id for %s.", item_to_be_awarded.colored_item_name ) )
+        pretty_print( string.format( "Cannot determine item id for %s.", colored_item_name ) )
       end
 
-      item_to_be_awarded = nil
-      item_award_confirmed = false
+      m_receiving_player_name = nil
+      m_confirmed_slot = nil
+      master_loot_frame.hide()
+    end
+  end
+
+  local function on_confirm( slot, player )
+    m_receiving_player_name = player.name
+    m_confirmed_slot = slot
+    modules.api.GiveMasterLoot( slot, player.index )
+    master_loot_frame.hide()
+  end
+
+  local function normal_loot( button )
+    m_receiving_player_name = nil
+    m_confirmed_slot = nil
+    button:OriginalOnClick()
+  end
+
+  local function master_loot( button )
+    m_receiving_player_name = nil
+    m_confirmed_slot = nil
+    local item_name = _G[ button:GetName() .. "Text" ]:GetText()
+    modules.api.LootFrame.selectedQuality = button.quality
+    modules.api.LootFrame.selectedItemName = item_name
+    modules.api.LootFrame.selectedSlot = button.slot
+    master_loot_frame.create( on_confirm )
+    master_loot_frame.hide()
+
+    if (master_loot_frame.create_candidate_frames()) then
+      master_loot_frame.anchor( button )
+      master_loot_frame.show()
+    else
+      modules.pretty_print( "Game API is broken. It doesn't return any Master Loot candidates." )
+      normal_loot( button )
+    end
+  end
+
+  local function on_loot_opened()
+    m_receiving_player_name = nil
+    m_confirmed_slot = nil
+
+    -- TODO: Maybe extract this to a separate UI-only handling component and keep the logic pure.
+    for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+      local name = "LootButton" .. i
+      local button = _G[ name ]
+
+      if button then
+        if not button.OriginalOnClick then button.OriginalOnClick = button:GetScript( "OnClick" ) end
+
+        button:SetScript( "OnClick",
+          function( self, mouse_button )
+            if mouse_button == "RightButton" then
+              master_loot_frame.hide()
+              normal_loot( self )
+              return
+            end
+
+            if modules.api.IsModifiedClick( "CHATLINK" ) then
+              modules.api.ChatFrameEditBox:Show()
+              modules.api.ChatFrameEditBox:SetText( "/rf" )
+              modules.api.ChatEdit_InsertLink( modules.api.GetLootSlotLink( self.slot ) )
+              return
+            end
+
+            if mouse_button == "LeftButton" and modules.api.IsAltKeyDown() then
+              modules.api.ChatFrameEditBox:Show()
+              modules.api.ChatFrameEditBox:SetText( "/rr" )
+              modules.api.ChatEdit_InsertLink( modules.api.GetLootSlotLink( self.slot ) )
+              return
+            end
+
+            if self.hasItem and self.quality and self.quality >= modules.api.GetLootThreshold() then
+              modules.api.CloseDropDownMenus()
+              master_loot( self )
+              return
+            end
+
+            master_loot_frame.hide()
+            normal_loot( self )
+          end
+        )
+      end
+    end
+  end
+
+  local function on_loot_closed()
+    master_loot_frame.hide()
+    local items_left = master_loot_tracker.count()
+
+    if not m_confirmed_slot and not m_receiving_player_name then
+      if items_left > 0 then pretty_print( "Not all items were distributed." ) end
+      return
+    end
+
+    if items_left == 0 then return end
+    local item = master_loot_tracker.get( m_confirmed_slot )
+
+    if items_left > 1 then
+      pretty_print( "%s (slot %s) was supposed to be given to %s.", item and item.link or "Item", m_confirmed_slot, m_receiving_player_name )
+      return
+    end
+
+    if item == nil then
+      pretty_print( "A different slot left in the tracker.", "red" )
+      return
+    end
+
+    award_item( m_receiving_player_name, item.id, item.name, item.link )
+    master_loot_tracker.remove( m_confirmed_slot )
+    m_receiving_player_name = nil
+    m_confirmed_slot = nil
+  end
+
+  local on_recipient_inventory_full = function()
+    if m_receiving_player_name and m_confirmed_slot then
+      pretty_print( string.format( "%s's inventory is full.", hl( m_receiving_player_name ) ), "red" )
+      m_receiving_player_name = nil
+      m_confirmed_slot = nil
     end
   end
 
   return {
     on_loot_slot_cleared = on_loot_slot_cleared,
-    on_open_master_loot_list = on_open_master_loot_list
+    on_loot_opened = on_loot_opened,
+    on_loot_closed = on_loot_closed,
+    on_recipient_inventory_full = on_recipient_inventory_full
   }
 end
 
