@@ -283,5 +283,11 @@ function M.colorize_item_by_quality( item_name, item_quality )
   return color .. item_name .. M.api.FONT_COLOR_CODE_CLOSE
 end
 
+function M.colorize_player_by_class( name, class )
+  if not class then return name end
+  local color = M.api.RAID_CLASS_COLORS[ class:upper() ].colorStr
+  return "|c" .. color .. name .. M.api.FONT_COLOR_CODE_CLOSE
+end
+
 RollFor.pretty_print = M.pretty_print
 return M

@@ -46,8 +46,8 @@ local function create_components()
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.master_loot_tracker, M.softres )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres )
-  M.master_loot_frame = m.MasterLootFrame.new( M.group_roster )
-  M.master_loot = m.MasterLoot.new( M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
+  M.master_loot_frame = m.MasterLootFrame.new()
+  M.master_loot = m.MasterLoot.new( M.group_roster, M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
   M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
 
   M.trade_tracker = m.TradeTracker.new(

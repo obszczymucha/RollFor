@@ -3,8 +3,8 @@ local modules = libStub( "RollFor-Modules" )
 if modules.MasterLootFrame then return end
 
 local M = {}
-local confirmation_dialog_key = "ROLLFOR_MASTER_LOOT_CONFIRMATION_DIALOG"
 
+local confirmation_dialog_key = "ROLLFOR_MASTER_LOOT_CONFIRMATION_DIALOG"
 local button_width = 85
 local button_height = 16
 local horizontal_padding = 3
@@ -21,6 +21,48 @@ end
 
 local function press( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.7 )
+end
+
+local function hook_loot_buttons( reset_confirmation, normal_loot, master_loot, hide )
+  for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+    local name = "LootButton" .. i
+    local button = _G[ name ]
+
+    if not button.OriginalOnClick then button.OriginalOnClick = button:GetScript( "OnClick" ) end
+
+    button:SetScript( "OnClick", function( self, mouse_button )
+      reset_confirmation()
+
+      if mouse_button == "RightButton" then
+        hide()
+        normal_loot( self )
+        return
+      end
+
+      if modules.api.IsModifiedClick( "CHATLINK" ) then
+        modules.api.ChatFrameEditBox:Show()
+        modules.api.ChatFrameEditBox:SetText( "/rf" )
+        modules.api.ChatEdit_InsertLink( modules.api.GetLootSlotLink( self.slot ) )
+        return
+      end
+
+      if mouse_button == "LeftButton" and modules.api.IsAltKeyDown() then
+        modules.api.ChatFrameEditBox:Show()
+        modules.api.ChatFrameEditBox:SetText( "/rr" )
+        modules.api.ChatEdit_InsertLink( modules.api.GetLootSlotLink( self.slot ) )
+        return
+      end
+
+      if self.hasItem and self.quality and self.quality >= modules.api.GetLootThreshold() then
+        modules.api.CloseDropDownMenus()
+        master_loot( self )
+        return
+      end
+
+      hide()
+      normal_loot( self )
+    end )
+  end
 end
 
 local function create_main_frame()
@@ -56,54 +98,14 @@ local function create_main_frame()
   return frame
 end
 
-local function get_candidates( group_roster )
-  local result = {}
-  local players = group_roster.get_all_players_in_my_group()
-
-  for i = 1, 40 do
-    local name = modules.api.GetMasterLootCandidate( i )
-
-    for _, p in ipairs( players ) do
-      if name == p.name then
-        table.insert( result, { name = name, class = p.class, value = i } )
-      end
-    end
-  end
-
-  return result
-end
-
----@diagnostic disable-next-line: unused-function, unused-local
-local function get_dummy_candidates()
-  return {
-    { name = "Ohhaimark",    class = "Warrior", value = 1 },
-    { name = "Obszczymucha", class = "Druid",   value = 2 },
-    { name = "Jogobobek",    class = "Hunter",  value = 3 },
-    { name = "Xiaorotflmao", class = "Shaman",  value = 4 },
-    { name = "Kacprawcze",   class = "Priest",  value = 5 },
-    { name = "Psikutas",     class = "Paladin", value = 6 },
-    { name = "Motoko",       class = "Rogue",   value = 7 },
-    { name = "Blanchot",     class = "Warrior", value = 8 },
-    { name = "Adamsandler",  class = "Druid",   value = 9 },
-    { name = "Johnstamos",   class = "Hunter",  value = 10 },
-    { name = "Xiaolmao",     class = "Shaman",  value = 11 },
-    { name = "Ronaldtramp",  class = "Priest",  value = 12 },
-    { name = "Psikuta",      class = "Paladin", value = 13 },
-    { name = "Kusanagi",     class = "Rogue",   value = 14 },
-    { name = "Chuj",         class = "Priest",  value = 15 },
-  }
-end
-
 local function create_button( parent, index )
   local frame = modules.api.CreateFrame( "Button", "RollForLootFrameButton" .. index, parent )
+  local width = 5 + horizontal_padding + modules.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
+  local height = -5 - vertical_padding - ((index - 1) % rows) * (button_height + vertical_padding)
   frame:SetWidth( button_width )
   frame:SetHeight( button_height )
-  frame:SetPoint( "TOPLEFT", parent, "TOPLEFT", 5 + horizontal_padding + modules.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding),
-    -5 - vertical_padding - ((index - 1) % rows) * (button_height + vertical_padding) )
-  frame:SetBackdrop( {
-    bgFile = "Interface\\Buttons\\WHITE8x8"
-  } )
-  --dim( button )
+  frame:SetPoint( "TOPLEFT", parent, "TOPLEFT", width, height )
+  frame:SetBackdrop( { bgFile = "Interface\\Buttons\\WHITE8x8" } )
   frame:SetNormalTexture( "" )
   frame.parent = parent
 
@@ -130,9 +132,10 @@ local function create_button( parent, index )
   return frame
 end
 
-local function show_confirmation_dialog( item_name, item_quality, player_name )
+local function show_confirmation_dialog( item_name, item_quality, player )
   local colored_item_name = modules.colorize_item_by_quality( item_name, item_quality )
-  return modules.api.StaticPopup_Show( confirmation_dialog_key, colored_item_name, player_name );
+  local colored_player_name = modules.colorize_player_by_class( player.name, player.class )
+  return modules.api.StaticPopup_Show( confirmation_dialog_key, colored_item_name, colored_player_name );
 end
 
 local function create_custom_confirmation_dialog_data( on_confirm )
@@ -148,21 +151,7 @@ local function create_custom_confirmation_dialog_data( on_confirm )
   };
 end
 
-local function sort( candidates )
-  table.sort( candidates,
-    function( lhs, rhs )
-      if lhs.class < rhs.class then
-        return true
-      elseif lhs.class > rhs.class then
-        return false
-      end
-
-      return lhs.name < rhs.name
-    end
-  )
-end
-
-function M.new( group_roster )
+function M.new()
   local m_frame
   local m_buttons = {}
   local m_dialog
@@ -179,14 +168,8 @@ function M.new( group_roster )
     end
   end
 
-  local function create_candidate_frames()
-    local candidates = get_candidates( group_roster )
-    sort( candidates )
+  local function create_candidate_frames( candidates )
     local total = #candidates
-
-    if total == 0 then
-      return false
-    end
 
     local columns = modules.api.math.ceil( total / rows )
     local total_rows = total < 5 and total or rows
@@ -194,47 +177,50 @@ function M.new( group_roster )
     m_frame:SetWidth( (button_width + horizontal_padding) * columns + horizontal_padding + 11 )
     m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 11 )
 
-    for i = 1, 40 do
+    local function loop( i )
       if i > total then
         if m_buttons[ i ] then m_buttons[ i ]:Hide() end
-      else
-        local candidate = candidates[ i ]
-
-        if not m_buttons[ i ] then
-          m_buttons[ i ] = create_button( m_frame, i )
-        end
-
-        local button = m_buttons[ i ]
-        button.text:SetText( candidate.name )
-        local color = modules.api.RAID_CLASS_COLORS[ candidate.class:upper() ]
-        button.color = color
-        button.value = candidate.value
-        button.player_name = candidate.name
-
-        if color then
-          button.text:SetTextColor( color.r, color.g, color.b )
-          dim( button )
-        else
-          button.text:SetTextColor( 1, 1, 1 )
-        end
-
-        button:SetScript( "OnClick", function( self )
-          local item_name = modules.api.LootFrame.selectedItemName
-          local item_quality = modules.api.LootFrame.selectedQuality
-
-          hide_dialog()
-          m_dialog = show_confirmation_dialog( item_name, item_quality, self.player_name )
-
-          if (m_dialog) then
-            m_dialog.data = { name = self.player_name, index = self.value }
-          end
-        end )
-
-        button:Show()
+        return
       end
+
+      local candidate = candidates[ i ]
+
+      if not m_buttons[ i ] then
+        m_buttons[ i ] = create_button( m_frame, i )
+      end
+
+      local button = m_buttons[ i ]
+      button.text:SetText( candidate.name )
+      local color = modules.api.RAID_CLASS_COLORS[ candidate.class:upper() ]
+      button.color = color
+      button.value = candidate.value
+      button.player = candidate
+
+      if color then
+        button.text:SetTextColor( color.r, color.g, color.b )
+        dim( button )
+      else
+        button.text:SetTextColor( 1, 1, 1 )
+      end
+
+      button:SetScript( "OnClick", function( self )
+        local item_name = modules.api.LootFrame.selectedItemName
+        local item_quality = modules.api.LootFrame.selectedQuality
+
+        hide_dialog()
+        m_dialog = show_confirmation_dialog( item_name, item_quality, self.player )
+
+        if (m_dialog) then
+          m_dialog.data = self.player
+        end
+      end )
+
+      button:Show()
     end
 
-    return true
+    for i = 1, 40 do
+      loop( i )
+    end
   end
 
   local function show()
@@ -251,6 +237,7 @@ function M.new( group_roster )
   end
 
   return {
+    hook_loot_buttons = hook_loot_buttons,
     create = create,
     create_candidate_frames = create_candidate_frames,
     show = show,

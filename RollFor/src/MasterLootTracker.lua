@@ -3,7 +3,6 @@ local modules = libStub( "RollFor-Modules" )
 if modules.MasterLootTracker then return end
 
 local M = {}
-local pretty_print = modules.pretty_print
 local count_elements = modules.count_elements
 
 function M.new()
