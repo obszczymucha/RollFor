@@ -65,6 +65,15 @@ local function hook_loot_buttons( reset_confirmation, normal_loot, master_loot, 
   end
 end
 
+local function restore_loot_buttons()
+  for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+    local name = "LootButton" .. i
+    local button = _G[ name ]
+
+    if button.OriginalOnClick then button:SetScript( "OnClick", button.OriginalOnClick ) end
+  end
+end
+
 local function create_main_frame()
   local frame = modules.api.CreateFrame( "Frame", "RollForLootFrame" )
   frame:Hide()
@@ -238,6 +247,7 @@ function M.new()
 
   return {
     hook_loot_buttons = hook_loot_buttons,
+    restore_loot_buttons = restore_loot_buttons,
     create = create,
     create_candidate_frames = create_candidate_frames,
     show = show,

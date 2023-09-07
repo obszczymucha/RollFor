@@ -35,4 +35,5 @@ src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua
 src\TieRollingLogic.lua
 src\MasterLootTracker.lua
-RollFor.lua
+src\RaidRoll.lua
+main.lua

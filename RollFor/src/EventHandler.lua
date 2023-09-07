@@ -47,6 +47,8 @@ function M.handle_events( main )
       local message = unpack( { ... } )
       if message == "That player's inventory is full" then
         main.master_loot.on_recipient_inventory_full()
+      elseif message == "You are too far away to loot that corpse." then
+        main.master_loot.on_player_is_too_far()
       end
     end
   end

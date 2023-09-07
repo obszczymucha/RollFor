@@ -5,6 +5,7 @@ if modules.MasterLoot then return end
 local M = {}
 local pretty_print = modules.pretty_print
 local hl = modules.colors.hl
+local buttons_hooked = false
 
 local function get_dummy_candidates()
   return {
@@ -119,9 +120,18 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
   end
 
   local function on_loot_opened()
-    if not modules.is_player_master_looter() then return end
+    if not modules.is_player_master_looter() then
+      if buttons_hooked then
+        master_loot_frame.restore_loot_buttons()
+        buttons_hooked = false
+      end
+
+      return
+    end
+
     reset_confirmation()
     master_loot_frame.hook_loot_buttons( reset_confirmation, normal_loot, master_loot, master_loot_frame.hide )
+    buttons_hooked = true
   end
 
   local function on_loot_closed()
@@ -155,7 +165,14 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
 
   local on_recipient_inventory_full = function()
     if m_confirmed then
-      pretty_print( string.format( "%s's inventory is full.", hl( m_confirmed.player.name ) ), "red" )
+      pretty_print( string.format( "%s's inventory is full and cannot receive the item.", hl( m_confirmed.player.name ) ), "red" )
+      reset_confirmation()
+    end
+  end
+
+  local on_player_is_too_far = function()
+    if m_confirmed then
+      pretty_print( string.format( "%s is too far to receive the item.", hl( m_confirmed.player.name ) ), "red" )
       reset_confirmation()
     end
   end
@@ -164,7 +181,8 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
     on_loot_slot_cleared = on_loot_slot_cleared,
     on_loot_opened = on_loot_opened,
     on_loot_closed = on_loot_closed,
-    on_recipient_inventory_full = on_recipient_inventory_full
+    on_recipient_inventory_full = on_recipient_inventory_full,
+    on_player_is_too_far = on_player_is_too_far
   }
 end
 
