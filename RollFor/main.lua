@@ -357,7 +357,7 @@ local function process_softres_slash_command( args )
     M.softres.clear( true )
   end
 
-  M.softres_gui.show()
+  M.softres_gui.toggle()
 end
 
 local function on_roll( player, roll, min, max )

@@ -30,6 +30,7 @@ local control_backdrop = {
 
 local function create_frame( api, on_close, on_dirty )
   local frame = api().CreateFrame( "Frame", "RollForSoftResLootFrame", UIParent )
+  frame:Hide()
   frame:SetWidth( 565 )
   frame:SetHeight( 300 )
   frame:SetPoint( "CENTER", UIParent, "CENTER", 0, 0 )
@@ -152,7 +153,7 @@ function M.new( api, import_encoded_softres_data, softres_check )
   local frame
 
   local function on_close()
-    if dirty and softres_data then
+    if dirty and softres_data and softres_data ~= "" then
       dirty = false
       import_encoded_softres_data( softres_data, function()
         softres_check.check_softres()
@@ -175,10 +176,15 @@ function M.new( api, import_encoded_softres_data, softres_check )
     end
   end
 
-  local function show()
+  local function toggle()
     if not frame then frame = create_frame( api, on_close, on_dirty ) end
-    frame.editbox:SetText( softres_data or "" )
-    frame:Show()
+
+    if frame:IsVisible() then
+      frame:Hide()
+    else
+      frame.editbox:SetText( softres_data or "" )
+      frame:Show()
+    end
   end
 
   local function load( data )
@@ -190,7 +196,7 @@ function M.new( api, import_encoded_softres_data, softres_check )
   end
 
   return {
-    show = show,
+    toggle = toggle,
     load = load,
     clear = clear
   }
