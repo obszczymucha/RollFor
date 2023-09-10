@@ -4,13 +4,17 @@ local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 utils.mock_wow_api()
 utils.load_libstub()
+local LootQuality = utils.LootQuality
+local loot_threshold = utils.loot_threshold
 local modules = require( "src/modules" )
-require( "src/ItemUtils" )
+local ItemUtils = require( "src/ItemUtils" )
+local make_item = ItemUtils.make_item
 require( "settings" )
 require( "src/SoftRes" )
+require( "src/MasterLootTracker" )
 local mod = require( "src/DroppedLootAnnounce" )
 
-local item = function( name, id, quality ) return mod.item( id, name, string.format( "[%s]", name ), quality or 4 ) end
+local item = function( name, id, quality ) return make_item( id, name, string.format( "[%s]", name ), quality or 4 ) end
 
 local hr = function( ... )
   local result = {}
@@ -26,13 +30,13 @@ DroppedLootAnnounceSpec = {}
 
 function DroppedLootAnnounceSpec:should_create_item_details()
   -- When
-  local result = mod.item( 123, "Hearthstone", "fake link", 4 )
+  local result = make_item( 123, "Hearthstone", "fake link", 4 )
 
   -- Expect
   lu.assertEquals( result.id, 123 )
   lu.assertEquals( result.name, "Hearthstone" )
   lu.assertEquals( result.link, "fake link" )
-  lu.assertEquals( result.quality, 4 )
+  lu.assertEquals( result.quality, LootQuality.Epic )
 end
 
 local function softres( softresses, hardresses )
@@ -68,7 +72,7 @@ function ItemSummarySpec:should_create_the_summary()
   lu.assertEquals( #items, 4 )
   lu.assertEquals( #result, 3 )
   lu.assertEquals( result[ 1 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
     how_many_dropped = 2,
     softressers = {
       { name = "Obszczymucha", rolls = 1 },
@@ -78,14 +82,14 @@ function ItemSummarySpec:should_create_the_summary()
   } )
 
   lu.assertEquals( result[ 2 ], {
-    item = { id = 111, link = "[Big mace]", name = "Big mace", quality = 4 },
+    item = { id = 111, link = "[Big mace]", name = "Big mace", quality = LootQuality.Epic },
     how_many_dropped = 1,
     softressers = {},
     is_hardressed = true
   } )
 
   lu.assertEquals( result[ 3 ], {
-    item = { id = 112, link = "[Small mace]", name = "Small mace", quality = 4 },
+    item = { id = 112, link = "[Small mace]", name = "Small mace", quality = LootQuality.Epic },
     how_many_dropped = 1,
     softressers = {},
     is_hardressed = false
@@ -105,7 +109,7 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   lu.assertEquals( #items, 4 )
   lu.assertEquals( #result, 2 )
   lu.assertEquals( result[ 1 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
     how_many_dropped = 2,
     softressers = {
       { name = "Obszczymucha", rolls = 1 },
@@ -115,7 +119,7 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   } )
 
   lu.assertEquals( result[ 2 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = 4 },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
     how_many_dropped = 2,
     softressers = {},
     is_hardressed = false
@@ -317,13 +321,13 @@ local function make_quality( _item )
 end
 
 local function process_dropped_items( loot_quality_threshold )
-  utils.loot_quality_threshold( loot_quality_threshold or 4 )
-  return mod.process_dropped_items( modules.SoftRes.new() )
+  utils.loot_quality_threshold( loot_quality_threshold or LootQuality.Epic )
+  return mod.process_dropped_items( modules.MasterLootTracker.new(), modules.SoftRes.new() )
 end
 
 function ProcessDroppedItemsIntegrationSpec:should_return_source_guid()
   -- Given
-  local items = { item( "Legendary item", 123, 5 ), item( "Epic item", 124, 4 ) }
+  local items = { item( "Legendary item", 123, LootQuality.Legendary ), item( "Epic item", 124, LootQuality.Epic ) }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.targetting_enemy( "Nightbane" )
@@ -339,7 +343,7 @@ end
 
 function ProcessDroppedItemsIntegrationSpec:should_return_dropped_items()
   -- Given
-  local items = { item( "Legendary item", 123, 5 ), item( "Epic item", 124, 4 ) }
+  local items = { item( "Legendary item", 123, LootQuality.Legendary ), item( "Epic item", 124, LootQuality.Epic ) }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.targetting_enemy( "Nightbane" )
@@ -351,25 +355,26 @@ function ProcessDroppedItemsIntegrationSpec:should_return_dropped_items()
 
   -- Then
   lu.assertEquals( result, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic }
   } )
 end
 
 function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_epic_quality_threshold()
   -- Given
   local items = {
-    item( "Legendary item", 123, 5 ),
-    item( "Epic item", 124, 4 ),
-    item( "Rare item", 125, 3 ),
-    item( "Uncommon item", 126, 2 ),
-    item( "Common item", 127, 1 ),
-    item( "Poor item", 128, 0 )
+    item( "Legendary item", 123, LootQuality.Legendary ),
+    item( "Epic item", 124, LootQuality.Epic ),
+    item( "Rare item", 125, LootQuality.Rare ),
+    item( "Uncommon item", 126, LootQuality.Uncommon ),
+    item( "Common item", 127, LootQuality.Common ),
+    item( "Poor item", 128, LootQuality.Poor )
   }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.mock_table_function( "GetLootSlotLink", map( items, make_link ) )
   utils.mock_table_function( "GetLootSlotInfo", map( items, make_quality ) )
+  loot_threshold( LootQuality.Epic )
 
   -- When
   local _, items_dropped, announcements = process_dropped_items()
@@ -377,8 +382,8 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_epic_quali
 
   -- Then
   lu.assertEquals( items_dropped, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic }
   } )
 
   lu.assertEquals( result, {
@@ -390,17 +395,18 @@ end
 function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_rare_quality_threshold()
   -- Given
   local items = {
-    item( "Legendary item", 123, 5 ),
-    item( "Epic item", 124, 4 ),
-    item( "Rare item", 125, 3 ),
-    item( "Uncommon item", 126, 2 ),
-    item( "Common item", 127, 1 ),
-    item( "Poor item", 128, 0 )
+    item( "Legendary item", 123, LootQuality.Legendary ),
+    item( "Epic item", 124, LootQuality.Epic ),
+    item( "Rare item", 125, LootQuality.Rare ),
+    item( "Uncommon item", 126, LootQuality.Uncommon ),
+    item( "Common item", 127, LootQuality.Common ),
+    item( "Poor item", 128, LootQuality.Poor )
   }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.mock_table_function( "GetLootSlotLink", map( items, make_link ) )
   utils.mock_table_function( "GetLootSlotInfo", map( items, make_quality ) )
+  loot_threshold( LootQuality.Rare )
 
   -- When
   local _, items_dropped, announcements = process_dropped_items( 3 )
@@ -408,9 +414,9 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_rare_quali
 
   -- Then
   lu.assertEquals( items_dropped, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 },
-    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = 3 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic },
+    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = LootQuality.Rare }
   } )
 
   lu.assertEquals( result, {
@@ -423,17 +429,18 @@ end
 function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_uncommon_quality_threshold()
   -- Given
   local items = {
-    item( "Legendary item", 123, 5 ),
-    item( "Epic item", 124, 4 ),
-    item( "Rare item", 125, 3 ),
-    item( "Uncommon item", 126, 2 ),
-    item( "Common item", 127, 1 ),
-    item( "Poor item", 128, 0 )
+    item( "Legendary item", 123, LootQuality.Legendary ),
+    item( "Epic item", 124, LootQuality.Epic ),
+    item( "Rare item", 125, LootQuality.Rare ),
+    item( "Uncommon item", 126, LootQuality.Uncommon ),
+    item( "Common item", 127, LootQuality.Common ),
+    item( "Poor item", 128, LootQuality.Poor )
   }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.mock_table_function( "GetLootSlotLink", map( items, make_link ) )
   utils.mock_table_function( "GetLootSlotInfo", map( items, make_quality ) )
+  loot_threshold( LootQuality.Uncommon )
 
   -- When
   local _, items_dropped, announcements = process_dropped_items( 2 )
@@ -441,10 +448,10 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_uncommon_q
 
   -- Then
   lu.assertEquals( items_dropped, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 },
-    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = 3 },
-    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = 2 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic },
+    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = LootQuality.Rare },
+    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = LootQuality.Uncommon }
   } )
 
   lu.assertEquals( result, {
@@ -458,17 +465,18 @@ end
 function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_common_quality_threshold()
   -- Given
   local items = {
-    item( "Legendary item", 123, 5 ),
-    item( "Epic item", 124, 4 ),
-    item( "Rare item", 125, 3 ),
-    item( "Uncommon item", 126, 2 ),
-    item( "Common item", 127, 1 ),
-    item( "Poor item", 128, 0 )
+    item( "Legendary item", 123, LootQuality.Legendary ),
+    item( "Epic item", 124, LootQuality.Epic ),
+    item( "Rare item", 125, LootQuality.Rare ),
+    item( "Uncommon item", 126, LootQuality.Uncommon ),
+    item( "Common item", 127, LootQuality.Common ),
+    item( "Poor item", 128, LootQuality.Poor )
   }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.mock_table_function( "GetLootSlotLink", map( items, make_link ) )
   utils.mock_table_function( "GetLootSlotInfo", map( items, make_quality ) )
+  loot_threshold( LootQuality.Common )
 
   -- When
   local _, items_dropped, announcements = process_dropped_items( 1 )
@@ -476,11 +484,11 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_common_qua
 
   -- Then
   lu.assertEquals( items_dropped, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 },
-    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = 3 },
-    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = 2 },
-    { id = 127, link = "|cff9d9d9d|Hitem:127::::::::20:257::::::|h[Common item]|h|r",    name = "Common item",    quality = 1 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic },
+    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = LootQuality.Rare },
+    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = LootQuality.Uncommon },
+    { id = 127, link = "|cff9d9d9d|Hitem:127::::::::20:257::::::|h[Common item]|h|r",    name = "Common item",    quality = LootQuality.Common }
   } )
 
   lu.assertEquals( result, {
@@ -492,20 +500,21 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_common_qua
   } )
 end
 
-function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_poor_quality_threshold()
+function ProcessDroppedItemsIntegrationSpec:should_not_filter_any_items_if_threshold_is_set_to_poor_quality()
   -- Given
   local items = {
-    item( "Legendary item", 123, 5 ),
-    item( "Epic item", 124, 4 ),
-    item( "Rare item", 125, 3 ),
-    item( "Uncommon item", 126, 2 ),
-    item( "Common item", 127, 1 ),
-    item( "Poor item", 128, 0 )
+    item( "Legendary item", 123, LootQuality.Legendary ),
+    item( "Epic item", 124, LootQuality.Epic ),
+    item( "Rare item", 125, LootQuality.Rare ),
+    item( "Uncommon item", 126, LootQuality.Uncommon ),
+    item( "Common item", 127, LootQuality.Common ),
+    item( "Poor item", 128, LootQuality.Poor )
   }
   utils.mock( "GetNumLootItems", #items )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
   utils.mock_table_function( "GetLootSlotLink", map( items, make_link ) )
   utils.mock_table_function( "GetLootSlotInfo", map( items, make_quality ) )
+  loot_threshold( LootQuality.Poor )
 
   -- When
   local _, items_dropped, announcements = process_dropped_items( 0 )
@@ -513,12 +522,12 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_poor_quali
 
   -- Then
   lu.assertEquals( items_dropped, {
-    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = 5 },
-    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = 4 },
-    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = 3 },
-    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = 2 },
-    { id = 127, link = "|cff9d9d9d|Hitem:127::::::::20:257::::::|h[Common item]|h|r",    name = "Common item",    quality = 1 },
-    { id = 128, link = "|cff9d9d9d|Hitem:128::::::::20:257::::::|h[Poor item]|h|r",      name = "Poor item",      quality = 0 }
+    { id = 123, link = "|cff9d9d9d|Hitem:123::::::::20:257::::::|h[Legendary item]|h|r", name = "Legendary item", quality = LootQuality.Legendary },
+    { id = 124, link = "|cff9d9d9d|Hitem:124::::::::20:257::::::|h[Epic item]|h|r",      name = "Epic item",      quality = LootQuality.Epic },
+    { id = 125, link = "|cff9d9d9d|Hitem:125::::::::20:257::::::|h[Rare item]|h|r",      name = "Rare item",      quality = LootQuality.Rare },
+    { id = 126, link = "|cff9d9d9d|Hitem:126::::::::20:257::::::|h[Uncommon item]|h|r",  name = "Uncommon item",  quality = LootQuality.Uncommon },
+    { id = 127, link = "|cff9d9d9d|Hitem:127::::::::20:257::::::|h[Common item]|h|r",    name = "Common item",    quality = LootQuality.Common },
+    { id = 128, link = "|cff9d9d9d|Hitem:128::::::::20:257::::::|h[Poor item]|h|r",      name = "Poor item",      quality = LootQuality.Poor }
   } )
 
   lu.assertEquals( result, {

@@ -250,7 +250,7 @@ function M.on_rolling_finished( item, count, winners, rerolling )
   end
 end
 
-local function roll_for( item, count, seconds, info, ignore_softres, result_callback )
+local function roll_for( item, count, seconds, info, ignore_softres )
   m_rolling_logic = ignore_softres and non_softres_rolling_logic( item, count, info, M.on_rolling_finished ) or
       soft_res_rolling_logic( item, count, info, M.on_rolling_finished )
 

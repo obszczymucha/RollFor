@@ -293,5 +293,4 @@ function M.colorize_player_by_class( name, class )
   return "|c" .. color .. name .. M.api.FONT_COLOR_CODE_CLOSE
 end
 
-RollFor.pretty_print = M.pretty_print
 return M

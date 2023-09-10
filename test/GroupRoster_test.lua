@@ -4,38 +4,52 @@ local lu = require( "luaunit" )
 local mocking = require( "test/mocking" )
 local mock_api = mocking.mock_api
 local mock = mocking.mock
+local smart_table = mocking.smart_table
+local packed_value = mocking.packed_value
 
 require( "test/utils" ).load_libstub()
 require( "src/modules" )
 local gr = require( "src/GroupRoster" )
 
 -- mock_api() checks if the type is a function and then ungroups the result.
--- This allows us adding multiple entries.
+-- This allows us mocking multiple functions at the same time.
 local function player( name )
   return function()
     return {
-      mock( "UnitName", { [ "player" ] = name } ),
-      mock( "IsInGroup", false )
+      mock( "UnitName", smart_table( { [ "player" ] = name } ) ),
+      mock( "IsInGroup", false ),
+      mock( "UnitClass", "Warrior" )
     }
   end
 end
 
+local function make_warriors( players )
+  local result = {}
+
+  for _, name in ipairs( players ) do
+    table.insert( result, packed_value( { name, nil, nil, nil, "Warrior" } ) )
+  end
+
+  return result
+end
+
 local function group( _player, is_in_raid, ... )
   local args = { ... }
+  local all_players = { _player, table.unpack( args ) }
 
   return function()
     return {
-      mock( "UnitName", {
+      mock( "UnitName", smart_table( {
         [ "player" ] = _player,
         [ "party1" ] = args[ 1 ],
         [ "party2" ] = args[ 2 ],
         [ "party3" ] = args[ 3 ],
         [ "party4" ] = args[ 4 ]
-      } ),
+      } ) ),
       mock( "IsInGroup", true ),
       mock( "IsInRaid", is_in_raid ),
-      ---@diagnostic disable-next-line: deprecated
-      mock( "GetRaidRosterInfo", _player, table.unpack( args ) )
+      mock( "UnitClass", "Warrior" ), -- For simplicity everyone is a warrior.
+      mock( "GetRaidRosterInfo", smart_table( make_warriors( all_players ) ) )
     }
   end
 end
@@ -73,7 +87,7 @@ function GetAllPlayersInMyGroupSpec:should_return_my_name_if_not_in_group()
   local result = mod.get_all_players_in_my_group()
 
   -- Then
-  lu.assertEquals( result, { "Psikutas" } )
+  lu.assertEquals( result, { { class = "Warrior", name = "Psikutas" } } )
 end
 
 function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party()
@@ -85,7 +99,10 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party()
   local result = mod.get_all_players_in_my_group()
 
   -- Then
-  lu.assertEquals( result, { "Psikutas", "Obszczymucha" } )
+  lu.assertEquals( result, {
+    { class = "Warrior", name = "Psikutas" },
+    { class = "Warrior", name = "Obszczymucha" }
+  } )
 end
 
 function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid()
@@ -97,7 +114,10 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid()
   local result = mod.get_all_players_in_my_group()
 
   -- Then
-  lu.assertEquals( result, { "Psikutas", "Obszczymucha" } )
+  lu.assertEquals( result, {
+    { class = "Warrior", name = "Psikutas" },
+    { class = "Warrior", name = "Obszczymucha" }
+  } )
 end
 
 IsPlayerInMyGroupSpec = {}

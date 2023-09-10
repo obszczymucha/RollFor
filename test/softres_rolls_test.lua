@@ -2,6 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
+
 local player = utils.player
 local master_looter = utils.master_looter
 local leader = utils.raid_leader
@@ -23,12 +24,16 @@ local tick = utils.tick
 local loot = utils.loot
 local item = utils.item
 local award = utils.award
-local trade_with = utils.trade_with
-local trade_items = utils.trade_items
-local trade_complete = utils.trade_complete
+--I had to hack trading with timers in 2.4.3, so I'm not sure if I want to test this now.
+--local trade_with = utils.trade_with
+--local trade_items = utils.trade_items
+--local trade_complete = utils.trade_complete
 local master_loot = utils.master_loot
 local confirm_master_looting = utils.confirm_master_looting
 local clear_dropped_items_db = utils.clear_dropped_items_db
+local loot_threshold = utils.loot_threshold
+local LootQuality = utils.LootQuality
+local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
 
 SoftResIntegrationSpec = {}
 
@@ -200,6 +205,8 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Ponpon" )
   soft_res( sr( "Psikutas", 123 ) )
+  loot_threshold( LootQuality.Epic )
+  mock_blizzard_loot_buttons()
 
   -- When
   loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
@@ -223,33 +230,33 @@ end
 
 --Disabling due to fucking 2.4.3 hack with delayed trade check.
 --function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_trade()
-  ---- Given
-  --master_looter( "Psikutas" )
-  --is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
-  --soft_res( sr( "Obszczymucha", 123 ) )
+---- Given
+--master_looter( "Psikutas" )
+--is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
+--soft_res( sr( "Obszczymucha", 123 ) )
 
-  ---- When
-  --loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
-  --roll_for( "Hearthstone", 1, 123 )
-  --trade_with( "Obszczymucha" )
-  --trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
-  --trade_complete()
-  --roll_for( "Hearthstone", 1, 123 )
-  --roll( "Ponpon", 1 )
-  --tick( 8 )
+---- When
+--loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+--roll_for( "Hearthstone", 1, 123 )
+--trade_with( "Obszczymucha" )
+--trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
+--trade_complete()
+--roll_for( "Hearthstone", 1, 123 )
+--roll( "Ponpon", 1 )
+--tick( 8 )
 
-  ---- Then
-  --assert_messages(
-    --r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
-    --rw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
-    --c( "RollFor: Started trading with Obszczymucha." ),
-    --c( "RollFor: Trading with Obszczymucha complete." ),
-    ----c( "RollFor: Obszczymucha received [Hearthstone]." ),
-    --rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
-    --r( "Stopping rolls in 3", "2", "1" ),
-    --cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
-    --rolling_finished()
-  --)
+---- Then
+--assert_messages(
+--r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
+--rw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
+--c( "RollFor: Started trading with Obszczymucha." ),
+--c( "RollFor: Trading with Obszczymucha complete." ),
+----c( "RollFor: Obszczymucha received [Hearthstone]." ),
+--rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
+--r( "Stopping rolls in 3", "2", "1" ),
+--cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
+--rolling_finished()
+--)
 --end
 
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
@@ -258,12 +265,13 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
   soft_res( sr( "Obszczymucha", 123 ) )
+  mock_blizzard_loot_buttons()
 
   -- When
   loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
   roll_for( "Hearthstone", 1, 123 )
   master_loot( "Hearthstone", "Obszczymucha" )
-  confirm_master_looting()
+  confirm_master_looting( "Obszczymucha" )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
   tick( 8 )
@@ -272,8 +280,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
     rw( "[Hearthstone] is soft-ressed by Obszczymucha." ),
-    c( "RollFor: Attempting to award Obszczymucha with Hearthstone." ),
-    c( "RollFor: Obszczymucha received Hearthstone." ),
+    c( "RollFor: Obszczymucha received [Hearthstone]." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),

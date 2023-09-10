@@ -6,6 +6,9 @@ local utils = require( "test/utils" )
 local player = utils.player
 local leader = utils.raid_leader
 local is_in_raid = utils.is_in_raid
+local loot_threshold = utils.loot_threshold
+local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
+local LootQuality = utils.LootQuality
 local r = utils.raid_message
 local loot = utils.loot
 local master_looter = utils.master_looter
@@ -22,6 +25,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_that_dropped_if
   -- Given
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  loot_threshold( LootQuality.Epic )
 
   -- When
   loot()
@@ -35,6 +39,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_if_there_are_no
   -- Given
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  loot_threshold( LootQuality.Epic )
 
   -- When
   loot( item( "Hearthstone", 123, 3 ) )
@@ -56,7 +61,7 @@ function DroppedLootAnnounceIntegrationSpec:should_only_show_loot_once()
 
   -- Then
   assert_messages(
-    r( "3 items dropped by Moroes:" ),
+    r( "Moroes dropped 3 items:" ),
     r( "1. 2x[Hearthstone]" ),
     r( "2. [Some item]" )
   )
@@ -73,7 +78,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_loot_that_dropped_if_a_m
 
   -- Then
   assert_messages(
-    r( "2 items dropped by Instructor Razuvious:" ),
+    r( "Instructor Razuvious dropped 2 items:" ),
     r( "1. [Hearthstone]" ),
     r( "2. [Some item]" )
   )
@@ -85,13 +90,15 @@ function DroppedLootAnnounceIntegrationSpec:should_not_announce_badges_of_justic
   targetting_enemy( "Netherspite" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
   utils.mock( "UnitGUID", "PrincessKenny_123" )
+  loot_threshold( LootQuality.Epic )
+  mock_blizzard_loot_buttons()
 
   -- When
   loot( item( "Hearthstone", 123 ), item( "Badge of Justice", 29434 ), item( "Some item", 400 ) )
 
   -- Then
   assert_messages(
-    r( "2 items dropped by Netherspite:" ),
+    r( "Netherspite dropped 2 items:" ),
     r( "1. [Hearthstone]" ),
     r( "2. [Some item]" )
   )

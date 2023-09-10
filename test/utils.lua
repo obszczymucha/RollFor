@@ -22,7 +22,7 @@ function M.debug( message )
   print( string.format( "[ debug ]: %s", message ) )
 end
 
-function M.lndebug( message )
+function M.debugln( message )
   if not M.debug_enabled then return end
   print( "\n" )
   M.debug( message )
@@ -54,17 +54,62 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
-  M.modules().api.CreateFrame = function( _, frameName )
-    return {
+  M.modules().api.CreateFrame = function( type, frameName )
+    local frame = {
       RegisterEvent = function() end,
-      SetScript = function( _, name, callback )
+      SetScript = function( self, name, callback )
         if frameName == "RollForFrame" and name == "OnEvent" then
           M.debug( "Registered OnEvent callback." )
           m_event_callback = callback
         end
+
+        if name == "OnClick" then
+          self.OnClickCallback = callback
+        end
+      end,
+      Show = function() end,
+      Hide = function() end,
+      SetBackdrop = function() end,
+      SetBackdropColor = function() end,
+      SetFrameStrata = function() end,
+      SetWidth = function() end,
+      SetHeight = function() end,
+      SetPoint = function() end,
+      EnableMouse = function() end,
+      SetNormalTexture = function() end,
+      CreateFontString = function()
+        return {
+          SetPoint = function() end,
+          SetText = function() end,
+          SetTextColor = function() end
+        }
+      end,
+      Click = function( self )
+        if self.OnClickCallback then self:OnClickCallback() end
       end
     }
+
+    if type == "Button" then _G[ frameName ] = frame end
+
+    return frame
   end
+  M.modules().api.LOOTFRAME_NUMBUTTONS = 4
+  M.modules().api.StaticPopupDialogs = {}
+  M.modules().api.RAID_CLASS_COLORS = {
+    [ "WARRIOR" ] = {
+      colorStr = "chuj"
+    }
+  }
+  M.modules().api.ITEM_QUALITY_COLORS = {
+    { hex = "asd" },
+    { hex = "blue" },
+    { hex = "green" },
+    { hex = "purple" },
+    { hex = "ass" },
+    { hex = "princess" },
+    { hex = "kenny" }
+  }
+  M.modules().api.FONT_COLOR_CODE_CLOSE = "|r"
 end
 
 function M.highlight( word )
@@ -100,6 +145,7 @@ function M.mock_api()
   M.mock( "UnitIsFriend", false )
   M.mock( "InCombatLockdown", false )
   M.mock( "UnitName", "Psikutas" )
+  M.mock( "UnitClass", "Warrior" )
   M.mock_messages()
 end
 
@@ -151,7 +197,7 @@ function M.run_command( command, args )
   if f then
     f( args )
   else
-    M.lndebug( string.format( "No callback provided for command: ", command ) )
+    M.debugln( string.format( "No callback provided for command: ", command ) )
   end
 end
 
@@ -203,11 +249,11 @@ function M.fire_login_events()
 end
 
 function M.raid_leader( name )
-  return function() return name, 1, nil, nil, nil, nil, nil, nil, nil, nil, m_is_master_looter end
+  return function() return name, 1, nil, nil, "Warrior", nil, nil, nil, nil, nil, m_is_master_looter end
 end
 
 function M.raid_member( name )
-  return function() return name, 0 end
+  return function() return name, 0, nil, nil, "Warrior" end
 end
 
 function M.mock_table_function( name, values )
@@ -289,6 +335,42 @@ function M.is_in_raid( ... )
   M.mock( "IsInGroup", true )
   M.mock( "IsInRaid", true )
   M.mock_table_function( "GetRaidRosterInfo", players )
+  M.mock_table_function( "GetMasterLootCandidate", players )
+end
+
+M.LootQuality = {
+  Poor = 0,
+  Common = 1,
+  Uncommon = 2,
+  Rare = 3,
+  Epic = 4,
+  Legendary = 5
+}
+
+function M.loot_threshold( threshold )
+  M.mock( "GetLootThreshold", threshold )
+end
+
+function M.mock_blizzard_loot_buttons()
+  for i = 1, M.modules().api.LOOTFRAME_NUMBUTTONS do
+    local name = "LootButton" .. i
+    M.mock_object( name, {
+      GetName = function() return name end,
+      GetScript = function() end,
+      SetScript = function( self, event, callback )
+        if event == "OnClick" then
+          self.OnClickCallback = callback
+        end
+      end,
+      Click = function( self )
+        if self.OnClickCallback then
+          self:OnClickCallback()
+        else
+          M.debugln( string.format( "No OnClick callback provided for button: ", name ) )
+        end
+      end
+    } )
+  end
 end
 
 function M.mock_unit_name()
@@ -372,7 +454,6 @@ function M.mock_libraries()
     ScheduleTimer = function( _, f ) f() end
   } )
   M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
-  M.mock_library( "AceGUI-3.0" )
   M.mock_library( "AceDB-3.0", {
     New = function( _, _ )
       return {
@@ -411,7 +492,9 @@ function M.load_real_stuff()
   require( "src/NonSoftResRollingLogic" )
   require( "src/SoftResRollingLogic" )
   require( "src/TieRollingLogic" )
-  require( "RollFor" )
+  require( "src/MasterLootTracker" )
+  require( "src/MasterLootFrame" )
+  require( "main" )
 end
 
 function M.rolling_finished()
@@ -632,122 +715,37 @@ function M.recipient_trades_items( trade_tracker, ... )
   end
 end
 
-local function get_players_in_group( api )
-  local result = {}
-
+local function get_player_frame_from_master_looter_frame( player_name )
   for i = 1, 40 do
-    local player_name = api.GetRaidRosterInfo( i )
-    if player_name then
-      table.insert( result, player_name )
-    end
-  end
+    local button = _G[ "RollForLootFrameButton" .. i ]
 
-  return result
-end
-
-local function mock_frame( frame_name, on_click_callback )
-  local callbacks = {}
-  local visible = false
-
-  local fire_event = function( event_name )
-    if on_click_callback then on_click_callback() end
-
-    if not callbacks[ event_name ] then
-      M.debug( string.format( "No callbacks for %s event in frame %s.", event_name, frame_name ) )
-      return
-    end
-
-    for _, callback in pairs( callbacks[ event_name ] ) do
-      M.debug( string.format( "Firing event %s on frame %s.", event_name, frame_name ) )
-      callback()
-    end
-  end
-
-  local function hook_script( _, event_name, callback )
-    M.debug( string.format( "Hooked event %s in frame %s.", event_name, frame_name ) )
-    callbacks[ event_name ] = callbacks[ event_name ] or {}
-    table.insert( callbacks[ event_name ], callback )
-  end
-
-  local function show()
-    if visible then return end
-
-    visible = true
-    fire_event( "OnShow" )
-  end
-
-  local function close()
-    if not visible then return end
-
-    visible = false
-    fire_event( "OnClose" )
-  end
-
-  local function is_visible()
-    return visible
-  end
-
-  return {
-    fire_event = fire_event,
-    HookScript = hook_script,
-    Show = show,
-    Close = close,
-    IsVisible = is_visible
-  }
-end
-
-local function mock_master_looter_frame( item_name, players )
-  local result = {}
-
-  for i = 1, #players do
-    local frame_name = "player" .. i
-    local player_name = players[ i ]
-
-    local frame = mock_frame( frame_name, function()
-      local text_frame = mock_frame( "StaticPopup1Text" )
-      text_frame.text_arg1 = M.highlight( item_name )
-      text_frame.text_arg2 = player_name
-      text_frame:Show()
-      M.mock_object( "StaticPopup1Text", text_frame )
-
-      local yes_button = mock_frame( "StaticPopup1Button1", function() text_frame:Close() end )
-      M.mock_object( "StaticPopup1Button1", yes_button )
-
-      local no_button = mock_frame( "StaticPopup1Button2", function() text_frame:Close() end )
-      M.mock_object( "StaticPopup1Button2", no_button )
-
-      M.debug( string.format( "Frame clicked: player: %s item: %s", player_name, item_name ) )
-    end )
-
-    frame.player_name = player_name
-    frame.item_name = item_name
-    result[ frame_name ] = frame
-  end
-
-  return result
-end
-
-local function get_player_frame_from_master_looter_frame( player_name, mlf )
-  for k, frame in pairs( mlf ) do
-    if type( k ) == "string" and k:find( "player", 1, true ) == 1 then
-      if frame.player_name == player_name then return frame end
+    if button and button.player and button.player.name == player_name then
+      return button
     end
   end
 end
 
 function M.master_loot( item_name, player_name )
-  local mods = M.modules()
-  local players = get_players_in_group( mods.api )
-  local master_looter_frame = mock_master_looter_frame( item_name, players )
-  M.mock_object( "MasterLooterFrame", master_looter_frame )
-  M.fire_event( "OPEN_MASTER_LOOT_LIST" )
-  local player_frame = get_player_frame_from_master_looter_frame( player_name, master_looter_frame )
-  player_frame.fire_event( "OnClick" )
+  M.mock( "IsModifiedClick", false )
+  M.mock( "CloseDropDownMenus", function() end )
+  local button = _G[ "LootButton1" ]
+  M.mock_object( "LootButton1Text", {
+    GetText = function() return item_name end
+  } )
+  button.hasItem = true
+  button.quality = M.LootQuality.Epic
+  button.slot = 1
+  M.mock_object( "LootFrame", {} )
+  M.mock( "StaticPopup_Show", function() end )
+  button:Click()
+  local player_frame = get_player_frame_from_master_looter_frame( player_name )
+  player_frame:Click()
 end
 
-function M.confirm_master_looting()
-  M.modules().api.StaticPopup1Button1.fire_event( "OnClick" )
-  M.fire_event( "LOOT_SLOT_CLEARED" )
+function M.confirm_master_looting( player_name )
+  M.mock( "GiveMasterLoot", function() end )
+  M.modules().api.StaticPopupDialogs[ "ROLLFOR_MASTER_LOOT_CONFIRMATION_DIALOG" ].OnAccept( { name = player_name, value = 1 } )
+  M.fire_event( "LOOT_SLOT_CLEARED", 1 )
 end
 
 function M.cancel_master_looting()
