@@ -48,7 +48,7 @@ local function create_components()
     M.absent_softres )
   M.master_loot_frame = m.MasterLootFrame.new()
   M.master_loot = m.MasterLoot.new( M.group_roster, M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
-  M.softres_gui = m.SoftResGui.new( M.import_encoded_softres_data, M.softres_check )
+  M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check )
 
   M.trade_tracker = m.TradeTracker.new(
     M.ace_timer,

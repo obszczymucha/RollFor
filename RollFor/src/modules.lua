@@ -119,6 +119,10 @@ function M.fetch_item_link( item_id )
   return itemLink
 end
 
+function M.set_game_tooltip_with_item_id( item_id )
+  M.api.GameTooltip:SetHyperlink( string.format( "item:%s:0:0:0:0:0:0:0", item_id ) )
+end
+
 function M.prettify_table( t, f )
   local result = ""
 

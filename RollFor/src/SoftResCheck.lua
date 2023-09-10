@@ -38,6 +38,8 @@ local function show( players )
 end
 
 function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
+  local refetch_retries = 0
+
   local function show_who_is_not_softressing()
     local player_names = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
     local not_softressing = filter( player_names, negate( softres.is_player_softressing ) )
@@ -62,18 +64,25 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
     show_who_is_not_softressing()
   end
 
-  local function show_softres()
+  local function show_softres( retry )
+    if not retry then refetch_retries = 0 else refetch_retries = refetch_retries + 1 end
+
     local needs_refetch = false
     local softressed_item_ids = softres.get_item_ids()
     local items = {}
+    local unavailable_items = {}
+
     local p = pretty_print
 
     for _, item_id in pairs( softressed_item_ids ) do
       local players = softres.get( item_id )
       local item_link = modules.fetch_item_link( item_id )
 
-      if not item_link then
+      if not item_link and refetch_retries < 3 then
+        modules.set_game_tooltip_with_item_id( item_id )
         needs_refetch = true
+      elseif not item_link then
+        unavailable_items[ item_id ] = players
       else
         items[ item_link ] = players
       end
@@ -81,30 +90,47 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
 
     if needs_refetch then
       modules.pretty_print( "Fetching soft-ressed items details from the server...", colors.grey )
-      ace_timer:ScheduleTimer( show_softres, 1 )
+      refetch_retries = refetch_retries + 1
+      ace_timer:ScheduleTimer( function() show_softres( true ) end, 1 )
       return
     end
 
     local absent_softres_players = absent_softres( softres ).get_all_softres_player_names()
 
-    if modules.count_elements( items ) == 0 then
+    local item_count = modules.count_elements( items )
+    local unavailable_item_count = modules.count_elements( unavailable_items )
+
+    if item_count == 0 and unavailable_item_count == 0 then
       p( "No soft-res items found." )
       return
     end
 
     modules.NameMatchReport.report( name_matcher )
 
-    p( string.format( "Soft-ressed items%s:",
-      #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
-
     local colorize = function( player )
       local c = group_roster.is_player_in_my_group( player.name ) and colors.white or colors.red
       return player.rolls > 1 and string.format( "%s (%s)", c( player.name ), player.rolls ) or string.format( "%s", c( player.name ) )
     end
 
-    for item_link, players in pairs( items ) do
-      if modules.count_elements( players ) > 0 then
-        p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
+    if item_count > 0 then
+      p( string.format( "Soft-ressed items%s:",
+        #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
+
+      for item_link, players in pairs( items ) do
+        if modules.count_elements( players ) > 0 then
+          p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
+        end
+      end
+    end
+
+    if unavailable_item_count > 0 then
+      p( string.format( "Unavailable soft-ressed items%s:",
+        #absent_softres_players > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
+
+      for item_id, players in pairs( unavailable_items ) do
+        if modules.count_elements( players ) > 0 then
+          p( string.format( "%s: %s", item_id, modules.prettify_table( players, colorize ) ) )
+        end
       end
     end
 
