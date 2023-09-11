@@ -214,7 +214,7 @@ function M.create_item_summary( items, softres )
   return result
 end
 
-function M.new( dropped_loot, master_loot_tracker, softres )
+function M.new( announce, dropped_loot, master_loot_tracker, softres )
   local announcing = false
   local announced_source_ids = {}
 
@@ -240,9 +240,8 @@ function M.new( dropped_loot, master_loot_tracker, softres )
     local target_msg = target and not modules.api.UnitIsFriend( "player", "target" ) and string.format( "%s dropped ", target ) or ""
 
     if item_count > 0 then
-      modules.api.SendChatMessage(
-      string.format( "%s%s item%s%s", target_msg, item_count, item_count > 1 and "s" or "", target_msg == "" and " dropped:" or ":" ),
-        modules.get_group_chat_type() )
+      announce(
+        string.format( "%s%s item%s%s", target_msg, item_count, item_count > 1 and "s" or "", target_msg == "" and " dropped:" or ":" ) )
 
       for i = 1, item_count do
         local item = items[ i ]
@@ -250,7 +249,7 @@ function M.new( dropped_loot, master_loot_tracker, softres )
       end
 
       for i = 1, #announcements do
-        modules.api.SendChatMessage( announcements[ i ], modules.get_group_chat_type() )
+        announce( announcements[ i ] )
       end
 
       dropped_loot.persist()

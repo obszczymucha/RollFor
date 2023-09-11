@@ -4,26 +4,38 @@ local minor = 0
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
-M.ace_timer = lib_stub( "AceTimer-3.0" )
-
 local version = string.format( "%s.%s", major, minor )
 local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
 local hl = modules.colors.highlight
 
-local m_timer = nil
-local m_seconds_left = nil
 local m_rolling_logic
 
 local function reset()
-  m_timer = nil
-  m_seconds_left = nil
   m_rolling_logic = nil
+end
+
+local function get_roll_announcement_chat_type( use_raid_warning )
+  local chat_type = modules.get_group_chat_type()
+  if not use_raid_warning then return chat_type end
+
+  local rank = modules.my_raid_rank()
+
+  if chat_type == "RAID" and rank > 0 then
+    return "RAID_WARNING"
+  else
+    return chat_type
+  end
+end
+
+local function announce( text, use_raid_warning )
+  M.api().SendChatMessage( text, get_roll_announcement_chat_type( use_raid_warning ) )
 end
 
 local function create_components()
   local m = modules
 
+  M.ace_timer = lib_stub( "AceTimer-3.0" )
   M.api = function() return m.api end
   M.present_softres = function( softres ) return m.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
   M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
@@ -43,7 +55,7 @@ local function create_components()
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = m.DroppedLoot.new( M.db )
   M.master_loot_tracker = m.MasterLootTracker.new()
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.dropped_loot, M.master_loot_tracker, M.softres )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres )
   M.master_loot_frame = m.MasterLootFrame.new()
@@ -99,21 +111,21 @@ local function on_softres_rolls_available( rollers )
   end
 
   local message = modules.prettify_table( remaining_rollers, transform )
-  M.api().SendChatMessage( string.format( "SR rolls remaining: %s", message ), modules.get_group_chat_type() )
+  announce( string.format( "SR rolls remaining: %s", message ) )
 end
 
-local function non_softres_rolling_logic( item, count, info, on_rolling_finished )
-  return modules.NonSoftResRollingLogic.new( M.group_roster, item, count, info, on_rolling_finished )
+local function non_softres_rolling_logic( item, count, info, seconds, on_rolling_finished )
+  return modules.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, info, seconds, on_rolling_finished )
 end
 
-local function soft_res_rolling_logic( item, count, info, on_rolling_finished )
+local function soft_res_rolling_logic( item, count, info, seconds, on_rolling_finished )
   local softressing_players = M.softres.get( item.id )
 
   if #softressing_players == 0 then
-    return non_softres_rolling_logic( item, count, info, on_rolling_finished )
+    return non_softres_rolling_logic( item, count, info, seconds, on_rolling_finished )
   end
 
-  return modules.SoftResRollingLogic.new( softressing_players, item, count, on_rolling_finished,
+  return modules.SoftResRollingLogic.new( announce, M.ace_timer, softressing_players, item, count, seconds, on_rolling_finished,
     on_softres_rolls_available )
 end
 
@@ -146,57 +158,19 @@ function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
   end
 
   pretty_print( message( top_rollers_str_colored ) )
-  M.api().SendChatMessage( message( top_rollers_str ), modules.get_group_chat_type() )
+  announce( message( top_rollers_str ) )
 
   local prefix = count > 1 and string.format( "%sx", count ) or ""
   local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
 
+  m_rolling_logic = modules.TieRollingLogic.new( announce, players, item, count, M.on_rolling_finished )
   M.ace_timer:ScheduleTimer(
     function()
-      M.api().SendChatMessage( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ),
-        modules.get_group_chat_type() )
+      m_rolling_logic.announce_rolling( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ) )
     end, 2.5 )
-  m_rolling_logic = modules.TieRollingLogic.new( players, item, count, M.on_rolling_finished )
-end
-
-local function cancel_rolling_timer()
-  M.ace_timer:CancelTimer( m_timer )
-  m_timer = nil
-end
-
-local function on_timer()
-  if not m_timer then return end
-
-  if not m_rolling_logic or not m_rolling_logic.is_rolling() then
-    cancel_rolling_timer()
-    return
-  end
-
-  m_seconds_left = m_seconds_left - 1
-
-  if m_seconds_left <= 0 then
-    if m_rolling_logic then m_rolling_logic.stop_rolling() end
-  elseif m_seconds_left == 3 then
-    M.api().SendChatMessage( "Stopping rolls in 3", modules.get_group_chat_type() )
-  elseif m_seconds_left < 3 then
-    M.api().SendChatMessage( m_seconds_left, modules.get_group_chat_type() )
-  end
-end
-
-local function get_roll_announcement_chat_type()
-  local chatType = modules.get_group_chat_type()
-  local rank = modules.my_raid_rank()
-
-  if chatType == "RAID" and rank > 0 then
-    return "RAID_WARNING"
-  else
-    return chatType
-  end
 end
 
 function M.on_rolling_finished( item, count, winners, rerolling )
-  cancel_rolling_timer()
-
   local announce_winners = function( v, top_roll )
     local roll = v.roll
     local players = v.players
@@ -205,15 +179,14 @@ function M.on_rolling_finished( item, count, winners, rerolling )
 
     pretty_print( string.format( "%s %srolled the %shighest (%s) for %s%s.", modules.prettify_table( players, hl ),
       rerolling and "re-" or "", top_roll and "" or "next ", hl( roll ), item.link, os ) )
-    M.api().SendChatMessage(
+    announce(
       string.format( "%s %srolled the %shighest (%d) for %s%s.", modules.prettify_table( players ),
-        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, os ),
-      modules.get_group_chat_type() )
+        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, os ) )
   end
 
   if #winners == 0 then
     pretty_print( string.format( "Nobody rolled for %s.", item.link ) )
-    M.api().SendChatMessage( string.format( "Nobody rolled for %s.", item.link ), modules.get_group_chat_type() )
+    announce( string.format( "Nobody rolled for %s.", item.link ) )
 
     if m_rolling_logic and not m_rolling_logic.is_rolling() then
       pretty_print( string.format( "Rolling for %s has finished.", item.link ) )
@@ -250,25 +223,22 @@ function M.on_rolling_finished( item, count, winners, rerolling )
   end
 end
 
-local function roll_for( item, count, seconds, info, ignore_softres )
-  m_rolling_logic = ignore_softres and non_softres_rolling_logic( item, count, info, M.on_rolling_finished ) or
-      soft_res_rolling_logic( item, count, info, M.on_rolling_finished )
-
-  M.api().SendChatMessage( m_rolling_logic.get_roll_announcement(), get_roll_announcement_chat_type() )
-
-  if not m_rolling_logic.is_rolling() then
-    return
-  end
-
-  m_seconds_left = seconds
-  m_timer = M.ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
-end
-
 local function announce_hr( item )
-  M.api().SendChatMessage( string.format( "%s is hard-ressed.", item ), get_roll_announcement_chat_type() )
+  announce( string.format( "%s is hard-ressed.", item ), true )
 end
 
-local function process_roll_for_slash_command( args, slashCommand, ignore_softres )
+local function parse_args( args )
+  for item_count, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
+    local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
+    local item_id = M.item_utils.get_item_id( item_link )
+    local item = { id = item_id, link = item_link }
+    local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or 8
+
+    return item, count, secs <= 3 and 4 or secs, info
+  end
+end
+
+local function process_roll_slash_command( args, slash_command )
   if not M.api().IsInGroup() then
     pretty_print( "Not in a group." )
     return
@@ -279,25 +249,31 @@ local function process_roll_for_slash_command( args, slashCommand, ignore_softre
     return
   end
 
-  for item_count, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
-    local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
-    local item_id = M.item_utils.get_item_id( item_link )
+  local item, count, seconds, info = parse_args( args )
 
-    --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
-    if M.softres.is_item_hardressed( item_id ) then
-      announce_hr( item_link )
-      return
-    end
+  if not item then
+    pretty_print( string.format( "Usage: %s <%s> [%s]", slash_command, hl( "item" ), hl( "seconds" ) ) )
+  end
 
-    local item = { id = item_id, link = item_link }
-    local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or 8
-
-    roll_for( item, count, secs <= 3 and 4 or secs, info, ignore_softres )
-
+  --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
+  --TODO: What if we wanted to bypass the hard-res?
+  if M.softres.is_item_hardressed( item.id ) then
+    announce_hr( item.link )
     return
   end
 
-  pretty_print( string.format( "Usage: %s <%s> [%s]", slashCommand, hl( "item" ), hl( "seconds" ) ) )
+  if slash_command == SLASH_RF1 then
+    m_rolling_logic = soft_res_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
+  elseif slash_command == SLASH_ARF1 then
+    m_rolling_logic = non_softres_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
+    --elseif slash_command == SLASH_RR1 then
+    --m_rolling_logic = raid_roll_rolling_logic( item, M.on_raid_roll_finished )
+  else
+    pretty_print( string.format( "Unsupported command: %s", hl( slash_command ) ) )
+    return
+  end
+
+  m_rolling_logic.announce_rolling()
 end
 
 local function process_show_sorted_rolls_slash_command( args )
@@ -331,13 +307,11 @@ local function decorate_with_rolling_check( f )
 end
 
 local function process_cancel_roll_slash_command()
-  cancel_rolling_timer()
   m_rolling_logic.cancel_rolling()
 end
 
 local function process_finish_roll_slash_command()
-  cancel_rolling_timer()
-  m_rolling_logic.stop_rolling( true )
+  m_rolling_logic.stop_accepting_rolls( true )
 end
 
 local function setup_storage()
@@ -431,9 +405,11 @@ end
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = "/rf"
-  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_for_slash_command( args, "/rf" ) end
+  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_slash_command( args, SLASH_RF1 ) end
   SLASH_ARF1 = "/arf"
-  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_for_slash_command( args, "/arf", true ) end
+  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_slash_command( args, SLASH_ARF1 ) end
+  --SLASH_RR1 = "/rr"
+  --M.api().SlashCmdList[ "RR" ] = function( args ) process_roll_slash_command( args, SLASH_RR1 ) end
   SLASH_CR1 = "/cr"
   M.api().SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancel_roll_slash_command )
   SLASH_FR1 = "/fr"

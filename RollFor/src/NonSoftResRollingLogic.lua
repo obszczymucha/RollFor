@@ -9,10 +9,12 @@ local merge = modules.merge
 local take = modules.take
 local rlu = modules.RollingLogicUtils
 
-function M.new( group_roster, item, count, info, on_rolling_finished )
+function M.new( announce, ace_timer, group_roster, item, count, info, seconds, on_rolling_finished )
   local mainspec_rollers, mainspec_rolls = rlu.all_present_players( group_roster ), {}
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
-  local rolling = true
+  local rolling = false
+  local seconds_left = seconds
+  local timer
 
   local function have_all_rolls_been_exhausted()
     local mainspec_roll_count = count_elements( mainspec_rolls )
@@ -27,8 +29,18 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
     return rlu.have_all_players_rolled( mainspec_rollers )
   end
 
-  local function find_winner()
+  local function stop_listening()
     rolling = false
+
+    if timer then
+      ace_timer:CancelTimer( timer )
+      timer = nil
+    end
+  end
+
+  local function find_winner()
+    stop_listening()
+
     local mainspec_roll_count = count_elements( mainspec_rolls )
     local offspec_roll_count = count_elements( offspec_rolls )
 
@@ -38,7 +50,9 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
     end
 
     local sorted_mainspec_rolls = rlu.sort_rolls( mainspec_rolls )
-    local sorted_offspec_rolls = map( rlu.sort_rolls( offspec_rolls ), function( v ) v.offspec = true; return v end )
+    local sorted_offspec_rolls = map( rlu.sort_rolls( offspec_rolls ), function( v )
+      v.offspec = true; return v
+    end )
     local winners = take( merge( {}, sorted_mainspec_rolls, sorted_offspec_rolls ), count )
 
     on_rolling_finished( item, count, winners )
@@ -59,12 +73,34 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
     if have_all_rolls_been_exhausted() then find_winner() end
   end
 
-  local function get_roll_announcement()
+  local function stop_accepting_rolls()
+    find_winner()
+  end
+
+  local function on_timer()
+    seconds_left = seconds_left - 1
+
+    if seconds_left <= 0 then
+      stop_accepting_rolls()
+    elseif seconds_left == 3 then
+      announce( "Stopping rolls in 3" )
+    elseif seconds_left < 3 then
+      announce( seconds_left )
+    end
+  end
+
+  local function accept_rolls()
+    rolling = true
+    timer = ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
+  end
+
+  local function announce_rolling()
     local count_str = count > 1 and string.format( "%sx", count ) or ""
     local info_str = info and info ~= "" and string.format( " %s", info ) or " /roll (MS) or /roll 99 (OS)"
     local x_rolls_win = count > 1 and string.format( ". %d top rolls win.", count ) or ""
 
-    return string.format( "Roll for %s%s:%s%s", count_str, item.link, info_str, x_rolls_win )
+    announce( string.format( "Roll for %s%s:%s%s", count_str, item.link, info_str, x_rolls_win ), true )
+    accept_rolls()
   end
 
   local function show_sorted_rolls( limit )
@@ -98,12 +134,8 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
     pretty_print( string.format( "Rolling for %s has %s.", item.link, cancelled and "been cancelled" or "finished" ) )
   end
 
-  local function stop_rolling()
-    find_winner()
-  end
-
   local function cancel_rolling()
-    rolling = false
+    stop_listening()
     print_rolling_complete( true )
   end
 
@@ -112,12 +144,13 @@ function M.new( group_roster, item, count, info, on_rolling_finished )
   end
 
   return {
-    get_roll_announcement = get_roll_announcement,
+    announce_rolling = announce_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
-    stop_rolling = stop_rolling,
+    stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling
+    is_rolling = is_rolling,
+    get_seconds_left = function() return seconds_left end
   }
 end
 

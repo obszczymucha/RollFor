@@ -22,9 +22,11 @@ local function winner_found( rollers, rolls )
   return rlu.has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
 end
 
-function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_available )
+function M.new( announce, ace_timer, rollers, item, count, seconds, on_rolling_finished, on_softres_rolls_available )
   local rolls = {}
-  local rolling = true
+  local rolling = false
+  local seconds_left = seconds
+  local timer
 
   local function have_all_rolls_been_exhausted()
     for _, v in pairs( rollers ) do
@@ -34,12 +36,21 @@ function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_avai
     return true
   end
 
+  local function stop_listening()
+    rolling = false
+
+    if timer then
+      ace_timer:CancelTimer( timer )
+      timer = nil
+    end
+  end
+
   local function find_winner( state )
     local rolls_exhausted = have_all_rolls_been_exhausted()
     if state == State.AfterRoll and not rolls_exhausted then return end
 
     if state == State.ManualStop or rolls_exhausted then
-      rolling = false
+      stop_listening()
     end
 
     local roll_count = count_elements( rolls )
@@ -84,7 +95,28 @@ function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_avai
     find_winner( State.AfterRoll )
   end
 
-  local function get_roll_announcement()
+  local function stop_accepting_rolls( force )
+    find_winner( force and State.ManualStop or State.TimerStopped )
+  end
+
+  local function on_timer()
+    seconds_left = seconds_left - 1
+
+    if seconds_left <= 0 then
+      stop_accepting_rolls()
+    elseif seconds_left == 3 then
+      announce( "Stopping rolls in 3" )
+    elseif seconds_left < 3 then
+      announce( seconds_left )
+    end
+  end
+
+  local function accept_rolls()
+    rolling = true
+    timer = ace_timer:ScheduleRepeatingTimer( on_timer, 1.7 )
+  end
+
+  local function announce_rolling()
     local name_with_rolls = function( player )
       if #rollers == count then return player.name end
       local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
@@ -96,10 +128,10 @@ function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_avai
     local ressed_by = modules.prettify_table( map( rollers, name_with_rolls ) )
 
     if count == #rollers then
-      rolling = false
-      return string.format( "%s is soft-ressed by %s.", item.link, ressed_by )
+      announce( string.format( "%s is soft-ressed by %s.", item.link, ressed_by ), true )
     else
-      return string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win )
+      announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )
+      accept_rolls()
     end
   end
 
@@ -123,10 +155,6 @@ function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_avai
     pretty_print( string.format( "Rolling for %s has %s.", item.link, cancelled and "been cancelled" or "finished" ) )
   end
 
-  local function stop_rolling( force )
-    find_winner( force and State.ManualStop or State.TimerStopped )
-  end
-
   local function cancel_rolling()
     rolling = false
     print_rolling_complete( true )
@@ -137,10 +165,10 @@ function M.new( rollers, item, count, on_rolling_finished, on_softres_rolls_avai
   end
 
   return {
-    get_roll_announcement = get_roll_announcement,
+    announce_rolling = announce_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
-    stop_rolling = stop_rolling,
+    stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling
   }

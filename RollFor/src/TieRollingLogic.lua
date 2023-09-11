@@ -8,9 +8,13 @@ local pretty_print = modules.pretty_print
 local take = modules.take
 local rlu = modules.RollingLogicUtils
 
-function M.new( players, item, count, on_rolling_finished )
+function M.new( announce, players, item, count, on_rolling_finished )
   local rollers, rolls = map( players, rlu.one_roll ), {}
-  local rolling = true
+  local rolling = false
+
+  local function stop_listening()
+    rolling = false
+  end
 
   local function have_all_rolls_been_exhausted()
     local roll_count = count_elements( rolls )
@@ -27,7 +31,7 @@ function M.new( players, item, count, on_rolling_finished )
   end
 
   local function find_winner()
-    rolling = false
+    stop_listening()
     local roll_count = count_elements( rolls )
 
     if roll_count == 0 then
@@ -74,13 +78,13 @@ function M.new( players, item, count, on_rolling_finished )
     pretty_print( string.format( "Rolling for %s has %s.", item.link, cancelled and "been cancelled" or "finished" ) )
   end
 
-  local function stop_rolling()
-    rolling = false
+  local function stop_accepting_rolls()
+    stop_listening()
     find_winner()
   end
 
   local function cancel_rolling()
-    rolling = false
+    stop_listening()
     print_rolling_complete( true )
   end
 
@@ -88,10 +92,16 @@ function M.new( players, item, count, on_rolling_finished )
     return rolling
   end
 
+  local function announce_rolling( text )
+    rolling = true
+    announce( text )
+  end
+
   return {
+    announce_rolling = announce_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
-    stop_rolling = stop_rolling,
+    stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling
   }

@@ -21,6 +21,8 @@ function M.handle_events( main )
       main.version_broadcast.on_joined_group()
     elseif event == "GROUP_LEFT" then
       main.version_broadcast.on_left_group()
+      --elseif event == "CHAT_MSG_PARTY" then
+      --main.on_chat_msg_system( ... )
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( ... )
     elseif event == "LOOT_OPENED" then
@@ -60,9 +62,11 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_JOINED" )
   frame:RegisterEvent( "GROUP_LEFT" )
   frame:RegisterEvent( "GROUP_FORMED" )
-  frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
+  --frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
+  frame:RegisterEvent( "CHAT_MSG_PARTY" )
   frame:RegisterEvent( "LOOT_OPENED" )
   frame:RegisterEvent( "LOOT_CLOSED" )
+  frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
   frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
   frame:RegisterEvent( "TRADE_SHOW" )
   frame:RegisterEvent( "TRADE_PLAYER_ITEM_CHANGED" )
