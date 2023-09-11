@@ -149,8 +149,7 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling,
-    get_seconds_left = function() return seconds_left end
+    is_rolling = is_rolling
   }
 end
 

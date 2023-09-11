@@ -253,7 +253,6 @@ local function process_roll_slash_command( args, slash_command )
 
   if not item then
     pretty_print( string.format( "Usage: %s <%s> [%s]", slash_command, hl( "item" ), hl( "seconds" ) ) )
-    return
   end
 
   --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
