@@ -13,7 +13,7 @@ local roll_for = utils.roll_for
 local roll = utils.roll
 local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
-local tick = utils.tick
+local tick = utils.repeating_tick
 
 BothSpecRollsSpec = {}
 

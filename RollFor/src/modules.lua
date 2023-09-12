@@ -37,9 +37,12 @@ M.colors.softres = M.colors.blue
 M.colors.name_matcher = M.colors.blue
 M.colors.hl = M.colors.highlight
 
-function M.pretty_print( message, color_fn )
+function M.pretty_print( message, color_fn, module_name )
+  if not message then return end
+
   local c = color_fn and type( color_fn ) == "function" and color_fn or color_fn and type( color_fn ) == "string" and M.colors[ color_fn ] or M.colors.blue
-  M.api.ChatFrame1:AddMessage( string.format( "%s: %s", c( "RollFor" ), message ) )
+  local module_str = module_name and string.format( "%s%s%s", c( "[ " ), M.colors.white( module_name ), c( " ]" ) ) or ""
+  M.api.ChatFrame1:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) )
 end
 
 function M.count_elements( t, f )
@@ -71,7 +74,7 @@ function M.is_player_master_looter()
     for i = 1, 40 do
       local name, _, _, _, _, _, _, _, _, _, isMasterLooter = M.api.GetRaidRosterInfo( i )
 
-      if name and name == M.MyName() then
+      if name and name == M.my_name() then
         return isMasterLooter
       end
     end
@@ -82,7 +85,7 @@ function M.is_player_master_looter()
   return M.api.GetLootMethod() == "master" and M.api.UnitIsPartyLeader( "player" )
 end
 
-function M.MyName()
+function M.my_name()
   return M.api.UnitName( "player" )
 end
 
@@ -178,7 +181,7 @@ function M.my_raid_rank()
   for i = 1, 40 do
     local name, rank = M.api.GetRaidRosterInfo( i )
 
-    if name and name == M.MyName() then
+    if name and name == M.my_name() then
       return rank
     end
   end

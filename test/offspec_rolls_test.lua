@@ -13,7 +13,7 @@ local rolling_finished = utils.rolling_finished
 local roll_for = utils.roll_for
 local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
-local tick = utils.tick
+local tick = utils.repeating_tick
 
 OffspecRollsSpec = {}
 

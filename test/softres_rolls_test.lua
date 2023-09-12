@@ -20,6 +20,7 @@ local roll_os = utils.roll_os
 local assert_messages = utils.assert_messages
 local soft_res = utils.soft_res
 local sr = utils.soft_res_item
+local repeating_tick = utils.repeating_tick
 local tick = utils.tick
 local loot = utils.loot
 local item = utils.item
@@ -90,7 +91,7 @@ function SoftResIntegrationSpec:should_ignore_offspec_rolls_by_players_who_soft_
   roll_for( "Hearthstone", 1, 123 )
   roll_os( "Psikutas", 69 )
   roll( "Ponpon", 42 )
-  tick( 8 )
+  repeating_tick( 8 )
   roll( "Psikutas", 99 )
 
   -- Then
@@ -115,7 +116,7 @@ function SoftResIntegrationSpec:should_announce_current_highest_roller_if_a_play
   roll_for( "Hearthstone", 1, 123 )
   roll_os( "Psikutas", 69 )
   roll( "Ponpon", 42 )
-  tick( 8 )
+  repeating_tick( 8 )
   finish_rolling()
 
   -- Then
@@ -139,7 +140,7 @@ function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_players_
   -- When
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 42 )
-  tick( 8 )
+  repeating_tick( 8 )
 
   -- Then
   assert_messages(
@@ -184,6 +185,7 @@ function SoftResIntegrationSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ig
   roll( "Rikus", 42 )
   roll( "Ponpon", 69 )
   roll( "Pimp", 69 )
+  tick() -- ScheduleTimer() needs to tick
   roll( "Rikus", 100 )
   roll( "Psikutas", 100 )
   roll( "Ponpon", 1 )
@@ -214,7 +216,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   award( "Psikutas", "Hearthstone", 123 )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
-  tick( 8 )
+  repeating_tick( 8 )
 
   -- Then
   assert_messages(
@@ -274,7 +276,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   confirm_master_looting( "Obszczymucha" )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
-  tick( 8 )
+  repeating_tick( 8 )
 
   -- Then
   assert_messages(
@@ -297,11 +299,11 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
   -- When
   roll_for( "Hearthstone", 1, 123 )
   roll( "Psikutas", 42 )
-  tick( 5 )
+  repeating_tick( 5 )
   roll( "Sälvatrucha", 69 )
-  tick( 2 )
+  repeating_tick( 2 )
   roll( "Ponpon", 1 )
-  tick( 1 )
+  repeating_tick( 1 )
 
   -- Then
   assert_messages(

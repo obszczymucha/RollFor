@@ -15,6 +15,7 @@ local roll_for = utils.roll_for
 local finish_rolling = utils.finish_rolling
 local roll = utils.roll
 local assert_messages = utils.assert_messages
+local repeating_tick = utils.repeating_tick
 local tick = utils.tick
 
 MainspecRollsSpec = {}
@@ -47,7 +48,7 @@ function MainspecRollsSpec:should_finish_rolling_after_the_timer_if_not_all_play
   -- When
   roll_for( "Hearthstone" )
   roll( "Psikutas", 69 )
-  tick( 8 )
+  repeating_tick( 8 )
   finish_rolling()
 
   -- Then
@@ -69,6 +70,7 @@ function MainspecRollsSpec:should_recognize_tie_rolls_when_all_players_tie()
   roll_for( "Hearthstone" )
   roll( "Obszczymucha", 69 )
   roll( "Psikutas", 69 )
+  tick() -- ScheduleTimer() needs to tick
   roll( "Psikutas", 100 )
   roll( "Obszczymucha", 99 )
 
@@ -91,7 +93,8 @@ function MainspecRollsSpec:should_recognize_tie_rolls_when_some_players_tie()
   roll_for( "Hearthstone" )
   roll( "Obszczymucha", 69 )
   roll( "Psikutas", 69 )
-  tick( 8 )
+  repeating_tick( 8 )
+  tick() -- ScheduleTimer() needs to tick
   roll( "Psikutas", 100 )
   roll( "Obszczymucha", 99 )
 
@@ -114,7 +117,7 @@ function MainspecRollsSpec:should_detect_and_ignore_double_rolls()
   -- When
   roll_for( "Hearthstone" )
   roll( "Obszczymucha", 13 )
-  tick( 6 )
+  repeating_tick( 6 )
   roll( "Obszczymucha", 100 )
   roll( "Psikutas", 69 )
 
@@ -155,9 +158,9 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
   -- When
   roll_for( "Hearthstone", 2 )
   roll( "Psikutas", 69 )
-  tick( 6 )
+  repeating_tick( 6 )
   roll( "Obszczymucha", 100 )
-  tick( 2 )
+  repeating_tick( 2 )
 
   -- Then
   assert_messages(
@@ -201,6 +204,7 @@ function MainspecRollsSpec:should_reroll_if_not_enough_items_dropped_for_players
   roll( "Psikutas", 42 )
   roll( "Chuj", 13 )
   roll( "Ponpon", 42 )
+  tick() -- ScheduleTimer() needs to tick
   roll( "Psikutas", 100 )
   roll( "Ponpon", 99 )
 
@@ -226,6 +230,7 @@ function MainspecRollsSpec:should_reroll_if_two_items_dropped_and_three_players_
   roll( "Psikutas", 69 )
   roll( "Chuj", 69 )
   roll( "Ponpon", 42 )
+  tick() -- ScheduleTimer() needs to tick
   roll( "Psikutas", 100 )
   roll( "Chuj", 99 )
   roll( "Obszczymucha", 98 )

@@ -6,6 +6,7 @@ local m_slashcmdlist = {}
 local m_messages = {}
 local m_event_callback = nil
 local m_tick_fn = nil
+local m_repeating_tick_fn = nil
 local m_rolling_item_name = nil
 local m_is_master_looter = false
 local m_player_name = nil
@@ -210,6 +211,14 @@ function M.roll_for_raw( raw_text )
   M.run_command( "RF", raw_text )
 end
 
+function M.raid_roll( item_name, item_id )
+  M.run_command( "RR", M.item_link( item_name, item_id ) )
+end
+
+function M.raid_roll_raw( raw_text )
+  M.run_command( "RR", raw_text )
+end
+
 function M.cancel_rolling()
   M.run_command( "CR" )
 end
@@ -227,12 +236,16 @@ function M.fire_event( name, ... )
   m_event_callback( nil, name, ... )
 end
 
-function M.roll( player_name, roll )
-  M.fire_event( "CHAT_MSG_SYSTEM", string.format( "%s rolls %d (1-100)", player_name, roll ) )
+function M.roll( player_name, roll, upper_bound )
+  M.fire_event( "CHAT_MSG_SYSTEM", string.format( "%s rolls %d (1-%d)", player_name, roll, upper_bound or 100 ) )
 end
 
 function M.roll_os( player_name, roll )
   M.fire_event( "CHAT_MSG_SYSTEM", string.format( "%s rolls %d (1-99)", player_name, roll ) )
+end
+
+function M.mock_random_roll( player_name, roll, upper_bound )
+  M.mock( "RandomRoll", function() M.roll( player_name, roll, upper_bound ) end )
 end
 
 function M.init()
@@ -311,6 +324,19 @@ function M.is_in_party( ... )
   local players = { ... }
   M.mock( "IsInGroup", true )
   M.mock( "IsInRaid", false )
+
+  if #players > 1 then
+    local party = {
+      [ "player" ] = players[ 1 ]
+    }
+
+    for i = 2, #players do
+      party[ "party" .. i - 1 ] = players[ i ]
+    end
+
+    M.mock_table_function( "UnitName", party )
+  end
+
   M.mock_table_function( "GetRaidRosterInfo", players )
 end
 
@@ -427,31 +453,47 @@ function M.assert_messages( ... )
   lu.assertEquals( M.get_messages(), expected )
 end
 
-function M.tick( times )
+function M.tick()
   if not m_tick_fn then
     M.debug( "Tick function not set." )
+    return
+  end
+
+  m_tick_fn()
+  m_tick_fn = nil
+end
+
+function M.repeating_tick( times )
+  if not m_repeating_tick_fn then
+    M.debug( "Repeating tick function not set." )
     return
   end
 
   local count = times or 1
 
   for _ = 1, count do
-    m_tick_fn()
+    m_repeating_tick_fn()
   end
 end
 
 function M.mock_libraries()
   m_tick_fn = nil
+  m_repeating_tick_fn = nil
   M.mock_wow_api()
   M.mock_library( "AceConsole-3.0" )
   M.mock_library( "AceEvent-3.0", { RegisterMessage = function() end } )
   M.mock_library( "AceTimer-3.0", {
-    ScheduleRepeatingTimer = function( _, f )
+    ScheduleTimer = function( _, f )
       m_tick_fn = f
-      return 1
     end,
-    CancelTimer = function() m_tick_fn = nil end,
-    ScheduleTimer = function( _, f ) f() end
+    ScheduleRepeatingTimer = function( _, f )
+      m_repeating_tick_fn = f
+      return 2
+    end,
+    CancelTimer = function( _, timer_id )
+      if timer_id == 1 then m_tick_fn = nil end
+      if timer_id == 2 then m_repeating_tick_fn = nil end
+    end
   } )
   M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
   M.mock_library( "AceDB-3.0", {
@@ -470,6 +512,7 @@ function M.load_real_stuff()
   require( "src/modules" )
   M.mock_api()
   M.mock_slashcmdlist()
+  require( "src/Api" )
   require( "src/ItemUtils" )
   require( "src/RollingLogicUtils" )
   require( "src/DroppedLoot" )
@@ -492,8 +535,10 @@ function M.load_real_stuff()
   require( "src/NonSoftResRollingLogic" )
   require( "src/SoftResRollingLogic" )
   require( "src/TieRollingLogic" )
+  require( "src/RaidRollRollingLogic" )
   require( "src/MasterLootTracker" )
   require( "src/MasterLootFrame" )
+  require( "src/UsagePrinter" )
   require( "main" )
 end
 

@@ -8,6 +8,7 @@ local version = string.format( "%s.%s", major, minor )
 local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
 local hl = modules.colors.highlight
+local RollType = modules.Api.RollType
 
 local m_rolling_logic
 
@@ -85,6 +86,8 @@ local function create_components()
       end
     end
   )
+
+  M.usage_printer = m.UsagePrinter.new()
 end
 
 function M.import_softres_data( softres_data )
@@ -112,6 +115,10 @@ local function on_softres_rolls_available( rollers )
 
   local message = modules.prettify_table( remaining_rollers, transform )
   announce( string.format( "SR rolls remaining: %s", message ) )
+end
+
+local function raid_roll_rolling_logic( item )
+  return modules.RaidRollRollingLogic.new( announce, M.ace_timer, M.group_roster, item )
 end
 
 local function non_softres_rolling_logic( item, count, info, seconds, on_rolling_finished )
@@ -167,9 +174,10 @@ function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
   M.ace_timer:ScheduleTimer(
     function()
       m_rolling_logic.announce_rolling( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ) )
-    end, 2.5 )
+    end, 2 )
 end
 
+-- This should probably not be here.
 function M.on_rolling_finished( item, count, winners, rerolling )
   local announce_winners = function( v, top_roll )
     local roll = v.roll
@@ -238,7 +246,7 @@ local function parse_args( args )
   end
 end
 
-local function process_roll_slash_command( args, slash_command )
+local function process_roll_slash_command( args, roll_type )
   if not M.api().IsInGroup() then
     pretty_print( "Not in a group." )
     return
@@ -252,7 +260,8 @@ local function process_roll_slash_command( args, slash_command )
   local item, count, seconds, info = parse_args( args )
 
   if not item then
-    pretty_print( string.format( "Usage: %s <%s> [%s]", slash_command, hl( "item" ), hl( "seconds" ) ) )
+    M.usage_printer.print_usage( roll_type )
+    return
   end
 
   --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
@@ -262,18 +271,32 @@ local function process_roll_slash_command( args, slash_command )
     return
   end
 
-  if slash_command == SLASH_RF1 then
+  if roll_type == RollType.NormalRoll then
     m_rolling_logic = soft_res_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
-  elseif slash_command == SLASH_ARF1 then
+  elseif roll_type == RollType.NoSoftResRoll then
     m_rolling_logic = non_softres_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
-    --elseif slash_command == SLASH_RR1 then
-    --m_rolling_logic = raid_roll_rolling_logic( item, M.on_raid_roll_finished )
+  elseif roll_type == RollType.RaidRoll then
+    m_rolling_logic = raid_roll_rolling_logic( item )
   else
-    pretty_print( string.format( "Unsupported command: %s", hl( slash_command ) ) )
+    pretty_print( string.format( "Unsupported command: %s", hl( args and args.slash_command or "?" ) ) )
     return
   end
 
   m_rolling_logic.announce_rolling()
+end
+
+local function process_re_raid_roll_slash_command()
+  if not m_rolling_logic or m_rolling_logic.get_roll_type() ~= RollType.RaidRoll then
+    pretty_print( "There is nothing to re-raid-roll.", nil, "RaidRoll" )
+    return
+  end
+
+  if m_rolling_logic.is_rolling() then
+    pretty_print( "Raid-rolling is in progress.", nil, "RaidRoll" )
+    return
+  end
+
+  m_rolling_logic.re_roll()
 end
 
 local function process_show_sorted_rolls_slash_command( args )
@@ -282,14 +305,16 @@ local function process_show_sorted_rolls_slash_command( args )
     return
   end
 
-  if m_rolling_logic and m_rolling_logic.is_rolling() then
+  if m_rolling_logic.is_rolling() then
     pretty_print( "Rolling is in progress." )
     return
   end
 
-  for limit in (args):gmatch "(%d+)" do
-    m_rolling_logic.show_sorted_rolls( tonumber( limit ) )
-    return
+  if args then
+    for limit in (args):gmatch "(%d+)" do
+      m_rolling_logic.show_sorted_rolls( tonumber( limit ) )
+      return
+    end
   end
 
   m_rolling_logic.show_sorted_rolls( 5 )
@@ -404,12 +429,14 @@ end
 
 local function setup_slash_commands()
   -- Roll For commands
-  SLASH_RF1 = "/rf"
-  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_slash_command( args, SLASH_RF1 ) end
-  SLASH_ARF1 = "/arf"
-  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_slash_command( args, SLASH_ARF1 ) end
-  --SLASH_RR1 = "/rr"
-  --M.api().SlashCmdList[ "RR" ] = function( args ) process_roll_slash_command( args, SLASH_RR1 ) end
+  SLASH_RF1 = RollType.NormalRoll.slash_command
+  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_slash_command( args, RollType.NormalRoll ) end
+  SLASH_ARF1 = RollType.NoSoftResRoll.slash_command
+  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_slash_command( args, RollType.NoSoftResRoll ) end
+  SLASH_RR1 = RollType.RaidRoll.slash_command
+  M.api().SlashCmdList[ "RR" ] = function( args ) process_roll_slash_command( args, RollType.RaidRoll ) end
+  SLASH_RRR1 = "/rrr"
+  M.api().SlashCmdList[ "RRR" ] = function() process_re_raid_roll_slash_command() end
   SLASH_CR1 = "/cr"
   M.api().SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancel_roll_slash_command )
   SLASH_FR1 = "/fr"
