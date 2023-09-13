@@ -1,6 +1,6 @@
 local lib_stub = LibStub
 local major = 2
-local minor = 0
+local minor = 1
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
 if not M then return end
 
