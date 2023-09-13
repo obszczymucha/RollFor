@@ -246,46 +246,43 @@ local function parse_args( args )
   end
 end
 
-local function process_roll_slash_command( args, roll_type )
-  if not M.api().IsInGroup() then
-    pretty_print( "Not in a group." )
-    return
+local function on_roll_command( roll_type )
+  return function( args )
+    if m_rolling_logic and m_rolling_logic.is_rolling() then
+      pretty_print( "Rolling already in progress." )
+      return
+    end
+
+    local item, count, seconds, info = parse_args( args )
+
+    if not item then
+      M.usage_printer.print_usage( roll_type )
+      return
+    end
+
+    --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
+    --TODO: What if we wanted to bypass the hard-res?
+    if M.softres.is_item_hardressed( item.id ) then
+      announce_hr( item.link )
+      return
+    end
+
+    if roll_type == RollType.NormalRoll then
+      m_rolling_logic = soft_res_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
+    elseif roll_type == RollType.NoSoftResRoll then
+      m_rolling_logic = non_softres_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
+    elseif roll_type == RollType.RaidRoll then
+      m_rolling_logic = raid_roll_rolling_logic( item )
+    else
+      pretty_print( string.format( "Unsupported command: %s", hl( roll_type and roll_type.slash_command or "?" ) ) )
+      return
+    end
+
+    m_rolling_logic.announce_rolling()
   end
-
-  if m_rolling_logic and m_rolling_logic.is_rolling() then
-    pretty_print( "Rolling already in progress." )
-    return
-  end
-
-  local item, count, seconds, info = parse_args( args )
-
-  if not item then
-    M.usage_printer.print_usage( roll_type )
-    return
-  end
-
-  --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
-  --TODO: What if we wanted to bypass the hard-res?
-  if M.softres.is_item_hardressed( item.id ) then
-    announce_hr( item.link )
-    return
-  end
-
-  if roll_type == RollType.NormalRoll then
-    m_rolling_logic = soft_res_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
-  elseif roll_type == RollType.NoSoftResRoll then
-    m_rolling_logic = non_softres_rolling_logic( item, count, info, seconds, M.on_rolling_finished )
-  elseif roll_type == RollType.RaidRoll then
-    m_rolling_logic = raid_roll_rolling_logic( item )
-  else
-    pretty_print( string.format( "Unsupported command: %s", hl( args and args.slash_command or "?" ) ) )
-    return
-  end
-
-  m_rolling_logic.announce_rolling()
 end
 
-local function process_re_raid_roll_slash_command()
+local function on_re_raid_roll_command()
   if not m_rolling_logic or m_rolling_logic.get_roll_type() ~= RollType.RaidRoll then
     pretty_print( "There is nothing to re-raid-roll.", nil, "RaidRoll" )
     return
@@ -299,7 +296,7 @@ local function process_re_raid_roll_slash_command()
   m_rolling_logic.re_roll()
 end
 
-local function process_show_sorted_rolls_slash_command( args )
+local function on_show_sorted_rolls_command( args )
   if not m_rolling_logic then
     pretty_print( "No rolls have been recorded." )
     return
@@ -320,7 +317,7 @@ local function process_show_sorted_rolls_slash_command( args )
   m_rolling_logic.show_sorted_rolls( 5 )
 end
 
-local function decorate_with_rolling_check( f )
+local function is_rolling_check( f )
   return function( ... )
     if not m_rolling_logic or not m_rolling_logic.is_rolling() then
       pretty_print( "Rolling not in progress." )
@@ -331,11 +328,22 @@ local function decorate_with_rolling_check( f )
   end
 end
 
-local function process_cancel_roll_slash_command()
+local function in_group_check( f )
+  return function( ... )
+    if not M.api().IsInGroup() then
+      pretty_print( "Not in a group." )
+      return
+    end
+
+    f( ... )
+  end
+end
+
+local function on_cancel_roll_command()
   m_rolling_logic.cancel_rolling()
 end
 
-local function process_finish_roll_slash_command()
+local function on_finish_roll_command()
   m_rolling_logic.stop_accepting_rolls( true )
 end
 
@@ -347,7 +355,7 @@ local function setup_storage()
   end
 end
 
-local function process_softres_slash_command( args )
+local function on_softres_command( args )
   if args == "init" then
     M.dropped_loot.clear( true )
     M.awarded_loot.clear( true )
@@ -427,35 +435,43 @@ function M.on_loot_closed()
   M.master_loot.on_loot_closed()
 end
 
+local function show_how_to_roll()
+  announce( "How to roll:" )
+  announce( "For main-spec, type: /roll" )
+  announce( "For off-spec, type: /roll 99" )
+end
+
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = RollType.NormalRoll.slash_command
-  M.api().SlashCmdList[ "RF" ] = function( args ) process_roll_slash_command( args, RollType.NormalRoll ) end
+  M.api().SlashCmdList[ "RF" ] = in_group_check( on_roll_command( RollType.NormalRoll ) )
   SLASH_ARF1 = RollType.NoSoftResRoll.slash_command
-  M.api().SlashCmdList[ "ARF" ] = function( args ) process_roll_slash_command( args, RollType.NoSoftResRoll ) end
+  M.api().SlashCmdList[ "ARF" ] = in_group_check( on_roll_command( RollType.NoSoftResRoll ) )
   SLASH_RR1 = RollType.RaidRoll.slash_command
-  M.api().SlashCmdList[ "RR" ] = function( args ) process_roll_slash_command( args, RollType.RaidRoll ) end
+  M.api().SlashCmdList[ "RR" ] = in_group_check( on_roll_command( RollType.RaidRoll ) )
   SLASH_RRR1 = "/rrr"
-  M.api().SlashCmdList[ "RRR" ] = function() process_re_raid_roll_slash_command() end
+  M.api().SlashCmdList[ "RRR" ] = in_group_check( on_re_raid_roll_command )
+  SLASH_HTR1 = "/htr"
+  M.api().SlashCmdList[ "HTR" ] = in_group_check( show_how_to_roll )
   SLASH_CR1 = "/cr"
-  M.api().SlashCmdList[ "CR" ] = decorate_with_rolling_check( process_cancel_roll_slash_command )
+  M.api().SlashCmdList[ "CR" ] = is_rolling_check( on_cancel_roll_command )
   SLASH_FR1 = "/fr"
-  M.api().SlashCmdList[ "FR" ] = decorate_with_rolling_check( process_finish_roll_slash_command )
+  M.api().SlashCmdList[ "FR" ] = is_rolling_check( on_finish_roll_command )
+  SLASH_SSR1 = "/ssr"
+  M.api().SlashCmdList[ "SSR" ] = on_show_sorted_rolls_command
 
   -- Soft Res commands
   SLASH_SR1 = "/sr"
-  M.api().SlashCmdList[ "SR" ] = process_softres_slash_command
-  SLASH_SSR1 = "/ssr"
-  M.api().SlashCmdList[ "SSR" ] = process_show_sorted_rolls_slash_command
+  M.api().SlashCmdList[ "SR" ] = on_softres_command
   SLASH_SRS1 = "/srs"
-  M.api().SlashCmdList[ "SRS" ] = function() M.softres_check.show_softres() end
+  M.api().SlashCmdList[ "SRS" ] = M.softres_check.show_softres
   SLASH_SRC1 = "/src"
-  M.api().SlashCmdList[ "SRC" ] = function() M.softres_check.check_softres() end
+  M.api().SlashCmdList[ "SRC" ] = M.softres_check.check_softres
   SLASH_SRO1 = "/sro"
-  M.api().SlashCmdList[ "SRO" ] = function( ... ) M.name_matcher.manual_match( ... ) end
+  M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
 
-  SLASH_DROPPED1 = "/DROPPED"
-  M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
+  --SLASH_DROPPED1 = "/DROPPED"
+  --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 end
 
 function M.on_first_enter_world()
