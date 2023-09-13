@@ -85,6 +85,23 @@ soft-ressed it and the item dropped again.
 
 ---
 
+### Raid Roll
+```
+/rr <item>
+```
+
+Example:  
+![](docs/raid-roll.gif)
+
+---
+
+### Re-Raid Roll
+```
+/rrr
+```
+
+---
+
 ## Soft-Res setup
 
 1. Create a Soft Res list at https://softres.it/.
@@ -113,6 +130,21 @@ it's not possible and then you have to fix it manually.
 
 Example:  
 ![](docs/fix-mistyped-sr-name.gif)
+
+---
+
+### If someone doesn't want to SR
+
+If someone really doesn't want to SR you can mark them as "passing".  
+
+`/srp` (stands for SR Pass) is the command to do this.  
+
+---
+
+### Show sorted rolls
+```
+/ssr
+```
 
 ---
 
