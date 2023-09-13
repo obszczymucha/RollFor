@@ -675,7 +675,7 @@ function M.load_libstub()
 end
 
 function M.trade_with( recipient, trade_tracker )
-  RollFor.settings.tradeTrackerDebug = true
+  RollFor.settings.trade_tracker_debug = true
   M.mock_object( "TradeFrameRecipientNameText", { GetText = function() return recipient end } )
   M.mock_table_function( "GetTradePlayerItemInfo", { [ "1" ] = nil } )
   M.mock_table_function( "GetTradePlayerItemLink", { [ "1" ] = nil } )
@@ -688,7 +688,7 @@ function M.trade_with( recipient, trade_tracker )
 end
 
 function M.cancel_trade( trade_tracker )
-  RollFor.settings.tradeTrackerDebug = true
+  RollFor.settings.trade_tracker_debug = true
 
   if trade_tracker then
     trade_tracker.on_trade_accept_update( 0 )
@@ -700,22 +700,23 @@ function M.cancel_trade( trade_tracker )
 end
 
 function M.trade_cancelled_by_recipient( trade_tracker )
-  RollFor.settings.tradeTrackerDebug = true
+  RollFor.settings.trade_tracker_debug = true
   if trade_tracker then
     trade_tracker.on_trade_request_cancel()
   else
     M.fire_event( "TRADE_REQUEST_CANCEL" )
+    M.fire_event( "TRADE_CLOSED" )
   end
 end
 
 function M.trade_complete( trade_tracker )
-  RollFor.settings.tradeTrackerDebug = true
+  RollFor.settings.trade_tracker_debug = true
 
   if trade_tracker then
-    trade_tracker.on_trade_accept_update( 1 )
+    trade_tracker.on_trade_accept_update( 1, 1 )
     trade_tracker.on_trade_closed()
   else
-    M.fire_event( "TRADE_ACCEPT_UPDATE", 1 )
+    M.fire_event( "TRADE_ACCEPT_UPDATE", 1, 1 )
     M.fire_event( "TRADE_CLOSED" )
   end
 end
