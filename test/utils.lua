@@ -55,11 +55,11 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
-  M.modules().api.CreateFrame = function( type, frameName )
+  M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
       RegisterEvent = function() end,
       SetScript = function( self, name, callback )
-        if frameName == "RollForFrame" and name == "OnEvent" then
+        if frame_name == "RollForFrame" and name == "OnEvent" then
           M.debug( "Registered OnEvent callback." )
           m_event_callback = callback
         end
@@ -67,17 +67,46 @@ function M.mock_wow_api()
         if name == "OnClick" then
           self.OnClickCallback = callback
         end
+
+        if name == "OnHide" then
+          self.OnHideCallback = callback
+        end
+
+        if name == "OnTextChanged" then
+          self.OnTextChangedCallback = callback
+        end
       end,
       Show = function() end,
-      Hide = function() end,
+      Hide = function( self )
+        if self.OnHideCallback then self.OnHideCallback() end
+      end,
       SetBackdrop = function() end,
       SetBackdropColor = function() end,
+      SetBackdropBorderColor = function() end,
       SetFrameStrata = function() end,
       SetWidth = function() end,
       SetHeight = function() end,
       SetPoint = function() end,
+      SetMovable = function() end,
+      SetResizable = function() end,
+      SetMinResize = function() end,
+      SetToplevel = function() end,
       EnableMouse = function() end,
       SetNormalTexture = function() end,
+      SetScrollChild = function() end,
+      SetMultiLine = function() end,
+      SetTextInsets = function() end,
+      SetAutoFocus = function() end,
+      SetFontObject = function() end,
+      UpdateScrollChildRect = function() end,
+      SetText = function( self, text )
+        self.text = text
+        if self.OnTextChangedCallback then self.OnTextChangedCallback() end
+      end,
+      GetText = function( self )
+        return self.text
+      end,
+      IsVisible = function() end,
       CreateFontString = function()
         return {
           SetPoint = function() end,
@@ -90,7 +119,7 @@ function M.mock_wow_api()
       end
     }
 
-    if type == "Button" then _G[ frameName ] = frame end
+    if frame_name then _G[ frame_name ] = frame end
 
     return frame
   end
@@ -528,6 +557,7 @@ function M.load_real_stuff()
   require( "src/GroupRoster" )
   require( "src/NameAutoMatcher" )
   require( "src/NameManualMatcher" )
+  require( "src/NameMatchReport" )
   require( "src/EventHandler" )
   require( "src/VersionBroadcast" )
   require( "src/MasterLoot" )
@@ -539,6 +569,8 @@ function M.load_real_stuff()
   require( "src/MasterLootTracker" )
   require( "src/MasterLootFrame" )
   require( "src/UsagePrinter" )
+  require( "Libs/LibDeflate/LibDeflate" )
+  require( "src/Json" )
   require( "main" )
 end
 
@@ -590,6 +622,12 @@ function M.targetting_enemy( name )
   m_target = name
   M.mock_unit_name()
   M.mock( "UnitIsFriend", false )
+end
+
+function M.targetting_player( name )
+  m_target = name
+  M.mock_unit_name()
+  M.mock( "UnitIsFriend", true )
 end
 
 function M.import_soft_res( data )
@@ -788,6 +826,9 @@ function M.master_loot( item_name, player_name )
   player_frame:Click()
 end
 
+function M.mock_softres_gui()
+end
+
 function M.confirm_master_looting( player_name )
   M.mock( "GiveMasterLoot", function() end )
   M.modules().api.StaticPopupDialogs[ "ROLLFOR_MASTER_LOOT_CONFIRMATION_DIALOG" ].OnAccept( { name = player_name, value = 1 } )
@@ -801,6 +842,23 @@ end
 function M.clear_dropped_items_db()
   local rollfor = M.load_roll_for()
   rollfor.db.char.dropped_items = {}
+end
+
+function M.read_file( file_name )
+  local file = io.open( file_name, "r" )
+  if not file then return nil end
+
+  local content = file:read( "*a" )
+  file:close()
+
+  return content
+end
+
+function M.import_softres_via_gui( fixture_name )
+  local sr_data = M.read_file( fixture_name )
+  local sr_frame = _G[ "RollForSoftResLootFrame" ]
+  sr_frame.editbox:SetText( sr_data )
+  sr_frame:Hide()
 end
 
 return M

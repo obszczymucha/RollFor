@@ -77,7 +77,7 @@ local function create_frame( api, on_close, on_dirty )
   editbox:SetScript( "OnEscapePressed", editbox.ClearFocus )
   scroll_frame:SetScript( "OnMouseUp", function() editbox:SetFocus() end )
 
-  editbox:SetScript( "OnTextChanged", function( _, ... )
+  editbox:SetScript( "OnTextChanged", function( _ )
     scroll_frame:UpdateScrollChildRect()
     on_dirty()
   end )

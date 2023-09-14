@@ -56,4 +56,12 @@ function TestUtilsSpec:should_map_a_table()
   lu.assertEquals( result, { 1, 2 } )
 end
 
+function TestUtilsSpec:should_read_a_fixture()
+  -- When
+  local result = utils.read_file( "fixtures/princess-kenny.txt" )
+
+  -- Then
+  lu.assertEquals( result, "Princess\nKenny\n" )
+end
+
 os.exit( lu.LuaUnit.run() )

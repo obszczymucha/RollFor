@@ -7,7 +7,7 @@ local filter = modules.filter
 local negate = modules.negate
 local clone = modules.clone
 
---- I decorate given softres class with absent players logic.
+-- I decorate given softres class with absent players logic.
 -- Example: "give me all players who soft-ressed but are not in the group".
 function M.new( group_roster, softres )
   local f = negate( group_roster.is_player_in_my_group )

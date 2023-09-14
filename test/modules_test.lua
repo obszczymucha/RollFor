@@ -83,4 +83,13 @@ function TakeSpec:should_take_n_elements_from_a_table()
   eq( mod.take( { "a", "b", "c" }, -1 ), {} )
 end
 
+Base64Spec = {}
+
+function Base64Spec:should_decode_and_encode()
+  local encoded = mod.encode_base64( "Princess Kenny" )
+  local decoded = mod.decode_base64( encoded )
+
+  eq( decoded, "Princess Kenny" )
+end
+
 os.exit( lu.LuaUnit.run() )

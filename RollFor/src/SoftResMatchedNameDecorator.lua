@@ -6,7 +6,7 @@ local M = {}
 local map = modules.map
 local no_nil = modules.no_nil
 
---- I decorate given softres class with matched name logic.
+-- I decorate given softres class with matched name logic.
 -- Some players make typos in SoftRes.it and then their names don't match
 -- their in-game names. NameMatcher fixes that.
 function M.new( name_matcher, softres )

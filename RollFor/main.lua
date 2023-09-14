@@ -95,18 +95,8 @@ function M.import_softres_data( softres_data )
   M.name_matcher.auto_match()
 end
 
-local function reindex( t )
-  local result = {}
-
-  for _, v in pairs( t ) do
-    table.insert( result, v )
-  end
-
-  return result
-end
-
 local function on_softres_rolls_available( rollers )
-  local remaining_rollers = reindex( rollers )
+  local remaining_rollers = modules.reindex_table( rollers )
 
   local transform = function( player )
     local rolls = player.rolls == 1 and "1 roll" or string.format( "%s rolls", player.rolls )
@@ -260,7 +250,6 @@ local function on_roll_command( roll_type )
       return
     end
 
-    --TODO: Move inside RollFor and return appropriate ITEM_HARDRESSED result.
     --TODO: What if we wanted to bypass the hard-res?
     if M.softres.is_item_hardressed( item.id ) then
       announce_hr( item.link )
@@ -379,36 +368,39 @@ function M.on_chat_msg_system( message )
   end
 end
 
-local function mock_table_function( name, values )
-  M.api()[ name ] = function( key )
-    local value = values[ key ]
+---@diagnostic disable-next-line: unused-local, unused-function
+local function simulate_loot_dropped( args )
+  ---@diagnostic disable-next-line: unused-function
+  local function mock_table_function( name, values )
+    M.api()[ name ] = function( key )
+      local value = values[ key ]
 
-    if type( value ) == "function" then
-      return value()
-    else
-      return value
+      if type( value ) == "function" then
+        return value()
+      else
+        return value
+      end
     end
   end
-end
 
-local function make_loot_slot_info( count, quality )
-  local result = {}
+  ---@diagnostic disable-next-line: unused-function
+  local function make_loot_slot_info( count, quality )
+    local result = {}
 
-  for i = 1, count do
-    table.insert( result, function()
-      if i == count then
-        modules.api = modules.real_api
-        modules.real_api = nil
-      end
+    for i = 1, count do
+      table.insert( result, function()
+        if i == count then
+          modules.api = modules.real_api
+          modules.real_api = nil
+        end
 
-      return nil, nil, nil, nil, quality or 4
-    end )
+        return nil, nil, nil, nil, quality or 4
+      end )
+    end
+
+    return result
   end
 
-  return result
-end
-
-local function simulate_loot_dropped( args )
   local item_links = M.item_utils.parse_all_links( args )
 
   if modules.real_api then
