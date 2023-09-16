@@ -394,7 +394,7 @@ local function simulate_loot_dropped( args )
           modules.real_api = nil
         end
 
-        return nil, nil, nil, nil, quality or 4
+        return nil, nil, nil, quality or 4
       end )
     end
 
@@ -412,6 +412,7 @@ local function simulate_loot_dropped( args )
   modules.api = modules.clone( modules.api )
   M.api()[ "GetNumLootItems" ] = function() return #item_links end
   M.api()[ "UnitGUID" ] = function() return tostring( modules.lua.time() ) end
+  M.api()[ "GetLootThreshold" ] = function() return 4 end
   mock_table_function( "GetLootSlotLink", item_links )
   mock_table_function( "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
 
