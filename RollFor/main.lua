@@ -226,7 +226,7 @@ local function announce_hr( item )
 end
 
 local function parse_args( args )
-  for item_count, item_link, seconds, info in (args):gmatch "(%d*)[xX]?(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
+  for item_count, item_link, seconds, info in (args):gmatch "(%d*)[xX]?%s*(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" do
     local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
     local item_id = M.item_utils.get_item_id( item_link )
     local item = { id = item_id, link = item_link }

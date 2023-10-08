@@ -17,6 +17,7 @@ local roll_for_raw = utils.roll_for_raw
 local cancel_rolling = utils.cancel_rolling
 local finish_rolling = utils.finish_rolling
 local assert_messages = utils.assert_messages
+local item_link = utils.item_link
 
 GenericSpec = {}
 
@@ -94,6 +95,36 @@ function GenericSpec:should_print_usage_if_in_raid_and_invalid_item_is_provided(
   -- Then
   assert_messages(
     c( "RollFor: Usage: /rf <item> [seconds]" )
+  )
+end
+
+function GenericSpec:should_properly_parse_multiple_item_roll_for()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  local item = item_link( "Hearthstone", 12345 )
+
+  -- When
+  roll_for_raw( string.format( "2x%s", item ) )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
+  )
+end
+
+function GenericSpec:should_properly_parse_multiple_item_roll_for_if_there_is_space_before_the_item()
+  -- Given
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  local item = item_link( "Hearthstone", 12345 )
+
+  -- When
+  roll_for_raw( string.format( "2x %s", item ) )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
   )
 end
 
