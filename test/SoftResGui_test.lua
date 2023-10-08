@@ -52,7 +52,7 @@ function SoftResGuiSpec:should_load_softres_data_via_gui()
     c( "RollFor: Players who did not soft-res:" ),
     c( "RollFor: Ponpon" ),
     r( "2 items dropped:", "1. [King's Defender] (SR by Ohhaimark)", "2. [Battlescar Boots]" ),
-    rw( "[King's Defender] is soft-ressed by Ohhaimark." ),
+    rw( "Ohhaimark soft-ressed [King's Defender]." ),
     c( "RollFor: Ohhaimark received [King's Defender]." ),
     rw( "Roll for [Battlescar Boots]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
@@ -90,9 +90,9 @@ function SoftResGuiSpec:should_load_softres_data_via_gui_and_manually_match_a_pl
     c( "RollFor: [1]: Obszczymucha" ),
     c( "RollFor: Ponpon is now soft-ressing as Obszczymucha." ),
     r( "2 items dropped:", "1. [King's Defender] (SR by Ohhaimark)", "2. [Battlescar Boots] (SR by Ponpon)" ),
-    rw( "[King's Defender] is soft-ressed by Ohhaimark." ),
+    rw( "Ohhaimark soft-ressed [King's Defender]." ),
     c( "RollFor: Ohhaimark received [King's Defender]." ),
-    rw( "[Battlescar Boots] is soft-ressed by Ponpon." ),
+    rw( "Ponpon soft-ressed [Battlescar Boots]." ),
     c( "RollFor: Ponpon received [Battlescar Boots]." )
   )
 end
@@ -135,7 +135,7 @@ function SoftResGuiSpec:should_load_softres_data_via_gui_after_clearing_manual_m
     c( "RollFor: Players who did not soft-res:" ),
     c( "RollFor: Ponpon" ),
     r( "2 items dropped:", "1. [King's Defender] (SR by Ohhaimark)", "2. [Battlescar Boots]" ),
-    rw( "[King's Defender] is soft-ressed by Ohhaimark." ),
+    rw( "Ohhaimark soft-ressed [King's Defender]." ),
     c( "RollFor: Ohhaimark received [King's Defender]." ),
     rw( "Roll for [Battlescar Boots]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
