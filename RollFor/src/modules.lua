@@ -338,4 +338,22 @@ function M.encode_base64( data )
   end ) .. ({ '', '==', '=' })[ #data % 3 + 1 ])
 end
 
+function M.get_addon_version()
+  local version = M.api.GetAddOnMetadata( "RollFor", "Version" )
+  local major, minor = string.match( version, "(%d+)%.(%d+)" )
+
+  local result = {
+    str = version,
+    major = tonumber( major ),
+    minor = tonumber( minor )
+  }
+
+  if not version or not result.major or not result.minor then
+    error( "Invalid RollFor addon version!" )
+    return
+  end
+
+  return result
+end
+
 return M

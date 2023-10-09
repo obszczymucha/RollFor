@@ -1,11 +1,10 @@
 local lib_stub = LibStub
-local major = 2
-local minor = 2
-local M = lib_stub:NewLibrary( string.format( "RollFor-%s", major ), minor )
+local modules = lib_stub( "RollFor-Modules" )
+local version = modules.get_addon_version()
+
+local M = lib_stub:NewLibrary( string.format( "RollFor-%s", version.major ), version.minor )
 if not M then return end
 
-local version = string.format( "%s.%s", major, minor )
-local modules = lib_stub( "RollFor-Modules" )
 local pretty_print = modules.pretty_print
 local hl = modules.colors.highlight
 local RollType = modules.Api.RollType
@@ -42,7 +41,7 @@ local function create_components()
   M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
   M.item_utils = m.ItemUtils
-  M.version_broadcast = m.VersionBroadcast.new( M.db, version )
+  M.version_broadcast = m.VersionBroadcast.new( M.db, version.str )
   M.awarded_loot = m.AwardedLoot.new( M.db )
   M.group_roster = m.GroupRoster.new( M.api )
   M.unfiltered_softres = m.SoftRes.new( M.db )
@@ -340,7 +339,7 @@ local function setup_storage()
   M.db = lib_stub( "AceDB-3.0" ):New( "RollForDb" )
 
   if not M.db.global.version then
-    M.db.global.version = version
+    M.db.global.version = version.str
   end
 end
 
@@ -473,7 +472,7 @@ function M.on_first_enter_world()
   create_components()
   setup_slash_commands()
 
-  pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version ) ) ) )
+  pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version.str ) ) ) )
 
   M.version_broadcast.broadcast()
   M.import_encoded_softres_data( M.db.char.softres_data )
