@@ -33,12 +33,6 @@ local function hook_loot_buttons( reset_confirmation, normal_loot, master_loot, 
     button:SetScript( "OnClick", function( self, mouse_button )
       reset_confirmation()
 
-      if mouse_button == "RightButton" then
-        hide()
-        normal_loot( self )
-        return
-      end
-
       if modules.api.IsModifiedClick( "CHATLINK" ) then
         modules.api.ChatFrameEditBox:Show()
         modules.api.ChatFrameEditBox:SetText( "/rf" )
@@ -46,7 +40,7 @@ local function hook_loot_buttons( reset_confirmation, normal_loot, master_loot, 
         return
       end
 
-      if mouse_button == "LeftButton" and modules.api.IsAltKeyDown() then
+      if modules.api.IsAltKeyDown() then
         modules.api.ChatFrameEditBox:Show()
         modules.api.ChatFrameEditBox:SetText( "/rr" )
         modules.api.ChatEdit_InsertLink( modules.api.GetLootSlotLink( self.slot ) )
