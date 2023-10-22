@@ -55,6 +55,7 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
+  M.modules().api.GetAddOnMetadata = function() return "2.5" end -- version
   M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
       RegisterEvent = function() end,
