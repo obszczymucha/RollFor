@@ -15,12 +15,8 @@ function M.handle_events( main )
         main.on_first_enter_world()
         m_first_enter_world = true
       end
-    elseif event == "GROUP_FORMED" then
-      main.version_broadcast.on_joined_group()
-    elseif event == "GROUP_JOINED" then
-      main.version_broadcast.on_joined_group()
-    elseif event == "GROUP_LEFT" then
-      main.version_broadcast.on_left_group()
+    elseif event == "PARTY_MEMBERS_CHANGED" then
+      main.version_broadcast.on_party_members_changed()
       --elseif event == "CHAT_MSG_PARTY" then
       --main.on_chat_msg_system( ... )
     elseif event == "CHAT_MSG_SYSTEM" then
