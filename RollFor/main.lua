@@ -32,6 +32,14 @@ local function announce( text, use_raid_warning )
   M.api().SendChatMessage( text, get_roll_announcement_chat_type( use_raid_warning ) )
 end
 
+local function clear_data()
+  M.dropped_loot.clear( true )
+  M.awarded_loot.clear( true )
+  M.softres_gui.clear()
+  M.name_matcher.clear( true )
+  M.softres.clear( true )
+end
+
 local function create_components()
   local m = modules
 
@@ -55,12 +63,12 @@ local function create_components()
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = m.DroppedLoot.new( M.db )
   M.master_loot_tracker = m.MasterLootTracker.new()
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
-    M.absent_softres )
+    M.absent_softres, M.db )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres, M.ace_timer, M.softres_check )
   M.master_loot_frame = m.MasterLootFrame.new()
   M.master_loot = m.MasterLoot.new( M.group_roster, M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
-  M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check )
+  M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
 
   M.trade_tracker = m.TradeTracker.new(
     M.ace_timer,
@@ -126,7 +134,8 @@ local function soft_res_rolling_logic( item, count, info, seconds, on_rolling_fi
 end
 
 function M.import_encoded_softres_data( data, data_loaded_callback )
-  local softres_data = modules.SoftRes.decode( data )
+  local sr = modules.SoftRes
+  local softres_data = sr.decode( data )
 
   if not softres_data and data and #data > 0 then
     pretty_print( "Could not load soft-res data!", modules.colors.red )
@@ -139,7 +148,7 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   M.import_softres_data( softres_data )
 
   pretty_print( "Soft-res data loaded successfully!" )
-  if data_loaded_callback then data_loaded_callback() end
+  if data_loaded_callback then data_loaded_callback( softres_data ) end
 end
 
 function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
@@ -345,11 +354,7 @@ end
 
 local function on_softres_command( args )
   if args == "init" then
-    M.dropped_loot.clear( true )
-    M.awarded_loot.clear( true )
-    M.softres_gui.clear()
-    M.name_matcher.clear( true )
-    M.softres.clear( true )
+    clear_data()
   end
 
   M.softres_gui.toggle()

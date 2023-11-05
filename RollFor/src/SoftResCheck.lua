@@ -9,8 +9,14 @@ local negate = modules.negate
 local colors = modules.colors
 local pretty_print = function( text ) modules.pretty_print( text, colors.softres ) end
 
+local ResultType = {
+  NoItemsFound = "NoItemsFound",
+  SomeoneIsNotSoftRessing = "SomeoneIsNotSoftRessing",
+  Ok = "Ok"
+}
+
 local function show( players )
-  local p = function( text ) modules.pretty_print( text, colors.grey ) end
+  local p = function( text ) modules.pretty_print( text, colors.orange ) end
   p( "Players who did not soft-res:" )
 
   local buffer = ""
@@ -37,31 +43,32 @@ local function show( players )
   end
 end
 
-function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
+function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, db )
   local refetch_retries = 0
 
-  local function show_who_is_not_softressing()
+  local function show_who_is_not_softressing( silent )
     local player_names = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
     local not_softressing = filter( player_names, negate( softres.is_player_softressing ) )
 
     if #not_softressing == 0 then
-      modules.pretty_print( "All players in the group are soft-ressing.", colors.green )
-      return
+      if silent ~= true then modules.pretty_print( "All players in the group are soft-ressing.", colors.green ) end
+      return ResultType.Ok
     end
 
-    show( not_softressing )
+    if silent ~= true then show( not_softressing ) end
+    return ResultType.SomeoneIsNotSoftRessing
   end
 
-  local function check_softres()
+  local function check_softres( silent )
     local softres_players = softres.get_all_softres_player_names()
 
     if #softres_players == 0 then
-      pretty_print( "No soft-res items found." )
-      return
+      if silent ~= true then pretty_print( "No soft-res items found." ) end
+      return ResultType.NoItemsFound
     end
 
-    modules.NameMatchReport.report( name_matcher )
-    show_who_is_not_softressing()
+    if silent ~= true then modules.NameMatchReport.report( name_matcher ) end
+    return show_who_is_not_softressing( silent )
   end
 
   local function show_softres( retry )
@@ -137,10 +144,28 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres )
     show_who_is_not_softressing()
   end
 
+  local function warn_if_no_data()
+    local timestamp = db.char.softres_import_timestamp
+
+    if timestamp and modules.api.time() - timestamp < 4 * 3600 then
+      local result = check_softres( true )
+      if result == ResultType.SomeoneIsNotSoftRessing then check_softres() end
+      return
+    end
+
+    if not timestamp then
+      modules.pretty_print( "No softres data found." )
+    else
+      modules.pretty_print( "Found outdated softres data.", modules.colors.red )
+    end
+  end
+
   return {
     check_softres = check_softres,
     show_softres = show_softres,
-    show_who_is_not_softressing = show_who_is_not_softressing
+    show_who_is_not_softressing = show_who_is_not_softressing,
+    warn_if_no_data = warn_if_no_data,
+    ResultType = ResultType
   }
 end
 

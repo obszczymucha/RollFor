@@ -214,7 +214,7 @@ function M.create_item_summary( items, softres )
   return result
 end
 
-function M.new( announce, dropped_loot, master_loot_tracker, softres )
+function M.new( announce, dropped_loot, master_loot_tracker, softres, ace_timer, softres_check )
   local announcing = false
   local announced_source_ids = {}
 
@@ -254,13 +254,25 @@ function M.new( announce, dropped_loot, master_loot_tracker, softres )
 
       dropped_loot.persist()
       announced_source_ids[ source_guid ] = true
+
+      ace_timer:ScheduleTimer( softres_check.warn_if_no_data, 0.5 )
     end
 
     announcing = false
   end
 
+  local function reset()
+    local former_size = modules.count_elements( announced_source_ids )
+    announced_source_ids = {}
+
+    if former_size > 0 then
+      modules.pretty_print( "Loot announcement has been reset." )
+    end
+  end
+
   return {
-    on_loot_opened = on_loot_opened
+    on_loot_opened = on_loot_opened,
+    reset = reset
   }
 end
 

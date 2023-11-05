@@ -28,7 +28,7 @@ local control_backdrop = {
   insets = { left = 3, right = 3, top = 3, bottom = 3 }
 }
 
-local function create_frame( api, on_close, on_dirty )
+local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   local frame = api().CreateFrame( "Frame", "RollForSoftResLootFrame", UIParent )
   frame:Hide()
   frame:SetWidth( 565 )
@@ -41,7 +41,7 @@ local function create_frame( api, on_close, on_dirty )
 
   frame:SetBackdrop( frame_backdrop )
   frame:SetBackdropColor( 0, 0, 0, 1 )
-  frame:SetScript( "OnHide", on_close )
+
   frame:SetMinResize( 400, 200 )
   frame:SetToplevel( true )
 
@@ -77,11 +77,6 @@ local function create_frame( api, on_close, on_dirty )
   editbox:SetScript( "OnEscapePressed", editbox.ClearFocus )
   scroll_frame:SetScript( "OnMouseUp", function() editbox:SetFocus() end )
 
-  editbox:SetScript( "OnTextChanged", function( _ )
-    scroll_frame:UpdateScrollChildRect()
-    on_dirty()
-  end )
-
   local function fix_size()
     scroll_child:SetHeight( scroll_frame:GetHeight() )
     scroll_child:SetWidth( scroll_frame:GetWidth() )
@@ -91,12 +86,54 @@ local function create_frame( api, on_close, on_dirty )
   scroll_frame:SetScript( "OnShow", fix_size )
   scroll_frame:SetScript( "OnSizeChanged", fix_size )
 
-  local close_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
-  close_button:SetScript( "OnClick", function() frame:Hide() end )
-  close_button:SetPoint( "BOTTOMRIGHT", frame, "BOTTOMRIGHT", -27, 17 )
-  close_button:SetHeight( 20 )
-  close_button:SetWidth( 100 )
-  close_button:SetText( "Close" )
+  local cancel_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+  cancel_button:SetScript( "OnClick", function()
+    frame:Hide()
+    editbox:SetText( on_cancel() or "" )
+  end )
+
+  cancel_button:SetPoint( "BOTTOMRIGHT", frame, "BOTTOMRIGHT", -27, 17 )
+  cancel_button:SetHeight( 20 )
+  cancel_button:SetWidth( 80 )
+  cancel_button:SetText( "Close" )
+
+  local clear_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+
+  clear_button:SetScript( "OnClick",
+    function()
+      editbox:SetText( "" )
+      cancel_button:SetText( "Close" )
+      on_clear()
+    end )
+
+  clear_button:SetPoint( "RIGHT", cancel_button, "LEFT", -10, 0 )
+  clear_button:SetHeight( 20 )
+  clear_button:SetWidth( 80 )
+  clear_button:SetText( "Clear" )
+
+  local import_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+
+  import_button:SetScript( "OnClick", function()
+    on_import( function()
+      frame:Hide()
+    end )
+  end )
+
+  import_button:SetPoint( "RIGHT", clear_button, "LEFT", -10, 0 )
+  import_button:SetHeight( 20 )
+  import_button:SetWidth( 100 )
+  import_button:SetText( "Import!" )
+  frame.import_button = import_button
+
+  editbox:SetScript( "OnTextChanged", function( _ )
+    scroll_frame:UpdateScrollChildRect()
+    on_dirty( import_button, clear_button, cancel_button )
+  end )
+
+  frame:SetScript( "OnShow", function( self )
+    cancel_button:SetText( "Close" )
+    on_dirty( import_button, clear_button, cancel_button )
+  end )
 
   do
     local cursor_offset, cursor_height
@@ -144,44 +181,84 @@ local function create_frame( api, on_close, on_dirty )
   label:SetTextColor( 1, 1, 1, 1 )
   label:SetText( string.format( "%s  %s", modules.colors.blue( "RollFor" ), "Soft-Res data import" ) )
 
+  table.insert( api().UISpecialFrames, "RollForSoftResLootFrame" )
   return frame
 end
 
-function M.new( api, import_encoded_softres_data, softres_check )
+function M.new( api, import_encoded_softres_data, softres_check, softres, clear_data, reset_loot_announcements )
   local softres_data
+  local edit_box_text
   local dirty = false
   local frame
 
-  local function on_close()
-    if dirty and softres_data and softres_data ~= "" then
-      dirty = false
-      import_encoded_softres_data( softres_data, function()
-        softres_check.check_softres()
-      end )
-    end
+  local function on_import( close_window_fn )
+    import_encoded_softres_data( edit_box_text, function()
+      local success = softres_check.check_softres()
+
+      if success ~= softres_check.ResultType.NoItemsFound then
+        softres_data = edit_box_text
+        softres.persist( softres_data )
+        close_window_fn()
+        reset_loot_announcements()
+      end
+    end )
   end
 
-  local function on_dirty()
-    if dirty then
-      softres_data = frame.editbox:GetText()
-      return
-    end
+  local function on_clear()
+    edit_box_text = nil
+    softres_data = nil
+    dirty = false
 
+    if frame then frame.editbox:SetText( "" ) end
+
+    clear_data()
+    reset_loot_announcements()
+  end
+
+  local function on_cancel()
+    edit_box_text = softres_data
+    dirty = false
+    return softres_data
+  end
+
+  local function on_dirty( import_button, clear_button, cancel_button )
     local text = frame.editbox:GetText()
     if text == "" then text = nil end
 
-    if softres_data ~= text then
+    if edit_box_text ~= text then
       dirty = true
-      softres_data = text
+      edit_box_text = text
     end
+
+    cancel_button:SetText( dirty and "Cancel" or "Close" )
+
+    if dirty then
+      if edit_box_text == softres_data then
+        import_button:Disable()
+      else
+        import_button:Enable()
+      end
+
+      clear_button:Enable()
+      return
+    end
+
+    if text == nil then
+      clear_button:Disable()
+    else
+      clear_button:Enable()
+    end
+
+    import_button:Disable()
   end
 
   local function toggle()
-    if not frame then frame = create_frame( api, on_close, on_dirty ) end
+    if not frame then frame = create_frame( api, on_import, on_clear, on_cancel, on_dirty ) end
 
     if frame:IsVisible() then
       frame:Hide()
     else
+      dirty = false
       frame.editbox:SetText( softres_data or "" )
       frame:Show()
     end
@@ -192,7 +269,13 @@ function M.new( api, import_encoded_softres_data, softres_check )
   end
 
   local function clear()
+    edit_box_text = nil
     softres_data = nil
+    dirty = false
+
+    if frame then frame.editbox:SetText( "" ) end
+
+    reset_loot_announcements()
   end
 
   return {

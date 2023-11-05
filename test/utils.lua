@@ -55,7 +55,10 @@ function M.console_message( message )
 end
 
 function M.mock_wow_api()
-  M.modules().api.GetAddOnMetadata = function() return "2.5" end -- version
+  M.modules().lua.time = os.time
+  M.modules().api.UISpecialFrames = {}
+  M.modules().api.IsAltKeyDown = function() return false end
+  M.modules().api.GetAddOnMetadata = function() return "2.6" end -- version
   M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
       RegisterEvent = function() end,
@@ -81,6 +84,8 @@ function M.mock_wow_api()
       Hide = function( self )
         if self.OnHideCallback then self.OnHideCallback() end
       end,
+      Enable = function() end,
+      Disable = function() end,
       SetBackdrop = function() end,
       SetBackdropColor = function() end,
       SetBackdropBorderColor = function() end,
@@ -859,7 +864,7 @@ function M.import_softres_via_gui( fixture_name )
   local sr_data = M.read_file( fixture_name )
   local sr_frame = _G[ "RollForSoftResLootFrame" ]
   sr_frame.editbox:SetText( sr_data )
-  sr_frame:Hide()
+  sr_frame.import_button.OnClickCallback()
 end
 
 return M

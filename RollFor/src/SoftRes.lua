@@ -19,6 +19,12 @@ function M.new( db )
   local hardres_items = {}
 
   local function persist( data )
+    if data ~= nil then
+      db.char.softres_import_timestamp = modules.lua.time()
+    else
+      db.char.softres_import_timestamp = nil
+    end
+
     db.char.softres_data = data
   end
 
@@ -29,7 +35,6 @@ function M.new( db )
 
     if not data then
       modules.pretty_print( "Couldn't decode softres data!", modules.colors.red )
-      persist( nil )
       return nil
     end
 
@@ -37,15 +42,11 @@ function M.new( db )
 
     if not data then
       modules.pretty_print( "Couldn't decompress softres data!", modules.colors.red )
-      persist( nil )
       return nil
     end
 
 
-    data = libStub( "Json-0.1.2" ).decode( data )
-    persist( encoded_softres_data )
-
-    return data
+    return libStub( "Json-0.1.2" ).decode( data )
   end
 
   local function clear( report )
@@ -200,7 +201,8 @@ function M.new( db )
     show = show,
     get_all_softres_player_names = get_all_softres_player_names,
     import = import,
-    clear = clear
+    clear = clear,
+    persist = persist
   }
 end
 
