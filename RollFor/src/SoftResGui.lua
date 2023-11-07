@@ -262,7 +262,12 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
     else
       dirty = false
       frame.editbox:SetText( softres_data or "" )
+
       frame:Show()
+
+      if not softres_data or softres_data == "" then
+        frame.editbox:SetFocus()
+      end
     end
   end
 

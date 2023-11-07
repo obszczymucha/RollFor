@@ -115,7 +115,7 @@ local function create_components()
   )
 
   M.usage_printer = m.UsagePrinter.new()
-  M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle )
+  M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle, M.softres_check )
 end
 
 function M.import_softres_data( softres_data )

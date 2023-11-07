@@ -9,6 +9,7 @@ local white = modules.colors.white
 local green = modules.colors.green
 local red = modules.colors.red
 local pretty_print = modules.pretty_print
+local class_color = modules.colorize_player_by_class
 
 local ColorType = {
   White = "White",
@@ -17,7 +18,7 @@ local ColorType = {
   Red = "Red"
 }
 
-function M.new( api, db, manage_softres_fn )
+function M.new( api, db, manage_softres_fn, softres_check )
   local icon_color
 
   local function persist_angle( angle )
@@ -36,12 +37,25 @@ function M.new( api, db, manage_softres_fn )
     return db.char.minimap_hidden
   end
 
+  local function print_players_who_did_not_softres( tooltip )
+    local result, players = softres_check.check_softres( true )
+
+    if result == softres_check.ResultType.SomeoneIsNotSoftRessing then
+      tooltip:AddLine( white( "Missing softres:" ) )
+
+      for _, player in pairs( players ) do
+        tooltip:AddLine( class_color( player.name, player.class ) )
+      end
+    end
+  end
+
   local function create()
     local frame = api().CreateFrame( "Button", "RollForMinimapButton", api().Minimap )
 
     function frame:OnClick()
       manage_softres_fn()
       self:OnEnter()
+      api().GameTooltip:Hide()
     end
 
     function frame:OnMouseDown()
@@ -75,8 +89,7 @@ function M.new( api, db, manage_softres_fn )
           api().GameTooltip:AddLine( string.format( "%s %s", white( "Softres status:" ), green( "OK" ) ) )
         elseif icon_color == ColorType.Orange then
           api().GameTooltip:AddLine( " " )
-          api().GameTooltip:AddLine( white( "Softres status:" ) )
-          api().GameTooltip:AddLine( hl( "Not everyone is softressing!" ) )
+          print_players_who_did_not_softres( api().GameTooltip )
         elseif icon_color == ColorType.Red then
           api().GameTooltip:AddLine( " " )
           api().GameTooltip:AddLine( white( "Softres status:" ) )

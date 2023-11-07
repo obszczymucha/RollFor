@@ -107,6 +107,7 @@ function M.mock_wow_api()
       end,
       SetWidth = function() end,
       SetHeight = function() end,
+      SetFocus = function() end,
       SetPoint = function() end,
       SetMovable = function() end,
       SetResizable = function() end,
