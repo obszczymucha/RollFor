@@ -11,7 +11,7 @@ local merge = modules.merge
 local colors = modules.colors
 local p = modules.pretty_print
 
-function M.new( db, api, absent_unfiltered_softres, name_matcher )
+function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status_changed )
   local manual_matches = db.char.manual_matches or {}
   local manual_match_options = nil
 
@@ -89,14 +89,17 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher )
       p( string.format( "%s is already matched to %s.", colors.hl( softres_name ), colors.hl( already_matched_name ) ) )
       create_matches_and_show()
     elseif target and not already_matched_name then
+      manual_match_options = nil
       manual_matches[ softres_name ] = target
       persist()
       p( string.format( "|cffff9f69%s|r is now soft-ressing as |cffff9f69%s|r.", target, softres_name ) )
-      manual_match_options = nil
+      softres_status_changed()
     elseif not target and already_matched_name then
       manual_match_options = nil
       manual_matches[ softres_name ] = nil
+      persist()
       p( string.format( "Unmatched |cffff2f2f%s|r.", softres_name ) )
+      softres_status_changed()
     else
       p( string.format( "To match a player, target them first." ) )
       create_matches_and_show()

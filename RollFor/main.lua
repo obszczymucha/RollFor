@@ -41,6 +41,24 @@ local function clear_data()
   M.minimap_button.set_icon( M.minimap_button.ColorType.White )
 end
 
+local function update_minimap_icon()
+  local result = M.softres_check.check_softres( true )
+
+  if result == M.softres_check.ResultType.NoItemsFound then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
+  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
+  elseif result == M.softres_check.ResultType.FoundOutdatedData then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Red )
+  else
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Green )
+  end
+end
+
+local function on_softres_status_changed()
+  update_minimap_icon()
+end
+
 local function create_components()
   local m = modules
 
@@ -57,7 +75,8 @@ local function create_components()
   M.name_matcher = m.NameManualMatcher.new(
     M.db, M.api,
     M.absent_softres( M.unfiltered_softres ),
-    m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres, 0.57, 0.4 )
+    m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres, 0.57, 0.4 ),
+    on_softres_status_changed
   )
   M.matched_name_softres = m.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
@@ -133,20 +152,6 @@ local function soft_res_rolling_logic( item, count, info, seconds, on_rolling_fi
 
   return modules.SoftResRollingLogic.new( announce, M.ace_timer, softressing_players, item, count, seconds, on_rolling_finished,
     on_softres_rolls_available )
-end
-
-local function update_minimap_icon()
-  local result = M.softres_check.check_softres( true )
-
-  if result == M.softres_check.ResultType.NoItemsFound then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
-  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
-  elseif result == M.softres_check.ResultType.FoundOutdatedData then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Red )
-  else
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Green )
-  end
 end
 
 function M.import_encoded_softres_data( data, data_loaded_callback )
