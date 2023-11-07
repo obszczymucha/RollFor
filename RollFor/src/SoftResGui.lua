@@ -113,6 +113,7 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   clear_button:SetText( "Clear" )
 
   local import_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+  frame.import_button = import_button
 
   import_button:SetScript( "OnClick", function()
     on_import( function()

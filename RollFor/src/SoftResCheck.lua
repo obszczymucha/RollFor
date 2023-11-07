@@ -63,7 +63,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
   local function check_softres( silent )
     local timestamp = db.char.softres_import_timestamp
 
-    if timestamp and modules.api.time() - timestamp > 6 * 3600 then
+    if timestamp and modules.lua.time() - timestamp > 6 * 3600 then
       return ResultType.FoundOutdatedData
     end
 

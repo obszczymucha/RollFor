@@ -117,6 +117,7 @@ function M.new( api, db, manage_softres_fn )
       self:UpdatePosition()
     end
 
+    -- Copy pasted from Bongos.
     --magic fubar code for updating the minimap button"s position
     --I suck at trig, so I"m not going to bother figuring it out
     function frame:UpdatePosition()
@@ -169,19 +170,22 @@ function M.new( api, db, manage_softres_fn )
     end
 
     frame:SetFrameStrata( "MEDIUM" )
-    frame:SetWidth( 31 ); frame:SetHeight( 31 )
+    frame:SetWidth( 31 )
+    frame:SetHeight( 31 )
     frame:SetFrameLevel( 8 )
     frame:RegisterForClicks( "anyUp" )
     frame:RegisterForDrag( "LeftButton" )
     frame:SetHighlightTexture( "Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight" )
 
     local overlay = frame:CreateTexture( nil, "OVERLAY" )
-    overlay:SetWidth( 53 ); overlay:SetHeight( 53 )
+    overlay:SetWidth( 53 )
+    overlay:SetHeight( 53 )
     overlay:SetTexture( "Interface\\Minimap\\MiniMap-TrackingBorder" )
     overlay:SetPoint( "TOPLEFT" )
 
     local icon = frame:CreateTexture( nil, "BACKGROUND" )
-    icon:SetWidth( 20 ); icon:SetHeight( 20 )
+    icon:SetWidth( 20 )
+    icon:SetHeight( 20 )
     icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
     icon:SetPoint( "TOPLEFT", 7, -5 )
     frame.icon = icon

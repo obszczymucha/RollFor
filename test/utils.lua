@@ -56,9 +56,11 @@ end
 
 function M.mock_wow_api()
   M.modules().lua.time = os.time
+  M.modules().lua.random = math.random
   M.modules().api.UISpecialFrames = {}
   M.modules().api.IsAltKeyDown = function() return false end
   M.modules().api.GetAddOnMetadata = function() return "2.6" end -- version
+
   M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
       RegisterEvent = function() end,
@@ -90,6 +92,19 @@ function M.mock_wow_api()
       SetBackdropColor = function() end,
       SetBackdropBorderColor = function() end,
       SetFrameStrata = function() end,
+      SetFrameLevel = function() end,
+      RegisterForClicks = function() end,
+      RegisterForDrag = function() end,
+      SetHighlightTexture = function() end,
+      CreateTexture = function()
+        return {
+          SetWidth = function() end,
+          SetHeight = function() end,
+          SetTexture = function() end,
+          SetPoint = function() end,
+          SetTexCoord = function() end,
+        }
+      end,
       SetWidth = function() end,
       SetHeight = function() end,
       SetPoint = function() end,
@@ -129,6 +144,7 @@ function M.mock_wow_api()
 
     return frame
   end
+
   M.modules().api.LOOTFRAME_NUMBUTTONS = 4
   M.modules().api.StaticPopupDialogs = {}
   M.modules().api.RAID_CLASS_COLORS = {
@@ -575,6 +591,7 @@ function M.load_real_stuff()
   require( "src/MasterLootTracker" )
   require( "src/MasterLootFrame" )
   require( "src/UsagePrinter" )
+  require( "src/MinimapButton" )
   require( "Libs/LibDeflate/LibDeflate" )
   require( "src/Json" )
   require( "main" )
