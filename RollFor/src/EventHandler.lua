@@ -16,7 +16,8 @@ function M.handle_events( main )
         m_first_enter_world = true
       end
     elseif event == "PARTY_MEMBERS_CHANGED" then
-      main.version_broadcast.on_party_members_changed()
+      main.version_broadcast.on_group_changed()
+      main.on_group_changed()
       --elseif event == "CHAT_MSG_PARTY" then
       --main.on_chat_msg_system( ... )
     elseif event == "CHAT_MSG_SYSTEM" then
@@ -39,8 +40,6 @@ function M.handle_events( main )
       main.trade_tracker.on_trade_accept_update( ... )
     elseif event == "TRADE_REQUEST_CANCEL" then
       main.trade_tracker.on_trade_request_cancel()
-    elseif event == "GROUP_ROSTER_UPDATE" then
-      main.on_group_roster_update()
     elseif event == "UI_ERROR_MESSAGE" then
       local message = unpack( { ... } )
       if message == "That player's inventory is full" then
@@ -70,7 +69,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_CLOSED" )
   frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
-  frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
+  frame:RegisterEvent( "PARTY_MEMBERS_CHANGED" )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:SetScript( "OnEvent", eventHandler )
 end

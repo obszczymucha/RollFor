@@ -123,7 +123,6 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   import_button:SetHeight( 20 )
   import_button:SetWidth( 100 )
   import_button:SetText( "Import!" )
-  frame.import_button = import_button
 
   editbox:SetScript( "OnTextChanged", function( _ )
     scroll_frame:UpdateScrollChildRect()
@@ -181,7 +180,8 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   label:SetTextColor( 1, 1, 1, 1 )
   label:SetText( string.format( "%s  %s", modules.colors.blue( "RollFor" ), "Soft-Res data import" ) )
 
-  table.insert( api().UISpecialFrames, "RollForSoftResLootFrame" )
+  ---@diagnostic disable-next-line: undefined-global
+  table.insert( UISpecialFrames, "RollForSoftResLootFrame" )
   return frame
 end
 
@@ -193,9 +193,9 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
 
   local function on_import( close_window_fn )
     import_encoded_softres_data( edit_box_text, function()
-      local success = softres_check.check_softres()
+      local result = softres_check.check_softres()
 
-      if success ~= softres_check.ResultType.NoItemsFound then
+      if result ~= softres_check.ResultType.NoItemsFound then
         softres_data = edit_box_text
         softres.persist( softres_data )
         close_window_fn()

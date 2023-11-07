@@ -12,6 +12,7 @@ local pretty_print = function( text ) modules.pretty_print( text, colors.softres
 local ResultType = {
   NoItemsFound = "NoItemsFound",
   SomeoneIsNotSoftRessing = "SomeoneIsNotSoftRessing",
+  FoundOutdatedData = "FoundOutdatedData",
   Ok = "Ok"
 }
 
@@ -60,6 +61,12 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
   end
 
   local function check_softres( silent )
+    local timestamp = db.char.softres_import_timestamp
+
+    if timestamp and modules.api.time() - timestamp > 6 * 3600 then
+      return ResultType.FoundOutdatedData
+    end
+
     local softres_players = softres.get_all_softres_player_names()
 
     if #softres_players == 0 then
@@ -145,17 +152,13 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
   end
 
   local function warn_if_no_data()
-    local timestamp = db.char.softres_import_timestamp
+    local result = check_softres( true )
 
-    if timestamp and modules.api.time() - timestamp < 4 * 3600 then
-      local result = check_softres( true )
-      if result == ResultType.SomeoneIsNotSoftRessing then check_softres() end
-      return
-    end
-
-    if not timestamp then
-      modules.pretty_print( "No softres data found." )
-    else
+    if result == ResultType.SomeoneIsNotSoftRessing then
+      check_softres()
+    elseif result == ResultType.NoItemsFound then
+      modules.pretty_print( "No softres items found." )
+    elseif result == ResultType.FoundOutdatedData then
       modules.pretty_print( "Found outdated softres data.", modules.colors.red )
     end
   end

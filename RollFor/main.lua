@@ -38,6 +38,7 @@ local function clear_data()
   M.softres_gui.clear()
   M.name_matcher.clear( true )
   M.softres.clear( true )
+  M.minimap_button.set_icon( M.minimap_button.ColorType.White )
 end
 
 local function create_components()
@@ -95,6 +96,7 @@ local function create_components()
   )
 
   M.usage_printer = m.UsagePrinter.new()
+  M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle )
 end
 
 function M.import_softres_data( softres_data )
@@ -133,15 +135,29 @@ local function soft_res_rolling_logic( item, count, info, seconds, on_rolling_fi
     on_softres_rolls_available )
 end
 
+local function update_minimap_icon()
+  local result = M.softres_check.check_softres( true )
+
+  if result == M.softres_check.ResultType.NoItemsFound then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
+  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
+  elseif result == M.softres_check.ResultType.FoundOutdatedData then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Red )
+  else
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Green )
+  end
+end
+
 function M.import_encoded_softres_data( data, data_loaded_callback )
   local sr = modules.SoftRes
   local softres_data = sr.decode( data )
 
   if not softres_data and data and #data > 0 then
     pretty_print( "Could not load soft-res data!", modules.colors.red )
-    M.import_softres_data( { softreserves = {}, hardreserves = {} } )
     return
   elseif not softres_data then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
     return
   end
 
@@ -149,6 +165,8 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
 
   pretty_print( "Soft-res data loaded successfully!" )
   if data_loaded_callback then data_loaded_callback( softres_data ) end
+
+  update_minimap_icon()
 end
 
 function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
@@ -466,6 +484,10 @@ local function setup_slash_commands()
   M.api().SlashCmdList[ "SRC" ] = M.softres_check.check_softres
   SLASH_SRO1 = "/sro"
   M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
+  SLASH_RFM1 = "/rfm"
+  M.api().SlashCmdList[ "RFM" ] = M.minimap_button.toggle
+  SLASH_RFL1 = "/rfl"
+  M.api().SlashCmdList[ "RFL" ] = M.minimap_button.toggle_lock
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
@@ -509,8 +531,9 @@ function M.unaward_item( player, item_id, item_link_or_colored_item_name )
   pretty_print( string.format( "%s returned %s.", hl( player ), item_link_or_colored_item_name ) )
 end
 
-function M.on_group_roster_update()
+function M.on_group_changed()
   M.name_matcher.auto_match()
+  update_minimap_icon()
 end
 
 modules.EventHandler.handle_events( M )

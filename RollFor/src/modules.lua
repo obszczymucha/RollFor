@@ -6,7 +6,8 @@ M.api = _G
 M.lua = {
   format = format,
   time = time,
-  strmatch = strmatch
+  strmatch = strmatch,
+  random = random
 }
 
 M.colors = {

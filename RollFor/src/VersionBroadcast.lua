@@ -54,7 +54,7 @@ function M.new( db, version )
     broadcast_version( modules.api.IsInRaid() and "RAID" or "PARTY" )
   end
 
-  local function on_party_members_changed()
+  local function on_group_changed()
     broadcast_version_to_the_group()
   end
 
@@ -80,7 +80,7 @@ function M.new( db, version )
   ace_comm:RegisterComm( comm_prefix, on_comm )
 
   return {
-    on_party_members_changed = on_party_members_changed,
+    on_group_changed = on_group_changed,
     broadcast = broadcast
   }
 end

@@ -1,7 +1,7 @@
 ## Interface: 20400
 ## Title: Roll For
 ## Author: Obszczymucha
-## Version: 2.6
+## Version: 2.7
 ## Notes: An automated item roller with soft ressing support via softres.it.
 ## SavedVariables: RollForDb
 
@@ -38,4 +38,5 @@ src\TieRollingLogic.lua
 src\RaidRollRollingLogic.lua
 src\MasterLootTracker.lua
 src\UsagePrinter.lua
+src\MinimapButton.lua
 main.lua
