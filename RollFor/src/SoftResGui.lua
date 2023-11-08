@@ -211,7 +211,10 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
     softres_data = nil
     dirty = false
 
-    if frame then frame.editbox:SetText( "" ) end
+    if frame then
+      frame.editbox:SetText( "" )
+      frame.editbox:SetFocus()
+    end
 
     clear_data()
     reset_loot_announcements()
