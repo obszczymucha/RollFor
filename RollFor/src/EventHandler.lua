@@ -40,6 +40,8 @@ function M.handle_events( main )
       main.trade_tracker.on_trade_accept_update( ... )
     elseif event == "TRADE_REQUEST_CANCEL" then
       main.trade_tracker.on_trade_request_cancel()
+    elseif event == "PLAYER_REGEN_DISABLED" then
+      main.master_loot_warning.on_player_regen_disabled()
     elseif event == "UI_ERROR_MESSAGE" then
       local message = unpack( { ... } )
       if message == "That player's inventory is full" then
@@ -71,6 +73,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
   frame:RegisterEvent( "PARTY_MEMBERS_CHANGED" )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
+  frame:RegisterEvent( "PLAYER_REGEN_DISABLED" )
   frame:SetScript( "OnEvent", eventHandler )
 end
 

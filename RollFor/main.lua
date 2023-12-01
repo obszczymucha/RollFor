@@ -116,6 +116,7 @@ local function create_components()
 
   M.usage_printer = m.UsagePrinter.new()
   M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle, M.softres_check )
+  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.ace_timer )
 end
 
 function M.import_softres_data( softres_data )
