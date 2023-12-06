@@ -9,7 +9,7 @@ local table_contains_value = modules.table_contains_value
 local UIParent             = UIParent
 
 local zones                = {
-  "Blade's Edge Mountains",
+  "Terokkar Forest",
   "Karazhan",
   "Gruul's Lair",
   "Magtheridon's Lair",
@@ -35,19 +35,14 @@ local function create_frame( api )
   return frame
 end
 
-function M.new( api, ace_timer )
+function M.new( api )
   local frame
 
-  local function show_and_fade_outn( seconds )
+  local function show()
     if not frame or (frame.fadeInfo and frame.fadeInfo.finishedFunc) then return end
 
     frame:SetAlpha( 1 )
     frame:Show()
-
-    ace_timer:ScheduleTimer( function()
-      api().UIFrameFadeOut( frame, 2, 1, 0 )
-      frame.fadeInfo.finishedFunc = function() frame:Hide() end
-    end, seconds or 1 )
   end
 
   local function on_player_regen_disabled()
@@ -55,11 +50,27 @@ function M.new( api, ace_timer )
     if not table_contains_value( zones, zone_name ) or not api().IsInRaid() or api().GetLootMethod() == "master" then return end
 
     if not frame then frame = create_frame( api ) end
-    show_and_fade_outn( 10 )
+    show()
+  end
+
+  local function on_party_loot_method_changed()
+    local is_master_loot = api().GetLootMethod() == "master"
+
+    if api().IsInRaid() and api().InCombatLockdown() and not is_master_loot then
+      show()
+      return
+    end
+
+    if frame and frame:IsVisible() and frame:GetAlpha() == 1 and is_master_loot then
+      api().UIFrameFadeOut( frame, 2, 1, 0 )
+      frame.fadeInfo.finishedFunc = function() frame:Hide() end
+      return
+    end
   end
 
   return {
-    on_player_regen_disabled = on_player_regen_disabled
+    on_player_regen_disabled = on_player_regen_disabled,
+    on_party_loot_method_changed = on_party_loot_method_changed
   }
 end
 
