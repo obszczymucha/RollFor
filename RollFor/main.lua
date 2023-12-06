@@ -116,7 +116,7 @@ local function create_components()
 
   M.usage_printer = m.UsagePrinter.new()
   M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle, M.softres_check )
-  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.ace_timer )
+  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.db )
 end
 
 function M.import_softres_data( softres_data )
@@ -268,8 +268,24 @@ local function parse_args( args )
   end
 end
 
+local function toggle_ml_warning()
+  if M.db.char.disable_ml_warning then
+    M.db.char.disable_ml_warning = nil
+    M.master_loot_warning.hide()
+  else
+    M.db.char.disable_ml_warning = 1
+  end
+
+  pretty_print( string.format( "Master Loot warning %s.", M.db.char.disable_ml_warning and hl( "enabled" ) or hl( "disabled" ) ) )
+end
+
 local function on_roll_command( roll_type )
   return function( args )
+    if args == "ml" then
+      toggle_ml_warning()
+      return
+    end
+
     if m_rolling_logic and m_rolling_logic.is_rolling() then
       pretty_print( "Rolling already in progress." )
       return

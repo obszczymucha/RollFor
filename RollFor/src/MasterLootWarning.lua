@@ -35,11 +35,11 @@ local function create_frame( api )
   return frame
 end
 
-function M.new( api )
+function M.new( api, db )
   local frame
 
   local function show()
-    if not frame or (frame.fadeInfo and frame.fadeInfo.finishedFunc) then return end
+    if not frame or (frame.fadeInfo and frame.fadeInfo.finishedFunc) or db.char.disable_ml_warning then return end
 
     frame:SetAlpha( 1 )
     frame:Show()
@@ -53,6 +53,13 @@ function M.new( api )
     show()
   end
 
+  local function hide()
+    if not frame then return end
+
+    api().UIFrameFadeOut( frame, 2, 1, 0 )
+    frame.fadeInfo.finishedFunc = function() frame:Hide() end
+  end
+
   local function on_party_loot_method_changed()
     local is_master_loot = api().GetLootMethod() == "master"
 
@@ -62,15 +69,24 @@ function M.new( api )
     end
 
     if frame and frame:IsVisible() and frame:GetAlpha() == 1 and is_master_loot then
-      api().UIFrameFadeOut( frame, 2, 1, 0 )
-      frame.fadeInfo.finishedFunc = function() frame:Hide() end
+      hide()
       return
+    end
+  end
+
+  local function on_zone_changed()
+    local zone_name = api().GetRealZoneText()
+
+    if not table_contains_value( zones, zone_name ) or not api().IsInRaid() and frame and frame:IsVisible() and api().InCombatLockdown() then
+      hide()
     end
   end
 
   return {
     on_player_regen_disabled = on_player_regen_disabled,
-    on_party_loot_method_changed = on_party_loot_method_changed
+    on_party_loot_method_changed = on_party_loot_method_changed,
+    on_zone_changed = on_zone_changed,
+    hide = hide
   }
 end
 

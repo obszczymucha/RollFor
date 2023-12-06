@@ -44,6 +44,8 @@ function M.handle_events( main )
       main.master_loot_warning.on_player_regen_disabled()
     elseif event == "PARTY_LOOT_METHOD_CHANGED" then
       main.master_loot_warning.on_party_loot_method_changed()
+    elseif event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED" then
+      main.master_loot_warning.on_zone_changed()
     elseif event == "UI_ERROR_MESSAGE" then
       local message = unpack( { ... } )
       if message == "That player's inventory is full" then
@@ -77,6 +79,8 @@ function M.handle_events( main )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:RegisterEvent( "PLAYER_REGEN_DISABLED" )
   frame:RegisterEvent( "PARTY_LOOT_METHOD_CHANGED" )
+  frame:RegisterEvent( "ZONE_CHANGED" )
+  frame:RegisterEvent( "ZONE_CHANGED_NEW_AREA" )
   frame:SetScript( "OnEvent", eventHandler )
 end
 
