@@ -30,7 +30,7 @@ local function hook_loot_buttons( reset_confirmation, normal_loot, master_loot, 
 
     if not button.OriginalOnClick then button.OriginalOnClick = button:GetScript( "OnClick" ) end
 
-    button:SetScript( "OnClick", function( self, mouse_button )
+    button:SetScript( "OnClick", function( self )
       reset_confirmation()
 
       if modules.api.IsModifiedClick( "CHATLINK" ) then

@@ -117,6 +117,7 @@ local function create_components()
   M.usage_printer = m.UsagePrinter.new()
   M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle, M.softres_check )
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.db )
+  M.auto_loot = m.AutoLoot.new( M.api )
 end
 
 function M.import_softres_data( softres_data )
@@ -464,6 +465,7 @@ local function simulate_loot_dropped( args )
 end
 
 function M.on_loot_opened()
+  M.auto_loot.on_loot_opened()
   M.dropped_loot_announce.on_loot_opened()
   M.master_loot.on_loot_opened()
 end
