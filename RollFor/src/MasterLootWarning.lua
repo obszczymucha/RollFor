@@ -54,10 +54,14 @@ function M.new( api, db )
   end
 
   local function hide()
-    if not frame then return end
+    if not frame or frame.fading_out or not frame:IsVisible() then return end
 
+    frame.fading_out = true
     api().UIFrameFadeOut( frame, 2, 1, 0 )
-    frame.fadeInfo.finishedFunc = function() frame:Hide() end
+    frame.fadeInfo.finishedFunc = function()
+      frame.fading_out = nil
+      frame:Hide()
+    end
   end
 
   local function on_party_loot_method_changed()

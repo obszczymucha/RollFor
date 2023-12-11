@@ -277,7 +277,7 @@ local function toggle_ml_warning()
     M.db.char.disable_ml_warning = 1
   end
 
-  pretty_print( string.format( "Master Loot warning %s.", M.db.char.disable_ml_warning and hl( "enabled" ) or hl( "disabled" ) ) )
+  pretty_print( string.format( "Master Loot warning %s.", M.db.char.disable_ml_warning and hl( "disabled" ) or hl( "enabled" ) ) )
 end
 
 local function on_roll_command( roll_type )
