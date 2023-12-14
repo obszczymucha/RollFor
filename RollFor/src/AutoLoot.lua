@@ -293,6 +293,46 @@ local items = {
     30248, -- Pauldrons of the Vanquished Champion
     30249, -- Pauldrons of the Vanquished Defender
     30250, -- Pauldrons of the Vanquished Hero
+  },
+  [ "Hyjal Summit" ] = {
+    -- Trash mobs
+    32590, -- Nethervoid Cloak
+    34010, -- Pepe's Shroud of Pacification
+    32609, -- Boots of the Divine Light
+    32592, -- Chestguard of Relentless Storms
+    32591, -- Choker of Serrated Blades
+    32589, -- Hellfire-Encased Pendant
+    34009, -- Hammer of Judgement
+    32946, -- Claw of Molten Fury
+    32945, -- Fist of Molten Fury
+
+    -- Dunno why, but these don't seem to be dropping.
+    32285, -- Design: Flashing Crimson Spinel
+    32296, -- Design: Great Lionseye
+    32303, -- Design: Inscribed Pyrestone
+    32295, -- Design: Mystic Lionseye
+    32298, -- Design: Shifting Shadowsong Amethyst
+    32297, -- Design: Soverign Shadowsong Amethyst
+    32289, -- Design: Stormy Empyrean Sapphire
+    32307, -- Design: Veiled Pyrestone
+
+    -- However, the BT ones are:
+    32738, -- Plans: Dawnsteel Bracers
+    32739, -- Plans: Dawnsteel Shoulders
+    32736, -- Plans: Swiftsteel Bracers
+    32737, -- Plans: Swiftsteel Shoulders
+    32748, -- Pattern: Bindings of Lightning Reflexes
+    32744, -- Pattern: Bracers of Renewed Life
+    32750, -- Pattern: Living Earth Bindings
+    32751, -- Pattern: Living Earth Shoulders
+    32749, -- Pattern: Shoulders of Lightning Reflexes
+    32745, -- Pattern: Shoulderpads of Renewed Life
+    32746, -- Pattern: Swiftstrike Bracers
+    32747, -- Pattern: Swiftstrike Shoulders
+    32754, -- Pattern: Bracers of Nimble Thought
+    32755, -- Pattern: Mantle of Nimble Thought
+    32753, -- Pattern: Swiftheal Mantle
+    32752, -- Pattern: Swiftheal Wraps
   }
 }
 

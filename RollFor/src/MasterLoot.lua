@@ -87,8 +87,7 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
 
   local function on_confirm( slot, player )
     m_confirmed = { slot = slot, player = player }
-    Dump(player)
-    --modules.api.GiveMasterLoot( slot, player.value )
+    modules.api.GiveMasterLoot( slot, player.value )
     master_loot_frame.hide()
   end
 
