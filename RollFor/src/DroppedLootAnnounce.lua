@@ -214,7 +214,7 @@ function M.create_item_summary( items, softres )
   return result
 end
 
-function M.new( announce, dropped_loot, master_loot_tracker, softres, ace_timer, softres_check )
+function M.new( announce, dropped_loot, master_loot_tracker, softres )
   local announcing = false
   local announced_source_ids = {}
 
@@ -254,8 +254,6 @@ function M.new( announce, dropped_loot, master_loot_tracker, softres, ace_timer,
 
       dropped_loot.persist()
       announced_source_ids[ source_guid ] = true
-
-      ace_timer:ScheduleTimer( softres_check.warn_if_no_data, 0.5 )
     end
 
     announcing = false

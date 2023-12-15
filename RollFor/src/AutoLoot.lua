@@ -8,7 +8,8 @@ local contains = modules.table_contains_value
 
 local items = {
   [ "Ragefire Chasm" ] = {
-    14149
+    14149,
+    14113, -- Aboriginal Sash of the Whale
   },
   [ "Karazhan" ] = {
     -- Trash mobs
@@ -336,7 +337,7 @@ local items = {
   }
 }
 
-function M.new( api )
+function M.new( api, db )
   local frame
 
   local function find_player_candidate_index()
@@ -357,10 +358,13 @@ function M.new( api )
       return
     end
 
+    local threshold = modules.api.GetLootThreshold()
+
     for slot = 1, item_count do
       local link = modules.api.GetLootSlotLink( slot )
+      local quality = select( 4, modules.api.GetLootSlotInfo( slot ) ) or 0
 
-      if link then
+      if link and quality >= threshold then
         local item_id = item_utils.get_item_id( link )
 
         if contains( item_ids, item_id ) then
@@ -400,6 +404,10 @@ function M.new( api )
     end
 
     frame:Show()
+
+    if db.char.auto_loot then
+      on_auto_loot()
+    end
   end
 
   return {

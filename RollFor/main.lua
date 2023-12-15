@@ -85,7 +85,7 @@ local function create_components()
   M.master_loot_tracker = m.MasterLootTracker.new()
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, M.db )
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres, M.ace_timer, M.softres_check )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres )
   M.master_loot_frame = m.MasterLootFrame.new()
   M.master_loot = m.MasterLoot.new( M.group_roster, M.dropped_loot, M.award_item, M.master_loot_frame, M.master_loot_tracker )
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
@@ -117,7 +117,7 @@ local function create_components()
   M.usage_printer = m.UsagePrinter.new()
   M.minimap_button = m.MinimapButton.new( M.api, M.db, M.softres_gui.toggle, M.softres_check )
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.db )
-  M.auto_loot = m.AutoLoot.new( M.api )
+  M.auto_loot = m.AutoLoot.new( M.api, M.db )
 end
 
 function M.import_softres_data( softres_data )
@@ -280,10 +280,25 @@ local function toggle_ml_warning()
   pretty_print( string.format( "Master Loot warning %s.", M.db.char.disable_ml_warning and hl( "disabled" ) or hl( "enabled" ) ) )
 end
 
+local function toggle_auto_loot()
+  if M.db.char.auto_loot then
+    M.db.char.auto_loot = nil
+  else
+    M.db.char.auto_loot = 1
+  end
+
+  pretty_print( string.format( "Auto-loot %s.", M.db.char.auto_loot and hl( "enabled" ) or hl( "disabled" ) ) )
+end
+
 local function on_roll_command( roll_type )
   return function( args )
     if args == "ml" then
       toggle_ml_warning()
+      return
+    end
+
+    if args == "autoloot" then
+      toggle_auto_loot()
       return
     end
 
@@ -524,6 +539,10 @@ function M.on_first_enter_world()
   setup_slash_commands()
 
   pretty_print( string.format( "Loaded (%s).", hl( string.format( "v%s", version.str ) ) ) )
+
+  if M.db.char.auto_loot then
+    pretty_print( "Auto-loot is enabled.", modules.colors.orange )
+  end
 
   M.version_broadcast.broadcast()
   M.import_encoded_softres_data( M.db.char.softres_data )
