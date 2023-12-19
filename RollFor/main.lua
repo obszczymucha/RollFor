@@ -59,6 +59,31 @@ local function on_softres_status_changed()
   update_minimap_icon()
 end
 
+local function trade_complete_callback( recipient, items_given, items_received )
+  for i = 1, #items_given do
+    local item = items_given[ i ]
+    if item then
+      local item_id = M.item_utils.get_item_id( item.link )
+      local item_name = M.dropped_loot.get_dropped_item_name( item_id )
+
+      if item_name then
+        M.award_item( recipient, item_id, item_name, item.link )
+      end
+    end
+  end
+
+  for i = 1, #items_received do
+    local item = items_received[ i ]
+    if item then
+      local item_id = M.item_utils.get_item_id( item.link )
+
+      if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
+        M.unaward_item( recipient, item_id, item.link )
+      end
+    end
+  end
+end
+
 local function create_components()
   local m = modules
 
@@ -92,26 +117,7 @@ local function create_components()
 
   M.trade_tracker = m.TradeTracker.new(
     M.ace_timer,
-    function( recipient, items_given, items_received )
-      for i = 1, #items_given do
-        local item = items_given[ i ]
-        local item_id = M.item_utils.get_item_id( item.link )
-        local item_name = M.dropped_loot.get_dropped_item_name( item_id )
-
-        if item_name then
-          M.award_item( recipient, item_id, item_name, item.link )
-        end
-      end
-
-      for i = 1, #items_received do
-        local item = items_received[ i ]
-        local item_id = M.item_utils.get_item_id( item.link )
-
-        if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
-          M.unaward_item( recipient, item_id, item.link )
-        end
-      end
-    end
+    trade_complete_callback
   )
 
   M.usage_printer = m.UsagePrinter.new()
