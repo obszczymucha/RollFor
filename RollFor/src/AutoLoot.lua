@@ -195,6 +195,7 @@ local items = {
     28754, -- Triptych Shield of the Ancients
 
     -- Prince Malchezaar
+    28765, -- Stainless Cloak of the Pure Hearted
     28766, -- Ruby Drape of the Mysticant
     28764, -- Farstrider Wildercloak
     28762, -- Adornment of Stolen Souls
