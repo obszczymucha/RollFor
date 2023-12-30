@@ -124,6 +124,9 @@ local items = {
     28608, -- Ironstriders of Urgency
     28609, -- Emberspur Talisman
     28603, -- Talisman of Nightbane
+    28604, -- Nightstaff of the Everliving
+    28611, -- Dragonheart Flameshield
+    28606, -- Shield of Impenetrable Darkness
 
     -- The Curator
     28612, -- Pauldrons of the Solace-Giver

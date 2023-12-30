@@ -1,7 +1,7 @@
 ## Interface: 20400
 ## Title: Roll For
 ## Author: Obszczymucha
-## Version: 2.94
+## Version: 2.95
 ## Notes: An automated item roller with soft ressing support via softres.it.
 ## SavedVariables: RollForDb
 
