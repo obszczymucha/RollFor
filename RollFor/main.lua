@@ -278,9 +278,9 @@ end
 local function toggle_ml_warning()
   if M.db.char.disable_ml_warning then
     M.db.char.disable_ml_warning = nil
-    M.master_loot_warning.hide()
   else
     M.db.char.disable_ml_warning = 1
+    M.master_loot_warning.hide()
   end
 
   pretty_print( string.format( "Master Loot warning %s.", M.db.char.disable_ml_warning and hl( "disabled" ) or hl( "enabled" ) ) )
