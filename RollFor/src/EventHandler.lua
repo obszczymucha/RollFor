@@ -52,6 +52,8 @@ function M.handle_events( main )
         main.master_loot.on_recipient_inventory_full()
       elseif message == "You are too far away to loot that corpse." then
         main.master_loot.on_player_is_too_far()
+      else
+        main.master_loot.on_unknown_error_message( message )
       end
     end
   end

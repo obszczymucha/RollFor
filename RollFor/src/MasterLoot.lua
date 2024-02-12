@@ -163,16 +163,23 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
     reset_confirmation()
   end
 
-  local on_recipient_inventory_full = function()
+  local function on_recipient_inventory_full()
     if m_confirmed then
       pretty_print( string.format( "%s's inventory is full and cannot receive the item.", hl( m_confirmed.player.name ) ), "red" )
       reset_confirmation()
     end
   end
 
-  local on_player_is_too_far = function()
+  local function on_player_is_too_far()
     if m_confirmed then
       pretty_print( string.format( "%s is too far to receive the item.", hl( m_confirmed.player.name ) ), "red" )
+      reset_confirmation()
+    end
+  end
+
+  local function on_unknown_error_message( message )
+    if m_confirmed then
+      pretty_print( message, "red" )
       reset_confirmation()
     end
   end
@@ -182,7 +189,8 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
     on_loot_opened = on_loot_opened,
     on_loot_closed = on_loot_closed,
     on_recipient_inventory_full = on_recipient_inventory_full,
-    on_player_is_too_far = on_player_is_too_far
+    on_player_is_too_far = on_player_is_too_far,
+    on_unknown_error_message = on_unknown_error_message
   }
 end
 
