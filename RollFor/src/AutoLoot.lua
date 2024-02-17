@@ -320,6 +320,7 @@ local items = {
     32297, -- Design: Soverign Shadowsong Amethyst
     32289, -- Design: Stormy Empyrean Sapphire
     32307, -- Design: Veiled Pyrestone
+    23627, -- Plans: Bracers of the Green Fortress
 
     -- However, the BT ones are:
     32738, -- Plans: Dawnsteel Bracers
