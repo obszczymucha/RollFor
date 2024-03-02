@@ -149,7 +149,7 @@ function M.new( group_roster, dropped_loot, award_item, master_loot_frame, maste
     local item = master_loot_tracker.get( m_confirmed.slot )
 
     if items_left_count > 1 then
-      pretty_print( "%s (slot %s) was supposed to be given to %s.", item and item.link or "Item", m_confirmed.slot, m_confirmed.player.name )
+      pretty_print( string.format( "%s (slot %s) was supposed to be given to %s.", item and item.link or "Item", m_confirmed.slot, m_confirmed.player.name ) )
       return
     end
 
